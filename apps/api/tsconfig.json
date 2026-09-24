@@ -1,0 +1,38 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022", "DOM"],
+    "module": "ES2022",
+    "moduleResolution": "Bundler",
+    "resolveJsonModule": true,
+    "allowJs": false,
+    "checkJs": false,
+    "noEmit": true,
+    "isolatedModules": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "strict": true,
+    "skipLibCheck": true,
+    "paths": {
+      "@/*": ["./src/*"],
+      "@duradav/background": ["../../apps/background/src"],
+      "@duradav/background/*": ["../../apps/background/src/*"],
+      "@duradav/backend-data": ["../../packages/backend-data/src"],
+      "@duradav/backend-data/*": ["../../packages/backend-data/src/*"],
+      "@duradav/backend-errors": ["../../packages/backend-errors/src"],
+      "@duradav/backend-errors/*": ["../../packages/backend-errors/src/*"],
+      "@duradav/backend-runtime": ["../../packages/backend-runtime/src"],
+      "@duradav/backend-runtime/*": ["../../packages/backend-runtime/src/*"],
+      "@duradav/backend-services": ["../../packages/backend-services/src"],
+      "@duradav/backend-services/*": ["../../packages/backend-services/src/*"],
+      "@duradav/webdav": ["../../packages/webdav/src"],
+      "@duradav/webdav/*": ["../../packages/webdav/src/*"],
+      "@duradav/dav-store": ["../../packages/dav-store/src"],
+      "@duradav/dav-store/*": ["../../packages/dav-store/src/*"],
+      "@duradav/shared": ["../../packages/shared/src"],
+      "@duradav/shared/*": ["../../packages/shared/src/*"]
+    }
+  },
+  "include": ["../../worker-configuration.d.ts", "../../packages/backend-runtime/src/env.d.ts", "src/**/*.ts"],
+  "exclude": ["node_modules"]
+}

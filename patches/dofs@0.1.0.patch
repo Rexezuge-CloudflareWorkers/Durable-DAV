@@ -1,0 +1,15 @@
+diff --git a/dist/index.js b/dist/index.js
+--- a/dist/index.js
++++ b/dist/index.js
+@@ -569,11 +569,5 @@ function Dofs(options = {}) {
+ 		};
+ 	};
+ }
+-var MyAttributeObject = @Dofs({ chunkSize: 4 * 1024 }) class extends DurableObject {
+-	constructor(ctx, env) {
+-		super(ctx, env);
+-	}
+-};
+-
+ //#endregion
+ export { Dofs, Fs, withDofs };

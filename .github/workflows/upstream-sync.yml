@@ -1,0 +1,36 @@
+name: Upstream Sync
+
+on:
+  schedule:
+    - cron: '0 2 * * 1'
+  workflow_dispatch:
+
+jobs:
+  sync:
+    if: ${{ github.event.repository.fork }}
+    name: Sync latest commits from upstream
+    permissions:
+      contents: write
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Sync upstream changes
+        id: sync
+        uses: aormsby/Fork-Sync-With-Upstream-action@v3.4
+        with:
+          upstream_sync_repo: Rexezuge-CloudflareWorkers/Edge-Git
+          upstream_sync_branch: main
+          target_sync_branch: main
+          target_repo_token: ${{ secrets.GITHUB_TOKEN }}
+          test_mode: false
+
+      - name: Trigger CI for synced commits
+        if: steps.sync.outputs.has_new_commits == 'true'
+        uses: ./.github/actions/retry-step
+        with:
+          command: gh api repos/${{ github.repository }}/dispatches --method POST -f event_type='Upstream Sync'
+          max_attempts: '2'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

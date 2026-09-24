@@ -1,0 +1,24 @@
+{
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "types": ["vitest/globals"],
+    "paths": {
+      "@/*": ["../apps/api/src/*"],
+      "@duradav/background": ["../apps/background/src"],
+      "@duradav/background/*": ["../apps/background/src/*"],
+      "@duradav/backend-data": ["../packages/backend-data/src"],
+      "@duradav/backend-data/*": ["../packages/backend-data/src/*"],
+      "@duradav/backend-errors": ["../packages/backend-errors/src"],
+      "@duradav/backend-errors/*": ["../packages/backend-errors/src/*"],
+      "@duradav/backend-runtime": ["../packages/backend-runtime/src"],
+      "@duradav/backend-runtime/*": ["../packages/backend-runtime/src/*"],
+      "@duradav/backend-services": ["../packages/backend-services/src"],
+      "@duradav/backend-services/*": ["../packages/backend-services/src/*"],
+      "@duradav/git-protocol": ["../packages/git-protocol/src"],
+      "@duradav/git-protocol/*": ["../packages/git-protocol/src/*"],
+      "@duradav/shared": ["../packages/shared/src"],
+      "@duradav/shared/*": ["../packages/shared/src/*"]
+    }
+  },
+  "include": ["**/*.ts", "../src/**/*.ts"]
+}

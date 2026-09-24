@@ -1,0 +1,25 @@
+{
+  "name": "@duradav/api",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/index.ts",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duradav/backend-data": "workspace:*",
+    "@duradav/backend-errors": "workspace:*",
+    "@duradav/backend-runtime": "workspace:*",
+    "@duradav/backend-services": "workspace:*",
+    "@duradav/background": "workspace:*",
+    "@duradav/shared": "workspace:*",
+    "@duradav/webdav": "workspace:*",
+    "chanfana": "3.4.0",
+    "hono": "4.13.8",
+    "zod": "4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "26.5.1",
+    "typescript": "6.0.3"
+  }
+}

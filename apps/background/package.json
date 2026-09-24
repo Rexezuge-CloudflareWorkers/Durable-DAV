@@ -1,0 +1,30 @@
+{
+  "name": "@duradav/background",
+  "version": "0.1.0",
+  "private": true,
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts",
+    "./DavVolumeWorker": "./src/DavVolumeWorker.ts",
+    "./CronTasksWorker": "./src/CronTasksWorker.ts",
+    "./scheduled": "./src/scheduled/index.ts",
+    "./scheduled/*": "./src/scheduled/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@duradav/backend-data": "workspace:*",
+    "@duradav/backend-errors": "workspace:*",
+    "@duradav/backend-runtime": "workspace:*",
+    "@duradav/backend-services": "workspace:*",
+    "@duradav/dav-store": "workspace:*",
+    "@duradav/shared": "workspace:*",
+    "@duradav/webdav": "workspace:*"
+  },
+  "devDependencies": {
+    "@types/node": "26.5.1",
+    "typescript": "6.0.3"
+  }
+}
