@@ -1,0 +1,4 @@
+export const DURABLE_OBJECT_NAMESPACE_GLOBAL: string = 'global';
+export const DURABLE_OBJECT_CRON_TASKS_NAME: string = 'cron-tasks';
+export const DURABLE_OBJECT_CRON_TASKS_BASE_URL: string = `https://${DURABLE_OBJECT_CRON_TASKS_NAME}.invalid`;
+export const DURABLE_OBJECT_CRON_TASKS_RUN_URL: string = `${DURABLE_OBJECT_CRON_TASKS_BASE_URL}/run`;

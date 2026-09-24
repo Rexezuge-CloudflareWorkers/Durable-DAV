@@ -1,0 +1,65 @@
+# AGENTS.md
+
+DuraDAV: Cloudflare Workers WebDAV server (`@duradav/monorepo`, `pnpm@11.2.2`).
+
+- **WebDAV core**: `packages/webdav` (pure RFC 4918 Class 1+2: path/XML/prop/lock helpers, ported from `r2-webdav` reference, zero runtime deps except `@xmldom/xmldom`) + `packages/dav-store` (`dofs` `Fs` factory via `createDofsFs` + SQLite metadata `dav_nodes/dav_props/dav_locks`).
+- **Storage**: `apps/background` `DavVolumeWorker` facade (one per volume `DAV_VOLUME.getByName(owner/volume-lowercase)`, 5GB device, files at `/` in `dofs`, dead props/locks in DO SQLite; lifecycle `setVolumeKey/deleteVolume`) + `CronTasksWorker` (`*/10 * * * *`, token prune only); D1 `migrations/0028_dav_volumes.sql` adds `dav_volumes` + `dav_collaborators` (users/orgs/PATs tables reused from Edge-Git baseline).
+- **Auth**: `/user/*` Cloudflare Access (`AccessAuthService`: DEMO→DEV→JWT→`ctx.access` fallback; never trust `Cf-Access-Authenticated-User-Email`); email login, globally-unique mutable username (`user ↔ org` single namespace); WebDAV anon (public volumes) + PAT Basic/Bearer (`TokenService`, sha256 `duradav-pat:` prefix, `MAX_TOKENS_PER_USER=5`, `repo:read` for reads, `repo:write` for writes; per-volume grants deferred to global scopes in v1).
+- **API**: `apps/api` Hono+Chanfana `DuraDavWorker` (`/:owner/:volume/*` WebDAV via DO `fetch` forward + `/user/volumes` CRUD + `/user/tokens` + `/user/me` + `/users/:username` + `/health`, `/docs`); permissions `admin|write|read` via `DavPermissionService` (owner + org owner/member + collaborators); `apps/api/src/index.ts` re-exports DOs for bindings.
+- **Web**: minimal server-rendered browser (no SPA build): `GET /` lists visible volumes, `GET /owner/volume/` lists directory HTML; WebDAV clients use raw methods.
+- **Composition**: single scope per request via `scopeMiddleware` (`getScope(c).get(Tokens.X)`; `createRequestScope(env)` is the composition root, table-driven DAO wiring + single `DavPermissionService`/`PermissionService` bindings); `Container` + `createServiceContext` + `AppConfiguration` in `@duradav/backend-runtime/di+config` are the DI foundation.
+- **i18n**: backend strings in `packages/shared/src/i18n` (wired via `BaseRoute.toErrorResponse`).
+
+## Commands
+
+```bash
+pnpm install --ignore-scripts
+pnpm -r typecheck
+pnpm run lint
+pnpm run test
+pnpm run test:integration
+pnpm run typegen
+pnpm exec wrangler dev --config ./wrangler.jsonc
+```
+
+No committed `wrangler.jsonc` secrets. God-file guard 300/400 warn-only.
+
+## Layers
+
+```
+shared, backend-errors, webdav → 0 deps (webdav may use xmldom only)
+backend-runtime → 0 only
+backend-data, dav-store → 0 only (+dofs for dav-store, +webdav for dav-store meta types)
+backend-services → 0-2 (not apps)
+background → 0-3 + webdav/dav-store (not apps/api)
+api → 0-3 + background + webdav (NOT dav-store directly; NOT backend-data/dao except type-only)
+```
+
+## Import Direction
+
+```
+Layer 0: shared, backend-errors, webdav   — zero @duradav/* deps (except xmldom)
+Layer 1: backend-runtime                 → layer 0 only
+Layer 2: backend-data, dav-store         → layer 0 only (+webdav types for dav-store)
+Layer 3: backend-services                → layers 0–2 (not apps)
+Layer 5: apps/background                 → layers 0–3 + webdav/dav-store (not apps/api)
+         apps/api                        → layers 0–3 + background + webdav (NOT dav-store directly; NOT backend-data/dao except type-only)
+```
+
+Enforced by ESLint `no-restricted-imports` in `eslint.config.mjs`: `apps/api` blocks `→ @duradav/dav-store` (all imports) and `→ @duradav/backend-data/dao` (`allowTypeImports: true`). `apps/api → apps/background` re-export is allowed (`src/index.ts` re-exports `CronTasksWorker`, `DavVolumeWorker` for bindings).
+
+## Index
+
+| Area                              | Guide                          |
+| --------------------------------- | ------------------------------ |
+| API worker, auth, routes          | `apps/api/AGENTS.md`           |
+| Background worker, cron, volumes  | `apps/background/AGENTS.md`    |
+| WebDAV RFC 4918 notes             | `packages/webdav/README.md`    |
+| D1/DAO layer                      | `packages/backend-data/AGENTS.md` |
+| Bindings, wrangler, env vars, DI  | `docs/agents/runtime/AGENTS.md` |
+| Tests, thresholds, mock patterns  | `docs/agents/testing/AGENTS.md` |
+```
+
+## Commit Policy
+
+Always commit changes after completing work unless explicitly told not to.
