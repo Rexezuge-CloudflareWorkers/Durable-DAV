@@ -45,7 +45,7 @@
     "typescript": "6.0.3",
     "typescript-eslint": "8.70.0",
     "vite": "8.3.0",
-    "vitest": "4.1.10",
+    "vitest": "4.1.11",
     "wrangler": "4.135.0"
   },
   "packageManager": "pnpm@11.2.2",
