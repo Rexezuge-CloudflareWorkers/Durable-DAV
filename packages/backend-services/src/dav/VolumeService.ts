@@ -64,8 +64,8 @@ class VolumeService {
     creatorEmail: string;
   }): Promise<DavVolumeRow> {
     const owner = VolumeService.normalizeOwner(input.owner);
-    const name = VolumeService.normalizeName(input.name);
     if (!OWNER_RE.test(owner) || owner.length > 39) throw new BadRequestError('Invalid owner name');
+    const name = VolumeService.normalizeName(input.name);
     if (!VOLUME_RE.test(name) || name.length > 100) throw new BadRequestError('Invalid volume name');
     const namespaceDao = await this.deps.namespaceDAO();
     const ns = await namespaceDao.get(owner.toLowerCase()).catch(() => null);

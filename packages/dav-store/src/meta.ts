@@ -54,6 +54,21 @@ function nowMs(): number {
   return Date.now();
 }
 
+function stringField(row: SqlRow, key: string, fallback = ''): string {
+  const value = row[key];
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+  return fallback;
+}
+
+function nullableStringField(row: SqlRow, key: string): string | undefined {
+  const value = row[key];
+  if (value == null) return undefined;
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+  return undefined;
+}
+
 function pruneExpiredLocks(sql: DurableSqlStorage, now = nowMs()): void {
   try {
     sql.exec(`DELETE FROM dav_locks WHERE expires_at <= ?`, now);
@@ -66,19 +81,19 @@ function listLocksForPath(sql: DurableSqlStorage, path: string, now = nowMs()): 
   pruneExpiredLocks(sql, now);
   const rows = sql.exec(`SELECT token, scope, depth, owner, timeout, expires_at as expiresAt, root FROM dav_locks WHERE path = ?`, path).toArray();
   return rows.flatMap((row) => {
-    const token = String(row['token'] ?? '');
+    const token = stringField(row, 'token', '');
     if (!token) return [];
     const expiresAt = Number(row['expiresAt'] ?? 0);
     if (!Number.isFinite(expiresAt) || expiresAt <= now) return [];
     return [
       {
         token,
-        owner: row['owner'] == null ? undefined : String(row['owner']),
+        owner: nullableStringField(row, 'owner'),
         scope: row['scope'] === 'shared' ? 'shared' : 'exclusive',
         depth: row['depth'] === 'infinity' ? 'infinity' : '0',
-        timeout: String(row['timeout'] ?? ''),
+        timeout: stringField(row, 'timeout', ''),
         expiresAt,
-        root: String(row['root'] ?? '/'),
+        root: stringField(row, 'root', '/'),
       },
     ];
   });
@@ -119,7 +134,6 @@ function deleteNodeCascade(sql: DurableSqlStorage, path: string): void {
 
 function renameNodeCascade(sql: DurableSqlStorage, from: string, to: string): void {
   const fromPrefix = `${from}/`;
-  const toPrefix = `${to}/`;
   sql.exec(`UPDATE dav_nodes SET path = ? || SUBSTR(path, ?) WHERE path = ? OR path LIKE ?`, to, from.length + 1, from, `${fromPrefix}%`);
   sql.exec(`UPDATE dav_props SET path = ? || SUBSTR(path, ?) WHERE path = ? OR path LIKE ?`, to, from.length + 1, from, `${fromPrefix}%`);
   sql.exec(`UPDATE dav_locks SET path = ? || SUBSTR(path, ?) WHERE path = ? OR path LIKE ?`, to, from.length + 1, from, `${fromPrefix}%`);
@@ -129,10 +143,10 @@ function getDeadProperties(sql: DurableSqlStorage, path: string): DeadProperty[]
   try {
     const rows = sql.exec(`SELECT namespace_uri, local_name, prefix, value_xml FROM dav_props WHERE path = ?`, path).toArray();
     return rows.map((row) => ({
-      namespaceURI: String(row['namespace_uri'] ?? ''),
-      localName: String(row['local_name'] ?? ''),
-      prefix: row['prefix'] == null ? null : String(row['prefix']),
-      valueXml: String(row['value_xml'] ?? ''),
+      namespaceURI: stringField(row, 'namespace_uri', ''),
+      localName: stringField(row, 'local_name', ''),
+      prefix: nullableStringField(row, 'prefix') ?? null,
+      valueXml: stringField(row, 'value_xml', ''),
     }));
   } catch {
     return [];

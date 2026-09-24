@@ -40,7 +40,7 @@ function isProtectedProperty(propName: string | DeadProperty): boolean {
   const local = typeof propName === 'string' ? (propName.split(':').pop() ?? propName) : propName.localName;
   if (LOCK_PROTECTED_NAMES.has(local)) return true;
   if (typeof propName !== 'string' && propName.namespaceURI === DAV_NAMESPACE) {
-    return local === 'supportedlock' || local === 'lockdiscovery' || local === 'resourcetype';
+    return ['supportedlock', 'lockdiscovery', 'resourcetype'].includes(local);
   }
   return false;
 }

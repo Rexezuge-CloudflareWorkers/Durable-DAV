@@ -64,11 +64,12 @@ function parseTimeout(timeoutHeader: string | null): { timeout: string; expiresA
   if (timeoutHeader === null) {
     return { timeout: `Second-${DEFAULT_LOCK_TIMEOUT}`, expiresAt: Date.now() + DEFAULT_LOCK_TIMEOUT * 1000 };
   }
-  for (const item of timeoutHeader.split(',').map((v) => v.trim())) {
+  for (const raw of timeoutHeader.split(',')) {
+    const item = raw.trim();
     if (item.toLowerCase() === 'infinite') {
       return { timeout: 'Infinite', expiresAt: Date.now() + MAX_LOCK_TIMEOUT * 1000 };
     }
-    const seconds = Number(item.match(/^Second-(\d+)$/i)?.[1] ?? NaN);
+    const seconds = Number(/^Second-(\d+)$/i.exec(item)?.[1] ?? NaN);
     if (Number.isFinite(seconds) && seconds > 0) {
       const clamped = Math.min(seconds, MAX_LOCK_TIMEOUT);
       return { timeout: `Second-${clamped}`, expiresAt: Date.now() + clamped * 1000 };
@@ -83,8 +84,8 @@ function getRequestLockTokens(request: Request): string[] {
   if (direct) tokens.push(normalizeLockToken(direct));
   const ifHeader = request.headers.get('If');
   if (ifHeader) {
-    for (const match of ifHeader.matchAll(/<([^>]+)>/g)) {
-      const token = normalizeLockToken(match[1]);
+    for (const match of ifHeader.matchAll(/<([^<>]+)>/g)) {
+      const token = normalizeLockToken(match[1] ?? '');
       if (token !== '') tokens.push(token);
     }
   }

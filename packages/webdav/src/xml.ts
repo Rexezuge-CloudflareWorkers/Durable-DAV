@@ -21,7 +21,7 @@ type ProppatchOperation = {
 function serializeNodeChildren(node: Node): string {
   let xml = '';
   for (let child = node.firstChild; child !== null; child = child.nextSibling) {
-    xml += child.toString();
+    xml += (child as ChildNode & { toString(): string }).toString();
   }
   return xml;
 }
@@ -73,8 +73,12 @@ function parseXmlDocument(body: string): Document | null {
   const document = new DOMParser({
     errorHandler: {
       warning: () => {},
-      error: (message) => errors.push(message),
-      fatalError: (message) => errors.push(message),
+      error: (message) => {
+        errors.push(message);
+      },
+      fatalError: (message) => {
+        errors.push(message);
+      },
     },
   }).parseFromString(body, 'application/xml');
   if (errors.length > 0) return null;
@@ -128,7 +132,7 @@ function isValidXmlTagName(propName: string): boolean {
 }
 
 function extractLockOwner(body: string): string | undefined {
-  const owner = body.match(/<owner(?:\s[^>]*)?>([\s\S]*?)<\/owner>/i)?.[1];
+  const owner = /<owner(?:\s[^>]*)?>([\s\S]*?)<\/owner>/i.exec(body)?.[1];
   if (owner === undefined) return undefined;
   const trimmed = owner.trim();
   return trimmed === '' ? undefined : trimmed;
