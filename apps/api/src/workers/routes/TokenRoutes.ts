@@ -5,12 +5,11 @@ import { BaseRoute } from '@/endpoints/IBaseRoute';
 
 type TokenApp = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
 
-function getScope(c: TokenApp extends Hono<infer _E> ? never : never): never {
-  throw new Error('unreachable');
+function scopeOf(c: { get(k: string): unknown; env: unknown }): ReturnType<typeof BaseRoute.getScope> {
+  return BaseRoute.getScope(c);
 }
 
 function registerTokenRoutes(app: TokenApp): void {
-  const scopeOf = (c: { get(k: string): unknown; env: unknown }) => BaseRoute.getScope(c);
 
   app.get('/user/tokens', async (c) => {
     const email = c.get('AuthenticatedUserEmailAddress');
@@ -79,4 +78,3 @@ function registerTokenRoutes(app: TokenApp): void {
 }
 
 export { registerTokenRoutes };
-void getScope;

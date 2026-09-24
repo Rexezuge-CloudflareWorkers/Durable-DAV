@@ -53,9 +53,10 @@ class DavPermissionService {
             const role = (membership as { role?: string } | null)?.role;
             if (role === 'owner') return 'admin';
             if (role === 'member') {
-              const collab = await (await this.deps.davCollaboratorDAO()).get(volume.id, viewerEmail).catch(() => null);
+              const collaboratorDao = await this.deps.davCollaboratorDAO();
+              const collab = await collaboratorDao.get(volume.id, viewerEmail).catch(() => null);
               if (collab) return collab.role;
-              return isPrivate ? 'read' : 'read';
+              return 'read';
             }
           } catch (error) {
             if (!this.isTolerable(error)) throw new DatabaseError('Failed to resolve org membership');
@@ -67,7 +68,8 @@ class DavPermissionService {
       // User volumes: collaborators
       if (viewerEmail) {
         try {
-          const collab = await (await this.deps.davCollaboratorDAO()).get(volume.id, viewerEmail);
+          const collaboratorDao = await this.deps.davCollaboratorDAO();
+          const collab = await collaboratorDao.get(volume.id, viewerEmail);
           if (collab) return collab.role;
         } catch (error) {
           if (!this.isTolerable(error)) throw new DatabaseError('Failed to resolve collaborator');

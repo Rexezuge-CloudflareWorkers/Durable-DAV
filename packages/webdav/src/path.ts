@@ -7,14 +7,15 @@ function escapeXml(value: string): string {
     .replaceAll("'", '&apos;');
 }
 
+function encodeHrefPath(href: string): string {
+  if (href === '/') return '/';
+  return href
+    .split('/')
+    .map((segment, index) => (index === 0 ? segment : encodeURIComponent(segment)))
+    .join('/');
+}
+
 function getResourceHref(key: string, isCollection: boolean): string {
-  const encodeHrefPath = (href: string): string => {
-    if (href === '/') return '/';
-    return href
-      .split('/')
-      .map((segment, index) => (index === 0 ? segment : encodeURIComponent(segment)))
-      .join('/');
-  };
   if (key === '') return '/';
   return encodeHrefPath(`/${key + (isCollection ? '/' : '')}`);
 }
