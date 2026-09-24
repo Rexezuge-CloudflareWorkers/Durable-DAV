@@ -44,6 +44,13 @@ class DavCollaboratorDAO extends BaseDAO {
       'delete dav collaborator',
     );
   }
+
+  public async deleteByVolume(volumeId: string): Promise<void> {
+    await this.withRetry(
+      () => this.database.prepare('DELETE FROM dav_collaborators WHERE volume_id = ?').bind(volumeId).run(),
+      'delete dav collaborators for volume',
+    );
+  }
 }
 
 export { DavCollaboratorDAO };

@@ -22,6 +22,8 @@ function bindCoreServices(scope: Container, { env, daos }: ServiceGroupContext):
   scope.bind(Tokens.TokenService, () =>
     createService(TokenService, env, {
       tokenDAO: daos.tokenDAO,
+      volumeDAO: daos.davVolumeDAO,
+      tokenVolumeGrantDAO: daos.tokenVolumeGrantDAO,
       repositoryDAO: daos.repositoryDAO,
       tokenGrantDAO: daos.tokenGrantDAO,
     }),
@@ -94,8 +96,6 @@ function bindCoreServices(scope: Container, { env, daos }: ServiceGroupContext):
   );
   scope.bind(Tokens.DavPermissionService, () =>
     createService(DavPermissionService, env, {
-      organizationDAO: daos.organizationDAO,
-      organizationMemberDAO: daos.organizationMemberDAO,
       davCollaboratorDAO: daos.davCollaboratorDAO,
       strictSchema: !AppConfiguration.fromEnv(env).isBypassAllowed(),
     }),
@@ -103,9 +103,9 @@ function bindCoreServices(scope: Container, { env, daos }: ServiceGroupContext):
   scope.bind(Tokens.VolumeService, () =>
     createService(VolumeService, env, {
       volumeDAO: daos.davVolumeDAO,
-      namespaceDAO: daos.namespaceDAO,
-      organizationDAO: daos.organizationDAO,
-      organizationMemberDAO: daos.organizationMemberDAO,
+      userDAO: daos.userDAO,
+      davCollaboratorDAO: daos.davCollaboratorDAO,
+      tokenVolumeGrantDAO: daos.tokenVolumeGrantDAO,
     }),
   );
 }

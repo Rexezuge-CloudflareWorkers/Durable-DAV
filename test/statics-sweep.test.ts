@@ -57,7 +57,10 @@ describe('slice5: ConfigurationManager facade parity', () => {
     expect(ConfigurationManager.transfer.getMaxImportRefs(env)).toBe(2000);
     expect(ConfigurationManager.transfer.getMaxExportBytes(env)).toBe(26_214_400);
     expect(ConfigurationManager.transfer.getMaxDeployKeysPerRepo(env)).toBe(10);
-    expect(ConfigurationManager.transfer.getMaxTokenRepoGrants(env)).toBe(50);
+    expect(ConfigurationManager.transfer.getMaxTokenVolumeGrants(env)).toBe(100);
+    expect(ConfigurationManager.transfer.getMaxTokenRepoGrants(env)).toBe(100);
+    expect(ConfigurationManager.dav.getMaxVolumesPerUser(env)).toBe(100);
+    expect(ConfigurationManager.dav.getMaxTokenVolumeGrants(env)).toBe(100);
     expect(ConfigurationManager.transfer.getMaxMirrorFailures(env)).toBe(5);
     expect(ConfigurationManager.transfer.getImportClaimStaleSeconds(env)).toBe(600);
     expect(ConfigurationManager.getDebugMode(env)).toBe(false);

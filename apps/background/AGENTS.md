@@ -3,7 +3,7 @@
 Scope: `apps/background/**`. Parent index: `../../AGENTS.md`.
 
 - `src/index.ts` — re-exports `DavVolumeWorker`, `CronTasksWorker` (also re-exported by `apps/api/src/index.ts` for DO bindings).
-- `DavVolumeWorker` (`src/DavVolumeWorker.ts`) — WebDAV filesystem DO (routing + storage): one per volume (`DAV_VOLUME.getByName(normalizeVolumeKey(owner, volume))` — canonical lowercase key, display case via `setVolumeKey`); files at `/` over `createDofsFs` + metadata in DO SQLite (`dav_nodes/dav_props/dav_locks` via `ensureDavSchema`). Entry: `fetch` dispatches all `SUPPORT_METHODS`; `setVolumeKey/deleteVolume` lifecycle. No `blockConcurrencyWhile` nesting (dofs schedules its own schema bootstrap).
+- `DavVolumeWorker` (`src/DavVolumeWorker.ts`) — WebDAV filesystem DO (routing + storage): one per bucket (`DAV_VOLUME.getByName(normalizeVolumeKey(owner, volume))` — canonical lowercase key, display case via `setVolumeKey`); files at `/` over `createDofsFs` + metadata in DO SQLite (`dav_nodes/dav_props/dav_locks` via `ensureDavSchema`). Entry: `fetch` dispatches all `SUPPORT_METHODS`; `setVolumeKey/deleteVolume` lifecycle. No `blockConcurrencyWhile` nesting (dofs schedules its own schema bootstrap). Bucket deletion also clears per-bucket PAT grants + collaborators in D1 (best-effort, FK cascades as backstop).
 - `DavVolumeWorker` method map (RFC 4918 Class 1+2, ported from `r2-webdav`):
   - `OPTIONS` → `Allow` + `DAV: 1, 2`.
   - `GET`/`HEAD` → file bytes (Range via `dofs.read(offset/length)`, streams via `readFile`) or collection HTML browser; `404` missing, `206` partial.

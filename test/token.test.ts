@@ -82,25 +82,34 @@ describe('TokenService hashing', () => {
 
 describe('token scope helpers', () => {
   it('coversScope applies the admin > write > read hierarchy', () => {
-    expect(coversScope(['repo:read'], 'repo:read')).toBe(true);
-    expect(coversScope(['repo:read'], 'repo:write')).toBe(false);
-    expect(coversScope(['repo:write'], 'repo:read')).toBe(true);
-    expect(coversScope(['repo:write'], 'repo:write')).toBe(true);
-    expect(coversScope(['repo:write'], 'admin')).toBe(false);
-    expect(coversScope(['admin'], 'repo:read')).toBe(true);
-    expect(coversScope(['admin'], 'repo:write')).toBe(true);
+    expect(coversScope(['dav:read'], 'dav:read')).toBe(true);
+    expect(coversScope(['dav:read'], 'dav:write')).toBe(false);
+    expect(coversScope(['dav:write'], 'dav:read')).toBe(true);
+    expect(coversScope(['dav:write'], 'dav:write')).toBe(true);
+    expect(coversScope(['dav:write'], 'admin')).toBe(false);
+    expect(coversScope(['admin'], 'dav:read')).toBe(true);
+    expect(coversScope(['admin'], 'dav:write')).toBe(true);
     expect(coversScope(['admin'], 'admin')).toBe(true);
-    expect(coversScope([], 'repo:read')).toBe(false);
+    expect(coversScope([], 'dav:read')).toBe(false);
+  });
+
+  it('coversScope accepts legacy repo:* aliases', () => {
+    expect(coversScope(['repo:read'], 'dav:read')).toBe(true);
+    expect(coversScope(['dav:write'], 'repo:read')).toBe(true);
+    expect(coversScope(['repo:write'], 'dav:write')).toBe(true);
+    expect(coversScope(['admin'], 'repo:read')).toBe(true);
   });
 
   it('normalizeTokenScopes defaults omitted input and rejects bad input', () => {
-    expect(normalizeTokenScopes(undefined)).toEqual(['repo:read', 'repo:write']);
-    expect(normalizeTokenScopes(null)).toEqual(['repo:read', 'repo:write']);
-    expect(normalizeTokenScopes(['repo:read'])).toEqual(['repo:read']);
+    expect(normalizeTokenScopes(undefined)).toEqual(['dav:read', 'dav:write']);
+    expect(normalizeTokenScopes(null)).toEqual(['dav:read', 'dav:write']);
+    expect(normalizeTokenScopes(['dav:read'])).toEqual(['dav:read']);
+    expect(normalizeTokenScopes(['repo:read'])).toEqual(['dav:read']);
+    expect(normalizeTokenScopes(['repo:read', 'repo:write'])).toEqual(['dav:read', 'dav:write']);
     expect(() => normalizeTokenScopes([])).toThrow('scopes must be');
     expect(() => normalizeTokenScopes(['nope'])).toThrow('scopes must be');
-    expect(() => normalizeTokenScopes(['repo:read', 'nope'])).toThrow('scopes must be');
-    expect(() => normalizeTokenScopes('repo:read')).toThrow('scopes must be');
+    expect(() => normalizeTokenScopes(['dav:read', 'nope'])).toThrow('scopes must be');
+    expect(() => normalizeTokenScopes('dav:read')).toThrow('scopes must be');
   });
 });
 
@@ -108,12 +117,13 @@ describe('TokenService scoped lifecycle', () => {
   it('mints scoped tokens and returns scopes on authenticate', async () => {
     const db = createTokenFakeDb();
     const svc = new TokenService({ DB: db });
-    const created = await svc.createToken('alice@example.com', 'reader', undefined, ['repo:read']);
-    expect(created.scopes).toEqual(['repo:read']);
+    const created = await svc.createToken('alice@example.com', 'reader', undefined, ['dav:read']);
+    expect(created.scopes).toEqual(['dav:read']);
     const identity = await svc.authenticateWithPAT(created.token);
-    expect(identity).toMatchObject({ email: 'alice@example.com', scopes: ['repo:read'] });
-    expect(TokenService.coversScope(identity.scopes, 'repo:read')).toBe(true);
-    expect(TokenService.coversScope(identity.scopes, 'repo:write')).toBe(false);
+    expect(identity).toMatchObject({ email: 'alice@example.com', scopes: ['dav:read'] });
+    expect(identity.volumeGrants).toEqual([]);
+    expect(TokenService.coversScope(identity.scopes, 'dav:read')).toBe(true);
+    expect(TokenService.coversScope(identity.scopes, 'dav:write')).toBe(false);
   });
 
   it('rejects invalid scopes at mint time', async () => {
@@ -136,13 +146,29 @@ describe('TokenService scoped lifecycle', () => {
     const svc = new TokenService({ DB: db });
     const identity = await svc.authenticateWithPAT('legacy-token');
     expect(identity.scopes).toEqual([]);
-    expect(TokenService.coversScope(identity.scopes, 'repo:read')).toBe(false);
+    expect(TokenService.coversScope(identity.scopes, 'dav:read')).toBe(false);
+  });
+
+  it('fails closed when volume grants cannot be read', async () => {
+    const db = createTokenFakeDb();
+    const svc = new TokenService({ DB: db });
+    const created = await svc.createToken('alice@example.com', 'scoped', undefined, ['dav:read']);
+    const failing = new TokenService(
+      { DB: db },
+      {
+        tokenVolumeGrantDAO: () =>
+          Promise.resolve({
+            listByToken: () => Promise.reject(new Error('D1 unavailable')),
+          } as never),
+      },
+    );
+    await expect(failing.authenticateWithPAT(created.token)).rejects.toThrow('temporarily unavailable');
   });
 
   it('fails closed when repo grants cannot be read', async () => {
     const db = createTokenFakeDb();
     const svc = new TokenService({ DB: db });
-    const created = await svc.createToken('alice@example.com', 'scoped', undefined, ['repo:read']);
+    const created = await svc.createToken('alice@example.com', 'scoped', undefined, ['dav:read']);
     const failing = new TokenService(
       { DB: db },
       {

@@ -136,9 +136,11 @@ describe('DuraDAV protocol surface', () => {
     }
   });
 
-  it('PAT scopes cover DAV read/write (Edge-Git style)', () => {
-    expect(coversTokenScope(['repo:write'], 'repo:read')).toBe(true);
-    expect(coversTokenScope(['repo:read'], 'repo:write')).toBe(false);
-    expect(coversTokenScope(['admin'], 'repo:write')).toBe(true);
+  it('PAT scopes cover DAV read/write (dav:* primary, repo:* legacy)', () => {
+    expect(coversTokenScope(['dav:write'], 'dav:read')).toBe(true);
+    expect(coversTokenScope(['dav:read'], 'dav:write')).toBe(false);
+    expect(coversTokenScope(['admin'], 'dav:write')).toBe(true);
+    expect(coversTokenScope(['repo:write'], 'dav:read')).toBe(true);
+    expect(coversTokenScope(['dav:write'], 'repo:read')).toBe(true);
   });
 });

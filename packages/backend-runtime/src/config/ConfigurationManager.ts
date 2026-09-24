@@ -18,8 +18,7 @@ class ConfigurationManager {
   };
 
   public static readonly repo = {
-    getMaxPerUser: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxReposPerUser(),
-    getDoDeviceBytes: (env: unknown): number => AppConfiguration.fromEnv(env).getDoDeviceBytes(),
+    getMaxPerUser: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxReposPerUser(),    getDoDeviceBytes: (env: unknown): number => AppConfiguration.fromEnv(env).getDoDeviceBytes(),
     getMaxPackObjects: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxPackObjects(),
     getCacheTtlSeconds: (env: unknown): number => AppConfiguration.fromEnv(env).getGitCacheTtlSeconds(),
     getMaxFetchWants: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxFetchWants(),
@@ -82,9 +81,15 @@ class ConfigurationManager {
     getMaxImportRefs: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxImportRefs(),
     getMaxExportBytes: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxExportBytes(),
     getMaxDeployKeysPerRepo: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxDeployKeysPerRepo(),
+    getMaxTokenVolumeGrants: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxTokenVolumeGrants(),
     getMaxTokenRepoGrants: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxTokenRepoGrants(),
     getMaxMirrorFailures: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxMirrorFailures(),
     getImportClaimStaleSeconds: (env: unknown): number => AppConfiguration.fromEnv(env).getImportClaimStaleSeconds(),
+  };
+
+  public static readonly dav = {
+    getMaxVolumesPerUser: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxVolumesPerUser(),
+    getMaxTokenVolumeGrants: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxTokenVolumeGrants(),
   };
 
   public static getDebugMode(env: unknown): boolean {

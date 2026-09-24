@@ -67,7 +67,7 @@ class UserAccessTokenDAO extends BaseDAO {
 
   public async listScopes(tokenId: string): Promise<TokenScope[]> {
     const result = await this.database
-      .prepare("SELECT scope FROM token_scopes WHERE token_id = ? AND scope IN ('repo:read', 'repo:write', 'admin')")
+      .prepare("SELECT scope FROM token_scopes WHERE token_id = ? AND scope IN ('dav:read', 'dav:write', 'admin', 'repo:read', 'repo:write')")
       .bind(tokenId)
       .all<{ scope: TokenScope }>();
     return (result.results ?? []).map((row) => row.scope);

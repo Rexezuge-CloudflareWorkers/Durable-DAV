@@ -88,6 +88,10 @@ class AppConfiguration {
     return this.repos.getMaxReposPerUser();
   }
 
+  public getMaxVolumesPerUser(): number {
+    return this.repos.getMaxVolumesPerUser();
+  }
+
   public getMaxTokensPerUser(): number {
     return this.repos.getMaxTokensPerUser();
   }
@@ -256,6 +260,10 @@ class AppConfiguration {
     return this.content.getMaxDeployKeysPerRepo();
   }
 
+  public getMaxTokenVolumeGrants(): number {
+    return this.repos.getMaxTokenVolumeGrants();
+  }
+
   public getMaxTokenRepoGrants(): number {
     return this.repos.getMaxTokenRepoGrants();
   }
@@ -359,6 +367,7 @@ class AppConfiguration {
     const warnings: string[] = [];
     const numericKeys = [
       'MAX_REPOS_PER_USER',
+      'MAX_VOLUMES_PER_USER',
       'MAX_TOKENS_PER_USER',
       'MAX_TOKEN_EXPIRY_DAYS',
       'MAX_PACK_OBJECTS',

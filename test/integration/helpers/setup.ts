@@ -97,7 +97,7 @@ export async function mintPatForEmail(
   const tokenHash = await sha256Hex(`duradav-pat:${raw}`);
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + (input.expiresInDays ?? 90) * 86_400;
-  const scopes = input.scopes ?? ['repo:read', 'repo:write', 'admin'];
+  const scopes = input.scopes ?? ['dav:read', 'dav:write', 'admin'];
   await db
     .prepare(
       `INSERT INTO user_access_tokens (token_id, user_email, token_hash, name, expires_at, last_used_at, created_at, token_prefix) VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,

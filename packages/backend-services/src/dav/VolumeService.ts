@@ -1,19 +1,26 @@
-import { DavVolumeDAO, NamespaceDAO, OrganizationDAO, OrganizationMemberDAO } from '@duradav/backend-data/dao';
+import {
+  DavCollaboratorDAO,
+  DavVolumeDAO,
+  TokenVolumeGrantDAO,
+  UserDAO,
+} from '@duradav/backend-data/dao';
 import type { DavVolumeRow } from '@duradav/backend-data/dao';
 import type { D1Queryable } from '@duradav/backend-data/utils';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@duradav/backend-errors';
 import { TimestampUtil, UUIDUtil } from '@duradav/shared/utils';
 import { AppConfiguration } from '@duradav/backend-runtime/config';
+import { checkVolumeQuota } from './VolumeCreatePolicy';
 
 interface VolumeServiceEnv {
   DB: D1Queryable;
+  MAX_VOLUMES_PER_USER?: string;
 }
 
 interface VolumeServiceDeps {
   volumeDAO?: () => Promise<DavVolumeDAO>;
-  namespaceDAO?: () => Promise<NamespaceDAO>;
-  organizationDAO?: () => Promise<OrganizationDAO>;
-  organizationMemberDAO?: () => Promise<OrganizationMemberDAO>;
+  userDAO?: () => Promise<UserDAO>;
+  davCollaboratorDAO?: () => Promise<DavCollaboratorDAO>;
+  tokenVolumeGrantDAO?: () => Promise<TokenVolumeGrantDAO>;
   config?: AppConfiguration;
 }
 
@@ -29,9 +36,9 @@ class VolumeService {
   ) {
     this.deps = {
       volumeDAO: () => Promise.resolve(new DavVolumeDAO(env.DB)),
-      namespaceDAO: () => Promise.resolve(new NamespaceDAO(env.DB)),
-      organizationDAO: () => Promise.resolve(new OrganizationDAO(env.DB)),
-      organizationMemberDAO: () => Promise.resolve(new OrganizationMemberDAO(env.DB)),
+      userDAO: () => Promise.resolve(new UserDAO(env.DB)),
+      davCollaboratorDAO: () => Promise.resolve(new DavCollaboratorDAO(env.DB)),
+      tokenVolumeGrantDAO: () => Promise.resolve(new TokenVolumeGrantDAO(env.DB)),
       config: AppConfiguration.fromEnv(env),
       ...deps,
     };
@@ -56,6 +63,17 @@ class VolumeService {
     return volume;
   }
 
+  private async resolveCallerUsername(creatorEmail: string): Promise<string | null> {
+    try {
+      const userDao = await this.deps.userDAO();
+      const row = await userDao.getByEmail(creatorEmail).catch(() => null);
+      const username = (row as { username?: string | null } | null)?.username;
+      return typeof username === 'string' && username.length > 0 ? username.toLowerCase() : null;
+    } catch {
+      return null;
+    }
+  }
+
   public async createVolume(input: {
     owner: string;
     name: string;
@@ -67,25 +85,17 @@ class VolumeService {
     if (!OWNER_RE.test(owner) || owner.length > 39) throw new BadRequestError('Invalid owner name');
     const name = VolumeService.normalizeName(input.name);
     if (!VOLUME_RE.test(name) || name.length > 100) throw new BadRequestError('Invalid volume name');
-    const namespaceDao = await this.deps.namespaceDAO();
-    const ns = await namespaceDao.get(owner.toLowerCase()).catch(() => null);
-    let ownerType = 'user';
-    let orgId: string | null = null;
-    let ownerUserEmail: string | null = input.creatorEmail.toLowerCase();
-    if (ns && ns.kind === 'org') {
-      const orgDao = await this.deps.organizationDAO();
-      const org = await orgDao.getByUsernameCi(owner.toLowerCase());
-      if (!org) throw new NotFoundError('Organization not found');
-      const memberDao = await this.deps.organizationMemberDAO();
-      const membership = await memberDao.get(org.id, input.creatorEmail);
-      if (!membership) throw new ForbiddenError('Only org owners/members may create org volumes');
-      ownerType = 'org';
-      orgId = org.id;
-      ownerUserEmail = null;
-    } else {
-      // user namespace: owner must be creator's username (resolved by caller) — enforce case-insensitive match via users table upstream
+    // User-only buckets: no org volumes. Owner must be the caller's username
+    // (case-insensitive) when the username is known; legacy rows without a
+    // users entry fall through to the quota + uniqueness checks below.
+    const callerUsername = await this.resolveCallerUsername(input.creatorEmail);
+    if (callerUsername && owner.toLowerCase() !== callerUsername) {
+      throw new ForbiddenError('Only the bucket owner can create buckets for this user');
     }
     const dao = await this.deps.volumeDAO();
+    const owned = await dao.listByOwnerEmail(input.creatorEmail.toLowerCase(), 1000).catch(() => []);
+    // Fail-open on outage like Git RepoService: quota is soft, auth stays fail-closed.
+    checkVolumeQuota(owned.length, this.deps.config.getMaxVolumesPerUser());
     const existing = await dao.getByOwnerName(owner, name).catch(() => null);
     if (existing) throw new BadRequestError('Volume already exists');
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
@@ -98,9 +108,9 @@ class VolumeService {
       description: input.description ?? null,
       isPrivate: input.isPrivate ?? false,
       now,
-      ownerType,
-      orgId,
-      ownerUserEmail,
+      ownerType: 'user',
+      orgId: null,
+      ownerUserEmail: input.creatorEmail.toLowerCase(),
     });
     const created = await dao.getById(id);
     if (!created) throw new NotFoundError('Volume not found after create');
@@ -109,9 +119,14 @@ class VolumeService {
 
   public async deleteVolume(owner: string, name: string): Promise<void> {
     const volume = await this.requireVolume(owner, name);
+    // Best-effort sidecar cleanup: per-bucket PAT grants + collaborators.
+    // FK cascades cover D1, but explicit deletes keep fake-DB tests honest.
+    await this.deps.tokenVolumeGrantDAO().then((d) => d.deleteByVolume(volume.id).catch(() => undefined));
+    await this.deps.davCollaboratorDAO().then((d) => d.deleteByVolume(volume.id).catch(() => undefined));
     const dao = await this.deps.volumeDAO();
     await dao.deleteById(volume.id);
   }
 }
 
 export { VolumeService };
+export type { VolumeServiceDeps, VolumeServiceEnv };

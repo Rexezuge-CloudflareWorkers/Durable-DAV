@@ -35,6 +35,7 @@ import type {
   TeamMemberDAO,
   TeamRepoGrantDAO,
   TokenRepoGrantDAO,
+  TokenVolumeGrantDAO,
   UserAccessTokenDAO,
   UserDAO,
   WatchDAO,
@@ -80,6 +81,7 @@ interface DaoThunks {
   collaborationDAO: () => Promise<CollaborationDAO>;
   searchDAO: () => Promise<SearchDAO>;
   tokenGrantDAO: () => Promise<TokenRepoGrantDAO>;
+  tokenVolumeGrantDAO: () => Promise<TokenVolumeGrantDAO>;
   securitySettingsDAO: () => Promise<SecuritySettingsDAO>;
   davVolumeDAO: () => Promise<DavVolumeDAO>;
   davCollaboratorDAO: () => Promise<DavCollaboratorDAO>;
