@@ -19,6 +19,9 @@
   "placement": {
     "mode": "off"
   },
+  "assets": {
+    "directory": "./apps/web/dist/"
+  },
   "durable_objects": {
     "bindings": [
       {

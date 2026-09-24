@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "postinstall": "pnpm run typegen",
+    "postinstall": "node scripts/ensure-spa-shell-stub.mjs && pnpm run typegen",
     "build": "pnpm -r build",
     "checks": "pnpm -r typecheck && pnpm run lint && node scripts/check-god-files.mjs",
     "checks:all": "pnpm run checks && pnpm run test:coverage",
@@ -14,6 +14,7 @@
     "test:integration": "vitest run --config test/integration/vitest.config.mts",
     "test:coverage:integration": "vitest run --coverage --config test/integration/vitest.config.mts",
     "lint": "NODE_OPTIONS=--max-old-space-size=8192 eslint --fix --quiet .",
+    "validate:locales": "node scripts/validate_locales.mjs",
     "typegen": "wrangler types --config ./apps/api/wrangler.template.jsonc --env-interface CloudflareEnv"
   },
   "devDependencies": {

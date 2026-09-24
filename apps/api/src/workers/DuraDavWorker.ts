@@ -4,18 +4,21 @@ import type { HonoOpenAPIRouterType } from 'chanfana';
 import { Hono } from 'hono';
 import { MiddlewareHandlers, securityHeaders } from '@/middleware';
 import { scopeMiddleware } from '@/middleware/scopeMiddleware';
-import { Tokens } from '@duradav/backend-services/composition';
-import { BaseRoute } from '@/endpoints/IBaseRoute';
+import { RESERVED_NAMESPACE_NAMES } from '@duradav/shared/constants';
 import { registerDavRoutes } from './routes/DavRoutes';
 import { registerVolumeRoutes } from './routes/VolumeRoutes';
 import { registerTokenRoutes } from './routes/TokenRoutes';
 import { registerUserProfileRoutes } from './routes/UserRoutes';
-import { escapeXml } from '@duradav/webdav';
+import { SPA_HTML } from '@/generated/spa-shell';
 
 type AppRouter = HonoOpenAPIRouterType<{
   Bindings: Env;
   Variables: { AuthenticatedUserEmailAddress: string };
 }>;
+
+function acceptsHtml(request: Request): boolean {
+  return (request.headers.get('Accept') ?? '').includes('text/html');
+}
 
 class DuraDavWorker extends AbstractEntrypointWorker {
   protected readonly app: AppRouter;
@@ -36,57 +39,21 @@ class DuraDavWorker extends AbstractEntrypointWorker {
 
     app.get('/health', (c) => c.json({ ok: true, service: 'duradav' }));
 
-    // Minimal browser UI at / (no SPA build): lists visible volumes + links.
-    app.get('/', async (c) => {
-      let volumes: Array<{ owner: string; name: string; href: string }> = [];
-      try {
-        const scope = BaseRoute.getScope(c);
-        let email: string | null = null;
-        try {
-          email = await scope
-            .get(Tokens.AccessAuthService)
-            .getAuthenticatedUserEmail(c.req.raw, c.executionCtx as never);
-        } catch {
-          email = null;
-        }
-        // PAT best-effort for browser with Authorization header
-        if (!email) {
-          const header = c.req.header('Authorization');
-          if (header) {
-            const token = header.startsWith('Bearer ')
-              ? header.slice(7).trim()
-              : header.startsWith('Basic ')
-                ? (() => {
-                    try {
-                      const decoded = atob(header.slice(6).trim());
-                      return decoded.slice(decoded.indexOf(':') + 1);
-                    } catch {
-                      return '';
-                    }
-                  })()
-                : '';
-            if (token) {
-              try {
-                const authenticated = await scope.get(Tokens.TokenService).authenticateWithPAT(token);
-                email = authenticated.email;
-              } catch {
-                // ignore
-              }
-            }
-          }
-        }
-        const dao = await scope.get(Tokens.DavVolumeDAO)();
-        const rows = await dao.listVisibleForUser(email, 100).catch(() => []);
-        volumes = rows.map((r) => ({ owner: r.owner, name: r.name, href: `/${r.owner}/${r.name}/` }));
-      } catch {
-        volumes = [];
+    // Web SPA shell (Vite build embeds `apps/web/dist/index.html` into
+    // `apps/api/src/generated/spa-shell.ts`; no per-request scope needed).
+    app.get('/', (c) => c.html(SPA_HTML));
+    app.get('/new', (c) => c.html(SPA_HTML));
+    app.get('/settings', (c) => c.html(SPA_HTML));
+    // Single-segment profile shell — never shadow reserved API/UI roots
+    // (`/health`, `/docs`, `/user`, …). Reserved names fall through so the
+    // exact routes (including fromHono's `/docs`, registered later) win.
+    app.get('/:username', async (c, next) => {
+      const segment = (c.req.param('username') ?? '').toLowerCase();
+      if (RESERVED_NAMESPACE_NAMES.has(segment)) {
+        await next();
+        return;
       }
-      const items =
-        volumes.length === 0
-          ? '<p>No volumes visible. Create one via <code>POST /user/volumes</code>.</p>'
-          : volumes.map((v) => `<a href="${escapeXml(v.href)}">${escapeXml(v.owner)}/${escapeXml(v.name)}/</a><br>`).join('');
-      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>DuraDAV</title><style>*{box-sizing:border-box}body{padding:10px;font-family:system-ui,sans-serif}a{display:inline-block;min-width:240px;color:#000;text-decoration:none;padding:5px 10px;border-radius:5px}a:hover{background:#0ea5e9;color:#fff}</style></head><body><h1>DuraDAV</h1><div>${items}</div><p><a href="/health">health</a> · <a href="/docs">docs</a> · <a href="/user/me">me</a></p></body></html>`;
-      return c.html(html);
+      return c.html(SPA_HTML);
     });
 
     app.use('*', scopeMiddleware);
@@ -96,6 +63,16 @@ class DuraDavWorker extends AbstractEntrypointWorker {
     registerVolumeRoutes(app);
     registerTokenRoutes(app);
     registerUserProfileRoutes(app);
+
+    // Volume-root content negotiation (recommended option): browser document
+    // navigations (`Accept: text/html`) get the SPA shell, whose VolumeView
+    // drives subpaths client-side via `?path=`; WebDAV and file clients
+    // (`Accept: */*`, `Depth`, …) fall through to the DO forward below.
+    // Registered after `/user/*` so API JSON responses always win.
+    app.use('/:owner/:volume', async (c, next) => {
+      if (c.req.method === 'GET' && acceptsHtml(c.req.raw)) return c.html(SPA_HTML);
+      await next();
+    });
     registerDavRoutes(app);
 
     const openapi: AppRouter = fromHono(app, { docs_url: '/docs' });
