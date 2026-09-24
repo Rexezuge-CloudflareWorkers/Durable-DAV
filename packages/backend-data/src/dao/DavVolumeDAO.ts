@@ -100,6 +100,22 @@ class DavVolumeDAO extends BaseDAO {
     return result.results ?? [];
   }
 
+  public async listByOwnerEmail(ownerEmail: string, limit = 1000): Promise<DavVolumeRow[]> {
+    const result = await this.database
+      .prepare('SELECT * FROM dav_volumes WHERE lower(owner_email) = lower(?) ORDER BY updated_at DESC LIMIT ?')
+      .bind(ownerEmail, limit)
+      .all<DavVolumeRow>();
+    return result.results ?? [];
+  }
+
+  public async countByOwnerEmail(ownerEmail: string): Promise<number> {
+    const row = await this.database
+      .prepare('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE lower(owner_email) = lower(?)')
+      .bind(ownerEmail)
+      .first<{ cnt: number }>();
+    return row?.cnt ?? 0;
+  }
+
   public async deleteById(id: string): Promise<void> {
     await this.withRetry(() => this.database.prepare('DELETE FROM dav_volumes WHERE id = ?').bind(id).run(), 'delete dav volume');
   }

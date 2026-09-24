@@ -1,8 +1,4 @@
-import {
-  DavCollaboratorDAO,
-  OrganizationDAO,
-  OrganizationMemberDAO,
-} from '@duradav/backend-data/dao';
+import { DavCollaboratorDAO } from '@duradav/backend-data/dao';
 import type { DavVolumeRow, DavRole } from '@duradav/backend-data/dao';
 import type { D1Queryable } from '@duradav/backend-data/utils';
 import { isMissingSchemaError } from '@duradav/backend-data/utils';
@@ -15,22 +11,28 @@ interface DavPermissionServiceEnv {
 }
 
 interface DavPermissionServiceDeps {
-  organizationDAO?: () => Promise<OrganizationDAO>;
-  organizationMemberDAO?: () => Promise<OrganizationMemberDAO>;
   davCollaboratorDAO?: () => Promise<DavCollaboratorDAO>;
   strictSchema?: boolean;
+  /**
+  @deprecated Org volumes removed; accepted for backward compat and ignored.
+  */
+  organizationDAO?: () => Promise<unknown>;
+  /**
+  @deprecated Org volumes removed; accepted for backward compat and ignored.
+  */
+  organizationMemberDAO?: () => Promise<unknown>;
 }
 
 class DavPermissionService {
-  private readonly deps: Required<DavPermissionServiceDeps>;
+  private readonly deps: Required<Pick<DavPermissionServiceDeps, 'davCollaboratorDAO' | 'strictSchema'>>;
 
   constructor(env: DavPermissionServiceEnv, deps: DavPermissionServiceDeps = {}) {
+    // User-only buckets: no org volumes. D1 keeps the legacy org_id column
+    // for compat, but it is ignored here (deprecated deps above are dropped).
+    const { davCollaboratorDAO, strictSchema } = deps;
     this.deps = {
-      organizationDAO: () => Promise.resolve(new OrganizationDAO(env.DB)),
-      organizationMemberDAO: () => Promise.resolve(new OrganizationMemberDAO(env.DB)),
-      davCollaboratorDAO: () => Promise.resolve(new DavCollaboratorDAO(env.DB)),
-      strictSchema: false,
-      ...deps,
+      davCollaboratorDAO: davCollaboratorDAO ?? (() => Promise.resolve(new DavCollaboratorDAO(env.DB))),
+      strictSchema: strictSchema ?? false,
     };
   }
 
@@ -44,28 +46,7 @@ class DavPermissionService {
       const isPrivate = Number(volume.is_private) === 1;
       // Owner always admin
       if (viewerEmail && viewerEmail.toLowerCase() === volume.owner_email.toLowerCase()) return 'admin';
-      // Org volumes: org owners admin, members read (write via collaborator grant)
-      if (volume.org_id) {
-        if (viewerEmail) {
-          try {
-            const memberDao = await this.deps.organizationMemberDAO();
-            const membership = await memberDao.get(volume.org_id, viewerEmail).catch(() => null);
-            const role = (membership as { role?: string } | null)?.role;
-            if (role === 'owner') return 'admin';
-            if (role === 'member') {
-              const collaboratorDao = await this.deps.davCollaboratorDAO();
-              const collab = await collaboratorDao.get(volume.id, viewerEmail).catch(() => null);
-              if (collab) return collab.role;
-              return 'read';
-            }
-          } catch (error) {
-            if (!this.isTolerable(error)) throw new DatabaseError('Failed to resolve org membership');
-          }
-        }
-        if (!isPrivate) return 'read';
-        return null;
-      }
-      // User volumes: collaborators
+      // User buckets: collaborators only, then public read.
       if (viewerEmail) {
         try {
           const collaboratorDao = await this.deps.davCollaboratorDAO();

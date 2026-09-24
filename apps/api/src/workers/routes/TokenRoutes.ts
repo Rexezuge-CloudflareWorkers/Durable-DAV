@@ -24,6 +24,7 @@ function registerTokenRoutes(app: TokenApp): void {
         createdAt: t.createdAt,
         scopes: t.scopes,
         tokenPrefix: t.tokenPrefix,
+        volumeGrants: t.volumeGrants ?? [],
         repoGrants: t.repoGrants ?? [],
       })),
     });
@@ -35,13 +36,14 @@ function registerTokenRoutes(app: TokenApp): void {
       name?: string;
       expiresInDays?: number;
       scopes?: unknown;
+      volumeGrants?: unknown;
       repoGrants?: unknown;
     } | null;
     if (!body) return c.json({ Exception: { Type: 'BadRequest', Message: 'Invalid JSON body' } }, 400);
     if (!body.name) return c.json({ Exception: { Type: 'BadRequest', Message: 'name is required' } }, 400);
     try {
       const svc = scopeOf(c as never).get(Tokens.TokenService);
-      const created = await svc.createToken(email, body.name, body.expiresInDays, body.scopes, body.repoGrants);
+      const created = await svc.createToken(email, body.name, body.expiresInDays, body.scopes, body.volumeGrants, body.repoGrants);
       return c.json(created, 201);
     } catch (error) {
       return BaseRoute.toErrorResponse(c as never, error);

@@ -1,4 +1,4 @@
-export type TokenScope = 'repo:read' | 'repo:write' | 'admin';
+export type TokenScope = 'dav:read' | 'dav:write' | 'admin' | 'repo:read' | 'repo:write';
 
 export interface UserAccessTokenMetadata {
   tokenId: string;
@@ -10,5 +10,6 @@ export interface UserAccessTokenMetadata {
   createdAt: number;
   scopes: TokenScope[];
   tokenPrefix: string | null;
+  volumeGrants?: import('./transfer').TokenVolumeGrantMetadata[];
   repoGrants?: import('./transfer').TokenRepoGrantMetadata[];
 }

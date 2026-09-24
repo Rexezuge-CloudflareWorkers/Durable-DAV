@@ -104,9 +104,17 @@ async function davAuthForVolumeInner(
       } catch {
         return unauthorizedDav();
       }
-      const required = needWrite ? 'repo:write' : 'repo:read';
+      const required = needWrite ? 'dav:write' : 'dav:read';
       if (!coversScope(authenticated.scopes, required)) {
         return new Response('Forbidden', { status: 403 });
+      }
+      // Per-bucket scoping: unscoped PATs keep full access; scoped PATs must
+      // hold a matching grant for this volume id with a covering scope.
+      if (volume && authenticated.volumeGrants.length > 0) {
+        const allowed = authenticated.volumeGrants.some(
+          (g) => g.volumeId === volume.id && coversScope([g.scope], required),
+        );
+        if (!allowed) return new Response('Forbidden', { status: 403 });
       }
       patEmail = authenticated.email;
     }

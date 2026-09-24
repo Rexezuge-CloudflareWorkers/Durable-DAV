@@ -1,6 +1,7 @@
 export const DEFAULT_DEBUG_MODE = 'false';
 export const DEFAULT_ENVIRONMENT = 'production';
 export const DEFAULT_MAX_REPOS_PER_USER = '100';
+export const DEFAULT_MAX_VOLUMES_PER_USER = '100';
 export const DEFAULT_MAX_TOKENS_PER_USER = '5';
 export const DEFAULT_MAX_TOKEN_EXPIRY_DAYS = '90';
 export const DEFAULT_SITE_URL = '';
@@ -41,6 +42,7 @@ export const DEFAULT_MAX_IMPORT_BYTES = '52428800';
 export const DEFAULT_MAX_IMPORT_REFS = '2000';
 export const DEFAULT_MAX_EXPORT_BYTES = '26214400';
 export const DEFAULT_MAX_DEPLOY_KEYS_PER_REPO = '10';
+export const DEFAULT_MAX_TOKEN_VOLUME_GRANTS = '100';
 export const DEFAULT_MAX_TOKEN_REPO_GRANTS = '50';
 export const DEFAULT_MAX_MIRROR_FAILURES = '5';
 export const DEFAULT_IMPORT_CLAIM_STALE_SECONDS = '600';

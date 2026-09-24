@@ -21,7 +21,7 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 | Group     | Vars (default)                                                                                                                                                                                                      |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | App       | `DEBUG_MODE` (`false`), `SITE_URL` (`""`)                                                                                                                                                                           |
-| Limits    | `MAX_REPOS_PER_USER` (`100`), `MAX_TOKENS_PER_USER` (`5`), `MAX_TOKEN_EXPIRY_DAYS` (`90`), `DO_DEVICE_BYTES` (`5368709120`)                                                                                         |
+| Limits    | `MAX_REPOS_PER_USER` (`100`), `MAX_VOLUMES_PER_USER` (`100`), `MAX_TOKENS_PER_USER` (`5`), `MAX_TOKEN_EXPIRY_DAYS` (`90`), `MAX_TOKEN_VOLUME_GRANTS` (`100`, legacy `MAX_TOKEN_REPO_GRANTS` fallback), `DO_DEVICE_BYTES` (`5368709120`) |
 | Git       | `MAX_PACK_OBJECTS` (`10000`), `GIT_CACHE_TTL_SECONDS` (`3600`), `MAX_FETCH_WANTS` (`64`), `MAX_FETCH_HAVES` (`512`), `MAX_PUSH_COMMANDS` (`100`), `MAX_PACK_BYTES` (`52428800`), `MAX_FETCH_BODY_BYTES` (`1048576`) |
 | Retention | `BACKGROUND_TASK_RUN_RETENTION_DAYS` (`30`), `AUDIT_LOG_RETENTION_DAYS` (`90`)                                                                                                                                      |
 

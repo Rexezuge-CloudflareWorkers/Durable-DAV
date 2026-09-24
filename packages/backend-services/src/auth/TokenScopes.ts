@@ -1,17 +1,29 @@
 import { BadRequestError } from '@duradav/backend-errors';
 import type { TokenScope } from '@duradav/shared';
 
-const TOKEN_SCOPES: readonly TokenScope[] = ['repo:read', 'repo:write', 'admin'];
+const TOKEN_SCOPES: readonly TokenScope[] = ['dav:read', 'dav:write', 'admin'];
 
-const DEFAULT_TOKEN_SCOPES: readonly TokenScope[] = ['repo:read', 'repo:write'];
+const LEGACY_TOKEN_SCOPES: readonly TokenScope[] = ['repo:read', 'repo:write'];
 
-// Scope hierarchy: `admin` implies `repo:write`, which implies `repo:read`.
+const DEFAULT_TOKEN_SCOPES: readonly TokenScope[] = ['dav:read', 'dav:write'];
+
+// Scope hierarchy: `admin` implies `dav:write`, which implies `dav:read`.
+// Legacy `repo:read`/`repo:write` are aliases of the `dav:*` scopes.
+function normalizeScopeAlias(scope: TokenScope): 'dav:read' | 'dav:write' | 'admin' {
+  if (scope === 'repo:read') return 'dav:read';
+  if (scope === 'repo:write') return 'dav:write';
+  return scope;
+}
+
+// Scope hierarchy: `admin` implies `dav:write`, which implies `dav:read`.
 // A token covers a requirement when it holds the required scope or any
-// scope above it.
+// scope above it. Legacy `repo:*` inputs are treated as their `dav:*` alias.
 function coversScope(held: readonly TokenScope[], required: TokenScope): boolean {
-  if (held.includes(required)) return true;
-  if (required === 'repo:read') return held.includes('repo:write') || held.includes('admin');
-  if (required === 'repo:write') return held.includes('admin');
+  const heldNormalized = new Set(held.map(normalizeScopeAlias));
+  const requiredNormalized = normalizeScopeAlias(required);
+  if (heldNormalized.has(requiredNormalized)) return true;
+  if (requiredNormalized === 'dav:read') return heldNormalized.has('dav:write') || heldNormalized.has('admin');
+  if (requiredNormalized === 'dav:write') return heldNormalized.has('admin');
   return false;
 }
 
@@ -20,11 +32,13 @@ function normalizeTokenScopes(input: unknown): TokenScope[] {
   if (!Array.isArray(input) || input.length === 0) {
     throw new BadRequestError(`scopes must be a non-empty subset of ${TOKEN_SCOPES.join(', ')}`);
   }
-  const valid = input.filter((s): s is TokenScope => typeof s === 'string' && (TOKEN_SCOPES as readonly string[]).includes(s));
-  if (valid.length !== input.length) {
+  const allowed = new Set<string>([...TOKEN_SCOPES, ...LEGACY_TOKEN_SCOPES]);
+  const valid = (input as unknown[]).filter((s): s is TokenScope => typeof s === 'string' && allowed.has(s));
+  if (valid.length !== (input as unknown[]).length) {
     throw new BadRequestError(`scopes must be a non-empty subset of ${TOKEN_SCOPES.join(', ')}`);
   }
-  return TOKEN_SCOPES.filter((s) => valid.includes(s));
+  const normalized = valid.map(normalizeScopeAlias);
+  return TOKEN_SCOPES.filter((s) => (normalized as string[]).includes(s));
 }
 
-export { TOKEN_SCOPES, DEFAULT_TOKEN_SCOPES, coversScope, normalizeTokenScopes };
+export { TOKEN_SCOPES, LEGACY_TOKEN_SCOPES, DEFAULT_TOKEN_SCOPES, coversScope, normalizeTokenScopes, normalizeScopeAlias };

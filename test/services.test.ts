@@ -314,7 +314,7 @@ describe('TokenService lifecycle', () => {
     const svc = new TokenService({ DB: db });
     const created = await svc.createToken('alice@example.com', 'laptop');
     expect(created.token).toBeTruthy();
-    expect(created.scopes).toEqual(['repo:read', 'repo:write']);
+    expect(created.scopes).toEqual(['dav:read', 'dav:write']);
     await expect(svc.authenticateWithPAT(created.token)).resolves.toMatchObject({ email: 'alice@example.com' });
     await expect(svc.listTokens('alice@example.com')).resolves.toHaveLength(1);
     await svc.deleteToken(created.tokenId, 'alice@example.com');

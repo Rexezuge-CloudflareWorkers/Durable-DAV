@@ -18,5 +18,6 @@ export type { ImportStatus, RepoImportRow } from './ImportDAO';
 export type { RepoMirrorRow } from './MirrorDAO';
 export type { DeployKeyPermission, DeployKeyRow } from './DeployKeyDAO';
 export type { TokenRepoGrantRow } from './TokenRepoGrantDAO';
+export type { TokenVolumeGrantRow } from './TokenVolumeGrantDAO';
 export type { SecretScanMode, SecuritySettingsRow } from './SecuritySettingsDAO';
 export type { CheckRunRow } from './CheckRunDAO';

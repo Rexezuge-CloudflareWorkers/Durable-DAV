@@ -1,6 +1,6 @@
 export type { RepositoryMetadata } from './repository';
 export type { TokenScope, UserAccessTokenMetadata } from './token';
-export type { TokenRepoGrantMetadata } from './transfer';
+export type { TokenVolumeGrantMetadata, TokenRepoGrantMetadata } from './transfer';
 export type {
   RepoImportStatus,
   RepoImportMetadata,
