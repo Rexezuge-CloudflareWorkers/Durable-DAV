@@ -24,6 +24,8 @@ interface ServiceEnv {
   DAV_CACHE_TTL_SECONDS?: string;
   /**
   @deprecated Git-template leftover; `DAV_CACHE_TTL_SECONDS` wins when set.
+  Kept for backward compat with existing deployments — remove after one
+  release cycle once no stored env references it (see `DavLimits`).
   */
   GIT_CACHE_TTL_SECONDS?: string;
   LOG_LEVEL?: string;

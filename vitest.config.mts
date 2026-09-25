@@ -27,10 +27,12 @@ export default defineConfig({
       include: ['apps/api/src/**/*.ts', 'apps/background/src/**/*.ts', 'packages/**/src/**/*.ts'],
       exclude: ['**/*.test.ts', '**/*.d.ts', '**/index.ts', '**/types.d.ts', '**/model/**'],
       thresholds: {
-        statements: 0,
-        branches: 0,
-        functions: 0,
-        lines: 0,
+        // Enforced floor (measured 29/23/36/30 after hardening; raise toward
+        // 50/40/50/50 as coverage grows — never lower to make CI pass).
+        statements: 29,
+        branches: 23,
+        functions: 36,
+        lines: 30,
       },
     },
   },

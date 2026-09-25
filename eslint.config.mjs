@@ -215,11 +215,11 @@ export default tseslint.config(
             },
             {
               group: ['@durable-dav/webdav', '@durable-dav/webdav/*'],
-              message: 'backend-runtime must not import from git-protocol (higher layer)',
+              message: 'backend-runtime must not import from webdav (higher layer)',
             },
             {
               group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
-              message: 'backend-runtime must not import from git-service (higher layer)',
+              message: 'backend-runtime must not import from dav-store (higher layer)',
             },
             {
               group: ['@durable-dav/backend-services', '@durable-dav/backend-services/*'],
@@ -244,10 +244,10 @@ export default tseslint.config(
               group: ['@durable-dav/backend-runtime', '@durable-dav/backend-runtime/*'],
               message: 'backend-data must not import from backend-runtime',
             },
-            { group: ['@durable-dav/webdav', '@durable-dav/webdav/*'], message: 'backend-data must not import from git-protocol' },
+            { group: ['@durable-dav/webdav', '@durable-dav/webdav/*'], message: 'backend-data must not import from webdav' },
             {
               group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
-              message: 'backend-data must not import from git-service (higher layer)',
+              message: 'backend-data must not import from dav-store (higher layer)',
             },
             {
               group: ['@durable-dav/backend-services', '@durable-dav/backend-services/*'],
@@ -260,7 +260,7 @@ export default tseslint.config(
       ],
     },
   },
-  // Layer 2: git-protocol — only shared and backend-errors
+  // Layer 2: webdav — only shared and backend-errors
   {
     files: ['packages/webdav/**/*.{ts,js}'],
     rules: {
@@ -278,7 +278,7 @@ export default tseslint.config(
             },
             {
               group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
-              message: 'webdav must not import from git-service (higher layer)',
+              message: 'webdav must not import from dav-store (higher layer)',
             },
             {
               group: ['@durable-dav/backend-services', '@durable-dav/backend-services/*'],
@@ -291,7 +291,7 @@ export default tseslint.config(
       ],
     },
   },
-  // Layer 2-3: git-service — layers 0-2 only (no backend-services/apps)
+  // Layer 2-3: dav-store — layers 0-2 only (no backend-services/apps)
   {
     files: ['packages/dav-store/**/*.{ts,js}'],
     rules: {
@@ -325,7 +325,7 @@ export default tseslint.config(
       ],
     },
   },
-  // Layer 5: apps/api — route through backend-services, not directly to git-service.
+  // Layer 5: apps/api — route through backend-services, not directly to dav-store.
   // apps/api may use @durable-dav/background (DO bindings re-exported from
   // src/index.ts plus the transfer runners used by ImportRoutes/MirrorRoutes);
   // backend-data values stay banned (type-only allowed).
@@ -339,7 +339,7 @@ export default tseslint.config(
             {
               group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
               message:
-                'apps/api must not import git-service directly; use @durable-dav/webdav + DO RPC via @durable-dav/background instead',
+                'apps/api must not import dav-store directly; use @durable-dav/webdav + DO RPC via @durable-dav/background instead',
             },
             {
               group: ['@durable-dav/backend-data/dao', '@durable-dav/backend-data/dao/*'],

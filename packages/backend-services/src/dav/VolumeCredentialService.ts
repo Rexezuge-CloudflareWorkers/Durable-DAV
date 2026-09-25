@@ -1,4 +1,4 @@
-import { ConfigurationManager } from '@durable-dav/backend-runtime/config';
+import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { DavCredentialDAO } from '@durable-dav/backend-data/dao';
 import type { D1Queryable } from '@durable-dav/backend-data/utils';
 import { BadRequestError, InternalServerError } from '@durable-dav/backend-errors';
@@ -14,6 +14,7 @@ interface VolumeCredentialServiceEnv {
 
 interface VolumeCredentialServiceDeps {
   credentialDAO?: () => Promise<DavCredentialDAO>;
+  config?: AppConfiguration;
 }
 
 class VolumeCredentialService {
@@ -25,6 +26,7 @@ class VolumeCredentialService {
   ) {
     this.deps = {
       credentialDAO: () => Promise.resolve(new DavCredentialDAO(env.DB)),
+      config: AppConfiguration.fromEnv(env),
       ...deps,
     };
   }
@@ -45,15 +47,15 @@ class VolumeCredentialService {
     expiresInDays?: unknown,
   ): Promise<{ password: string; metadata: DavCredentialMetadata }> {
     const dao = await this.deps.credentialDAO();
-    const maxCredentials = ConfigurationManager.davCredentials.getMaxPerVolume(this.env);
+    const maxCredentials = this.deps.config.getMaxCredentialsPerVolume();
     if ((await dao.countByVolume(volumeId)) >= maxCredentials) {
       throw new BadRequestError(`Maximum ${maxCredentials} credentials allowed per bucket.`);
     }
     const trimmedName = typeof name === 'string' ? name.trim() : '';
     if (!trimmedName) throw new BadRequestError('name is required');
     if (trimmedName.length > 100) throw new BadRequestError('name must be at most 100 characters');
-    const defaultDays = ConfigurationManager.davCredentials.getDefaultExpiryDays(this.env);
-    const maxDays = ConfigurationManager.davCredentials.getMaxExpiryDays(this.env);
+    const defaultDays = this.deps.config.getDefaultCredentialExpiryDays();
+    const maxDays = this.deps.config.getMaxCredentialExpiryDays();
     let effectiveDays = defaultDays;
     if (expiresInDays !== undefined && expiresInDays !== null) {
       let numeric: unknown = expiresInDays;

@@ -45,6 +45,27 @@ class VolumeService {
     return name.trim();
   }
 
+  private static assertValidOwner(owner: string): void {
+    if (!OWNER_RE.test(owner) || owner.length > 39) throw new BadRequestError('Invalid owner name');
+  }
+
+  private static assertValidName(name: string): void {
+    if (!VOLUME_RE.test(name) || name.length > 100) throw new BadRequestError('Invalid volume name');
+  }
+
+  private async countOwnedVolumes(creatorEmail: string): Promise<number> {
+    const dao = await this.deps.volumeDAO();
+    // Prefer COUNT(*) over listing rows (why: listing 1000 rows to count
+    // wastes D1 reads and truncates above the limit). Fall back to list
+    // length for fake-DB doubles without COUNT support.
+    try {
+      return await dao.countByOwnerEmail(creatorEmail.toLowerCase());
+    } catch {
+      const owned = await dao.listByOwnerEmail(creatorEmail.toLowerCase(), 1000).catch(() => []);
+      return owned.length;
+    }
+  }
+
   public async getVolume(owner: string, name: string): Promise<DavVolumeRow | null> {
     const dao = await this.deps.volumeDAO();
     return dao.getByOwnerName(owner, name).catch(() => null);
@@ -73,10 +94,11 @@ class VolumeService {
     description?: string | null;
     isPrivate?: boolean;
     creatorEmail: string;
-  }): Promise<DavVolumeRow> {    const owner = VolumeService.normalizeOwner(input.owner);
-    if (!OWNER_RE.test(owner) || owner.length > 39) throw new BadRequestError('Invalid owner name');
+  }): Promise<DavVolumeRow> {
+    const owner = VolumeService.normalizeOwner(input.owner);
+    VolumeService.assertValidOwner(owner);
     const name = VolumeService.normalizeName(input.name);
-    if (!VOLUME_RE.test(name) || name.length > 100) throw new BadRequestError('Invalid volume name');
+    VolumeService.assertValidName(name);
     // User-only buckets: no org volumes. Owner must be the caller's username
     // (case-insensitive) when the username is known; legacy rows without a
     // users entry fall through to the quota + uniqueness checks below.
@@ -85,9 +107,9 @@ class VolumeService {
       throw new ForbiddenError('Only the bucket owner can create buckets for this user');
     }
     const dao = await this.deps.volumeDAO();
-    const owned = await dao.listByOwnerEmail(input.creatorEmail.toLowerCase(), 1000).catch(() => []);
+    const ownedCount = await this.countOwnedVolumes(input.creatorEmail);
     // Fail-open on outage: quota is soft, auth stays fail-closed.
-    checkVolumeQuota(owned.length, this.deps.config.getMaxVolumesPerUser());
+    checkVolumeQuota(ownedCount, this.deps.config.getMaxVolumesPerUser());
     const existing = await dao.getByOwnerName(owner, name).catch(() => null);
     if (existing) throw new BadRequestError('Volume already exists');
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
