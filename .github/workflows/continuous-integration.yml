@@ -77,7 +77,7 @@ jobs:
         uses: ./.github/actions/setup-env
 
       - name: Build Web App
-        run: pnpm --filter @duradav/web build
+        run: pnpm --filter @durable-dav/web build
 
   dependabot-auto-merge:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && !github.event.repository.fork }}

@@ -1,5 +1,5 @@
 {
-  "name": "duradav-test",
+  "name": "durable-dav-test",
   "main": "../../apps/api/src/index.ts",
   "compatibility_date": "2025-11-29",
   "compatibility_flags": ["nodejs_compat"],
@@ -12,7 +12,7 @@
   "migrations": [
     { "tag": "v1000000000", "new_sqlite_classes": ["DavVolumeWorker", "CronTasksWorker"] }
   ],
-  "d1_databases": [{ "binding": "DB", "database_name": "duradav-test-db", "database_id": "00000000-0000-0000-0000-000000000000" }],
+  "d1_databases": [{ "binding": "DB", "database_name": "durable-dav-test-db", "database_id": "00000000-0000-0000-0000-000000000000" }],
   "vars": {
     "ENVIRONMENT": "development",
     "DEV_AUTH_EMAIL": "test@example.com",

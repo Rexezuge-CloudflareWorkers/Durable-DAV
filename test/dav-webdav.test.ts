@@ -18,8 +18,8 @@ import {
   getDeadPropertyKey,
   isProtectedProperty,
   generatePropfindResponse,
-} from '@duradav/webdav';
-import { coversScope as coversTokenScope } from '@duradav/backend-services/auth';
+} from '@durable-dav/webdav';
+import { coversScope as coversTokenScope } from '@durable-dav/backend-services/auth';
 
 describe('DuraDAV path helpers (RFC 4918)', () => {
   it('escapes XML', () => {

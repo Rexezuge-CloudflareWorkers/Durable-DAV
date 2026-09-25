@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { DavPermissionService, VolumeService, checkVolumeQuota } from '@duradav/backend-services/dav';
-import { TokenService } from '@duradav/backend-services/auth';
-import { coversScope } from '@duradav/backend-services/auth';
+import { DavPermissionService, VolumeService, checkVolumeQuota } from '@durable-dav/backend-services/dav';
+import { TokenService } from '@durable-dav/backend-services/auth';
+import { coversScope } from '@durable-dav/backend-services/auth';
 
 function fakeVolumeDb(opts: { ownedCount?: number; username?: string | null; existing?: unknown } = {}) {
   const calls = { volumeGrantsDeleted: 0, collaboratorsDeleted: 0 };
@@ -139,8 +139,6 @@ describe('TokenService per-bucket grants', () => {
         tokenDAO: () => Promise.resolve({ getByUserEmail: async () => [], create: async () => undefined } as never),
         volumeDAO: () => Promise.resolve({ getByOwnerName: async () => ({ id: 'v1' }) } as never),
         tokenVolumeGrantDAO: () => Promise.resolve({ setGrants: async () => undefined } as never),
-        repositoryDAO: () => Promise.resolve({} as never),
-        tokenGrantDAO: () => Promise.resolve({ setGrants: async () => undefined } as never),
       },
     );
     await expect(

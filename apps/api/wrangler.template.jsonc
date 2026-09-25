@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "duradav",
+  "name": "durable-dav",
   "main": "apps/api/src/index.ts",
   "compatibility_date": "2025-11-29",
   "compatibility_flags": ["nodejs_compat"],
@@ -44,7 +44,7 @@
     {
       "binding": "DB",
       "database_id": "00000000-0000-0000-0000-000000000000",
-      "database_name": "duradav-db"
+      "database_name": "durable-dav-db"
     }
   ],
   "triggers": {
@@ -60,7 +60,6 @@
     "MAX_TOKENS_PER_USER": "5",
     "MAX_TOKEN_EXPIRY_DAYS": "90",
     "MAX_TOKEN_VOLUME_GRANTS": "100",
-    "MAX_TOKEN_REPO_GRANTS": "50",
     "MAX_FILE_BYTES": "52428800",
     "DO_DEVICE_BYTES": "5368709120",
     "DEV_AUTH_EMAIL": "test@example.com"

@@ -1,6 +1,6 @@
-import { ServiceError, DefaultInternalServerError } from '@duradav/backend-errors';
-import type { ErrorResponse } from '@duradav/backend-errors';
-import { getBackendStrings } from '@duradav/shared/i18n';
+import { ServiceError, DefaultInternalServerError } from '@durable-dav/backend-errors';
+import type { ErrorResponse } from '@durable-dav/backend-errors';
+import { getBackendStrings } from '@durable-dav/shared/i18n';
 
 interface MappedError {
   status: number;

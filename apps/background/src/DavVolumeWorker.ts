@@ -2,8 +2,8 @@
 /* eslint-disable sonarjs/void-use, @typescript-eslint/require-await -- ported WebDAV handlers keep r2-webdav shape (void for unused base, async for uniform dispatch). */
 /* eslint-disable unicorn/prefer-simple-condition-first, sonarjs/no-redundant-boolean, sonarjs/prefer-regexp-exec, unicorn/no-await-expression-member, sonarjs/no-all-duplicated-branches, unicorn/no-useless-template-literals -- ported r2-webdav logic, behavior parity over style. */
 import { DurableObject } from 'cloudflare:workers';
-import { createDofsFs, setDofsDeviceSize, ensureDavSchema, getDeadProperties } from '@duradav/dav-store';
-import type { DofsFs, DurableSqlStorage } from '@duradav/dav-store';
+import { createDofsFs, setDofsDeviceSize, ensureDavSchema, getDeadProperties } from '@durable-dav/dav-store';
+import type { DofsFs, DurableSqlStorage } from '@durable-dav/dav-store';
 import {
   escapeXml,
   getParentPath,
@@ -29,8 +29,8 @@ import {
   type DeadProperty,
   type LockDetails,
   type DavNodeInfo,
-} from '@duradav/webdav';
-import { AppConfiguration } from '@duradav/backend-runtime/config';
+} from '@durable-dav/webdav';
+import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 
 type DavSql = DurableSqlStorage;
 
@@ -294,7 +294,7 @@ class DavVolumeWorker extends DurableObject<Env> {
         const href = hrefOf(base, childInner, childStat.isDirectory);
         items += `<a href="${escapeXml(href)}">${escapeXml(name)}${childStat.isDirectory ? '/' : ''}</a><br>`;
       }
-      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>DuraDAV</title><style>*{box-sizing:border-box}body{padding:10px;font-family:system-ui,sans-serif}a{display:inline-block;width:100%;color:#000;text-decoration:none;padding:5px 10px;border-radius:5px}a:hover{background:#0ea5e9;color:#fff}</style></head><body><h1>DuraDAV ${escapeXml(base)}/${escapeXml(innerPath)}</h1><div>${items}</div></body></html>`;
+      const html = `<!DOCTYPE html><html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1.0"><title>Durable-DAV</title><style>*{box-sizing:border-box}body{padding:10px;font-family:system-ui,sans-serif}a{display:inline-block;width:100%;color:#000;text-decoration:none;padding:5px 10px;border-radius:5px}a:hover{background:#0ea5e9;color:#fff}</style></head><body><h1>Durable-DAV ${escapeXml(base)}/${escapeXml(innerPath)}</h1><div>${items}</div></body></html>`;
       return new Response(html, { status: 200, headers: { 'Content-Type': 'text/html; charset=utf-8' } });
     }
     if (!st.exists) return new Response('Not Found', { status: 404 });

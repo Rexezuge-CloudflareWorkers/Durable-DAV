@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { TokenService } from '@duradav/backend-services/auth';
+import { TokenService } from '@durable-dav/backend-services/auth';
 
 function makeEnv() {
   return { DB: {} as never };
@@ -42,8 +42,6 @@ describe('TokenService scoped-grant fail-closed', () => {
       tokenDAO: () => Promise.resolve(tokenDAO as never),
       tokenVolumeGrantDAO: () => Promise.resolve(tokenVolumeGrantDAO as never),
       volumeDAO: () => Promise.resolve(volumeDAO as never),
-      tokenGrantDAO: () => Promise.resolve({ setGrants: async () => undefined } as never),
-      repositoryDAO: () => Promise.resolve({} as never),
     });
     await expect(
       svc.createToken('Alice@Example.com', 'scoped', 30, ['dav:read'], [{ owner: 'a', name: 'b', scope: 'dav:read' }]),
@@ -51,52 +49,16 @@ describe('TokenService scoped-grant fail-closed', () => {
     expect(deleted).toHaveLength(1);
   });
 
-  it('createToken rolls back the token when legacy repo grant persistence fails', async () => {
-    const deleted: string[] = [];
-    const tokenDAO = {
-      getByUserEmail: async () => [],
-      create: async () => undefined,
-      delete: async (tokenId: string) => {
-        deleted.push(tokenId);
-      },
-    };
-    const tokenGrantDAO = {
-      setGrants: async () => {
-        throw new Error('D1 down');
-      },
-    };
-    const repositoryDAO = {
-      getByOwnerAndName: async () => ({ id: 'repo-1' }),
-    };
-    const svc = new TokenService(makeEnv(), {
-      tokenDAO: () => Promise.resolve(tokenDAO as never),
-      tokenVolumeGrantDAO: () => Promise.resolve({ setGrants: async () => undefined, deleteByToken: async () => undefined } as never),
-      volumeDAO: () => Promise.resolve({ getByOwnerName: async () => null } as never),
-      tokenGrantDAO: () => Promise.resolve(tokenGrantDAO as never),
-      repositoryDAO: () => Promise.resolve(repositoryDAO as never),
-    });
-    await expect(
-      svc.createToken('Alice@Example.com', 'scoped', 30, ['dav:read'], undefined, [
-        { owner: 'a', name: 'r', scope: 'dav:read' },
-      ]),
-    ).rejects.toThrow(/repository grants/i);
-    expect(deleted).toHaveLength(1);
-  });
-
-  it('createToken without grants does not touch the grant DAOs', async () => {
+  it('createToken without grants does not touch the grant DAO', async () => {
     const setVolumeGrants = vi.fn();
-    const setRepoGrants = vi.fn();
     const svc = new TokenService(makeEnv(), {
       tokenDAO: () => Promise.resolve({ getByUserEmail: async () => [], create: async () => undefined } as never),
       tokenVolumeGrantDAO: () => Promise.resolve({ setGrants: setVolumeGrants } as never),
-      tokenGrantDAO: () => Promise.resolve({ setGrants: setRepoGrants } as never),
       volumeDAO: () => Promise.resolve({} as never),
-      repositoryDAO: () => Promise.resolve({} as never),
     });
     const created = await svc.createToken('a@example.com', 'plain');
     expect(created.tokenId).toBeTruthy();
     expect(setVolumeGrants).not.toHaveBeenCalled();
-    expect(setRepoGrants).not.toHaveBeenCalled();
   });
 
   it('listTokens propagates volume grant-read failures instead of showing []', async () => {
@@ -109,26 +71,7 @@ describe('TokenService scoped-grant fail-closed', () => {
             throw new Error('D1 down');
           },
         } as never),
-      tokenGrantDAO: () => Promise.resolve({ listByToken: async () => [] } as never),
       volumeDAO: () => Promise.resolve({} as never),
-      repositoryDAO: () => Promise.resolve({} as never),
-    });
-    await expect(svc.listTokens('A@EXAMPLE.com')).rejects.toThrow();
-  });
-
-  it('listTokens propagates repo grant-read failures instead of showing []', async () => {
-    const row = makeTokenRow('tid-1', 'a@example.com');
-    const svc = new TokenService(makeEnv(), {
-      tokenDAO: () => Promise.resolve({ getByUserEmail: async () => [row] } as never),
-      tokenVolumeGrantDAO: () => Promise.resolve({ listByToken: async () => [] } as never),
-      tokenGrantDAO: () =>
-        Promise.resolve({
-          listByToken: async () => {
-            throw new Error('D1 down');
-          },
-        } as never),
-      volumeDAO: () => Promise.resolve({} as never),
-      repositoryDAO: () => Promise.resolve({} as never),
     });
     await expect(svc.listTokens('A@EXAMPLE.com')).rejects.toThrow();
   });
@@ -145,8 +88,6 @@ describe('TokenService scoped-grant fail-closed', () => {
           },
           rotate: async () => true,
         } as never),
-      tokenGrantDAO: () => Promise.resolve({} as never),
-      repositoryDAO: () => Promise.resolve({} as never),
     });
     const out = await svc.rotateToken('tid-9', 'User@Example.COM');
     expect(out.token).toBeTruthy();
@@ -158,8 +99,6 @@ describe('TokenService scoped-grant fail-closed', () => {
     const expired = { ...makeTokenRow('tid-old', 'user@example.com'), createdAt: now - 90 * 86_400, expiresAt: now - 10 };
     const svc = new TokenService(makeEnv(), {
       tokenDAO: () => Promise.resolve({ getByUserEmail: async () => [expired], rotate: async () => true } as never),
-      tokenGrantDAO: () => Promise.resolve({} as never),
-      repositoryDAO: () => Promise.resolve({} as never),
     });
     await expect(svc.rotateToken('tid-old', 'user@example.com')).rejects.toThrow(/expired/i);
   });

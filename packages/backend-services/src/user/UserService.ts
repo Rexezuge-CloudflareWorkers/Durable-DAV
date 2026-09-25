@@ -1,20 +1,12 @@
 import {
-  EventDAO,
-  IssueDAO,
   NamespaceDAO,
-  NotificationDAO,
-  OrganizationDAO,
-  PullRequestDAO,
-  RepositoryDAO,
   UserDAO,
-  WebhookDAO,
-} from '@duradav/backend-data/dao';
-import type { UserRow } from '@duradav/backend-data/dao';
-import type { D1Queryable } from '@duradav/backend-data/utils';
-import { BadRequestError, NotFoundError } from '@duradav/backend-errors';
-import { isReservedNamespaceName } from '@duradav/shared/constants';
-import { TimestampUtil } from '@duradav/shared/utils';
-import { cascadeOwnerRepos } from '../repo/repoRenameCascade';
+} from '@durable-dav/backend-data/dao';
+import type { UserRow } from '@durable-dav/backend-data/dao';
+import type { D1Queryable } from '@durable-dav/backend-data/utils';
+import { BadRequestError, NotFoundError } from '@durable-dav/backend-errors';
+import { isReservedNamespaceName } from '@durable-dav/shared/constants';
+import { TimestampUtil } from '@durable-dav/shared/utils';
 
 interface UserServiceEnv {
   DB: D1Queryable;
@@ -23,13 +15,6 @@ interface UserServiceEnv {
 interface UserServiceDeps {
   userDAO?: () => Promise<UserDAO>;
   namespaceDAO?: () => Promise<NamespaceDAO>;
-  organizationDAO?: () => Promise<OrganizationDAO>;
-  repositoryDAO?: () => Promise<RepositoryDAO>;
-  issueDAO?: () => Promise<IssueDAO>;
-  pullRequestDAO?: () => Promise<PullRequestDAO>;
-  eventDAO?: () => Promise<EventDAO>;
-  notificationDAO?: () => Promise<NotificationDAO>;
-  webhookDAO?: () => Promise<WebhookDAO>;
 }
 
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/i;
@@ -65,14 +50,6 @@ class UserService {
     this.deps = {
       userDAO: () => Promise.resolve(new UserDAO(env.DB)),
       namespaceDAO: () => Promise.resolve(new NamespaceDAO(env.DB)),
-      organizationDAO: () => Promise.resolve(new OrganizationDAO(env.DB)),
-      repositoryDAO: () => Promise.resolve(new RepositoryDAO(env.DB)),
-      issueDAO: () => Promise.resolve(new IssueDAO(env.DB)),
-      pullRequestDAO: () => Promise.resolve(new PullRequestDAO(env.DB)),
-      eventDAO: () => Promise.resolve(new EventDAO(env.DB)),
-      notificationDAO: () => Promise.resolve(new NotificationDAO(env.DB)),
-      webhookDAO: () =>
-        Promise.reject<WebhookDAO>(new Error('UserService requires an injected webhookDAO outside request scope.')),
       ...deps,
     };
   }
@@ -123,11 +100,8 @@ class UserService {
       }
       if (!taken) {
         try {
-          const [userMatch, orgMatch] = await Promise.all([
-            dao.getByUsernameCi(ci),
-            this.deps.organizationDAO().then((o) => o.getByUsernameCi(ci)),
-          ]);
-          taken = Boolean(userMatch ?? orgMatch);
+          const userMatch = await dao.getByUsernameCi(ci);
+          taken = Boolean(userMatch);
         } catch {
           // ignore — registry check above stands
         }
@@ -180,7 +154,7 @@ class UserService {
           }
         }
       } catch {
-        // get failed (legacy DB) — fall through to isTaken below.
+        // get failed — fall through to isTaken below.
       }
       if (otherOwned) {
         taken = true;
@@ -191,33 +165,24 @@ class UserService {
           taken = false;
         }
       }
-      // selfOwned → taken stays false so the owner can reclaim a
-      // previously renamed-away handle; the users/orgs check below still
-      // blocks if another account actively holds the handle.
     } catch {
       taken = false;
     }
     if (!taken) {
       try {
-        const orgDao = await this.deps.organizationDAO();
-        const [userMatch, orgMatch] = await Promise.all([dao.getByUsernameCi(handleCi), orgDao.getByUsernameCi(handleCi)]);
-        const userTaken = Boolean(userMatch && userMatch.email.toLowerCase() !== normalized);
-        taken = Boolean(userTaken || orgMatch);
+        const userMatch = await dao.getByUsernameCi(handleCi);
+        taken = Boolean(userMatch && userMatch.email.toLowerCase() !== normalized);
       } catch {
         // ignore
       }
     }
     if (taken) throw new BadRequestError('Username is already taken');
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    const oldCi = existing.username?.toLowerCase();
     // Claim-first ordering narrows the rename TOCTOU: claim the new name
     // before mutating `users`, so a concurrent claimer wins with a clean
     // abort instead of leaving `users.username` renamed without a namespace.
     // If the subsequent update fails, best-effort release the new claim.
-    // Legacy DBs without a namespaces table fall back to `users.username`
-    // as authoritative (claim/isTaken both throw there).
     let namespaceClaimed = false;
-    let legacyNamespaces = false;
     let claimedFresh = false;
     try {
       const ns = await this.deps.namespaceDAO();
@@ -225,9 +190,8 @@ class UserService {
       namespaceClaimed = true;
       claimedFresh = true;
     } catch (error) {
-      // Claim race or legacy-DB error: if the existing claim belongs to self
-      // (rename-back after a failed DO move), treat as success so rollback
-      // never orphans the user. Otherwise report taken cleanly.
+      // Claim race: if the existing claim belongs to self (rename-back after
+      // a failure), treat as success. Otherwise report taken cleanly.
       try {
         const nsDao = await this.deps.namespaceDAO();
         const row = await nsDao.get(handleCi).catch(() => null);
@@ -240,9 +204,8 @@ class UserService {
       } catch (inner) {
         if (inner instanceof BadRequestError) throw inner;
         // isTaken itself threw → namespaces table missing → legacy path.
-        legacyNamespaces = true;
       }
-      if (!legacyNamespaces && !namespaceClaimed) throw error instanceof Error ? error : new BadRequestError('Username is already taken');
+      if (!namespaceClaimed) throw error instanceof Error ? error : new BadRequestError('Username is already taken');
     }
     try {
       await dao.setUsername(normalized, handle, now);
@@ -257,24 +220,10 @@ class UserService {
       }
       throw error;
     }
-    // Hardening: old names stay reserved (no immediate release) so a
-    // concurrent attacker cannot hijack the freed handle in the window
-    // between D1 rename and DO move. Renamed-away handles remain taken
-    // for other accounts, but the owning email may reclaim them (rename
-    // back / rollback after a failed DO move). A future tombstone/GC
-    // migration can free them after a grace period.
-    // Simple rename: cascade owner on user-owned repos. Display names are
-    // computed from `repositories`, so no sidecar updates are needed.
-    if (oldCi) {
-      try {
-        await cascadeOwnerRepos(
-          { repositoryDAO: this.deps.repositoryDAO },
-          { oldOwnerCi: oldCi, newOwner: handle, now },
-        );
-      } catch {
-        // ignore
-      }
-    }
+    // Old names stay reserved (no immediate release) so a concurrent
+    // attacker cannot hijack the freed handle in the window between D1
+    // rename and propagation. Renamed-away handles remain taken for other
+    // accounts, but the owning email may reclaim them.
     return { email: normalized, username: handle };
   }
 }

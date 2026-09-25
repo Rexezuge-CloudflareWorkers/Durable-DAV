@@ -1,4 +1,4 @@
-# DuraDAV — Background Worker
+# Durable-DAV — Background Worker
 
 Scope: `apps/background/**`. Parent index: `../../AGENTS.md`.
 

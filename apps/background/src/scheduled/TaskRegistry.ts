@@ -1,4 +1,4 @@
-import { createLogger } from '@duradav/backend-runtime/logger';
+import { createLogger } from '@durable-dav/backend-runtime/logger';
 import type { ScheduledTask } from './IScheduledTask';
 import { ExpiredTokenPruningTask } from './ExpiredTokenPruningTask';
 

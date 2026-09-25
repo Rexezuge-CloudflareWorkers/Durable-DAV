@@ -6,7 +6,7 @@ export const DEFAULT_UUID = '00000000-0000-0000-0000-000000000000';
 export const DEFAULT_HEX_ID = '00000000000000000000000000000000';
 export const DEFAULT_SECRET_STORE_NAME = 'default';
 export const DEFAULT_KV_NAMESPACE_NAMES: Record<string, string> = {
-  CACHE: 'duradav-cache',
+  CACHE: 'durable-dav-cache',
 };
 export const VECTORIZE_DIMENSIONS = 1024;
 

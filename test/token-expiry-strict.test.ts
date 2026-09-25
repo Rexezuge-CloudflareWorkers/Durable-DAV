@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { TokenService } from '@duradav/backend-services/auth';
-import type { D1Queryable } from '@duradav/backend-data/utils';
+import { TokenService } from '@durable-dav/backend-services/auth';
+import type { D1Queryable } from '@durable-dav/backend-data/utils';
 
 function fakeDb() {
   const tokens: Array<Record<string, unknown>> = [];

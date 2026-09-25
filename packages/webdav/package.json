@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/webdav",
+  "name": "@durable-dav/webdav",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -12,8 +12,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@duradav/backend-errors": "workspace:*",
-    "@duradav/shared": "workspace:*",
+    "@durable-dav/backend-errors": "workspace:*",
+    "@durable-dav/shared": "workspace:*",
     "@xmldom/xmldom": "^0.8.11"
   },
   "devDependencies": {

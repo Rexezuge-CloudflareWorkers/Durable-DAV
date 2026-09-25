@@ -1,8 +1,8 @@
-import { DavCollaboratorDAO } from '@duradav/backend-data/dao';
-import type { DavVolumeRow, DavRole } from '@duradav/backend-data/dao';
-import type { D1Queryable } from '@duradav/backend-data/utils';
-import { isMissingSchemaError } from '@duradav/backend-data/utils';
-import { DatabaseError } from '@duradav/backend-errors';
+import { DavCollaboratorDAO } from '@durable-dav/backend-data/dao';
+import type { DavVolumeRow, DavRole } from '@durable-dav/backend-data/dao';
+import type { D1Queryable } from '@durable-dav/backend-data/utils';
+import { isMissingSchemaError } from '@durable-dav/backend-data/utils';
+import { DatabaseError } from '@durable-dav/backend-errors';
 
 type DavPermission = DavRole;
 

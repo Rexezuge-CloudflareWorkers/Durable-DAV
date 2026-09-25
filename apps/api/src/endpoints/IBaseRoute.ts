@@ -1,10 +1,10 @@
 import type { Context } from 'hono';
-import { ServiceError, DatabaseError, DefaultInternalServerError } from '@duradav/backend-errors';
-import { getBackendStrings } from '@duradav/shared/i18n';
-import { ErrorSanitizationUtil, canonicalizeLanguageTag } from '@duradav/shared/utils';
-import { createRequestScope } from '@duradav/backend-services/composition';
-import { getRequestScope, asScopedContext } from '@duradav/backend-runtime/di';
-import { toServiceStatus as toMappedStatus } from '@duradav/backend-services/errors';
+import { ServiceError, DatabaseError, DefaultInternalServerError } from '@durable-dav/backend-errors';
+import { getBackendStrings } from '@durable-dav/shared/i18n';
+import { ErrorSanitizationUtil, canonicalizeLanguageTag } from '@durable-dav/shared/utils';
+import { createRequestScope } from '@durable-dav/backend-services/composition';
+import { getRequestScope, asScopedContext } from '@durable-dav/backend-runtime/di';
+import { toServiceStatus as toMappedStatus } from '@durable-dav/backend-services/errors';
 
 type HonoContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
 

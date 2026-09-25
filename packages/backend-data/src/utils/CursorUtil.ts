@@ -1,4 +1,4 @@
-import { BadRequestError } from '@duradav/backend-errors';
+import { BadRequestError } from '@durable-dav/backend-errors';
 
 class CursorUtil {
   public static encode(value: unknown): string {

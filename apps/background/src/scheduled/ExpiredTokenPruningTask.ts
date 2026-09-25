@@ -1,6 +1,6 @@
-import { TimestampUtil } from '@duradav/shared/utils';
-import { Tokens, createRequestScope } from '@duradav/backend-services/composition';
-import { createLogger } from '@duradav/backend-runtime/logger';
+import { TimestampUtil } from '@durable-dav/shared/utils';
+import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
+import { createLogger } from '@durable-dav/backend-runtime/logger';
 import { BaseScheduledTask } from './IScheduledTask';
 
 const logger = createLogger('CronTasks');

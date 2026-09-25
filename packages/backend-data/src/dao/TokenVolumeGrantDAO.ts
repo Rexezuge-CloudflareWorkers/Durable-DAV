@@ -1,6 +1,6 @@
 import { BaseDAO } from './BaseDAO';
 import type { D1Queryable } from '../utils/D1Types';
-import type { TokenScope } from '@duradav/shared';
+import type { TokenScope } from '@durable-dav/shared';
 
 interface TokenVolumeGrantRow {
   token_id: string;

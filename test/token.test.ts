@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { TokenService, coversScope, normalizeTokenScopes } from '@duradav/backend-services/auth';
-import type { D1Queryable } from '@duradav/backend-data/utils';
+import { TokenService, coversScope, normalizeTokenScopes } from '@durable-dav/backend-services/auth';
+import type { D1Queryable } from '@durable-dav/backend-data/utils';
 
 function createTokenFakeDb(): D1Queryable & { tokens: Array<Record<string, unknown>> } {
   const state = {
@@ -157,22 +157,6 @@ describe('TokenService scoped lifecycle', () => {
       { DB: db },
       {
         tokenVolumeGrantDAO: () =>
-          Promise.resolve({
-            listByToken: () => Promise.reject(new Error('D1 unavailable')),
-          } as never),
-      },
-    );
-    await expect(failing.authenticateWithPAT(created.token)).rejects.toThrow('temporarily unavailable');
-  });
-
-  it('fails closed when repo grants cannot be read', async () => {
-    const db = createTokenFakeDb();
-    const svc = new TokenService({ DB: db });
-    const created = await svc.createToken('alice@example.com', 'scoped', undefined, ['dav:read']);
-    const failing = new TokenService(
-      { DB: db },
-      {
-        tokenGrantDAO: () =>
           Promise.resolve({
             listByToken: () => Promise.reject(new Error('D1 unavailable')),
           } as never),

@@ -7,7 +7,7 @@ import {
   getBackendStrings,
   normalizeBackendLocale,
   resolveLocalizedStrings,
-} from '@duradav/shared/i18n';
+} from '@durable-dav/shared/i18n';
 
 // NOTE: `apps/web/src/i18n.ts` (+ `lib/locale.ts`) is not importable in this
 // node unit-test env — it pulls `i18next`/`react-i18next` (web-only deps, not

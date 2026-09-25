@@ -1,7 +1,7 @@
 import { applyMigrations } from './migrations';
 
 /**
- * Shared setup for DuraDAV integration tests (real D1 via `SELF.fetch`).
+ * Shared setup for Durable-DAV integration tests (real D1 via `SELF.fetch`).
  * Auth is `DEV_AUTH_EMAIL`-based, so `/user/*` needs no credentials.
  * WebDAV (`/:owner/:volume/*`) additionally accepts PAT Bearer/Basic.
  */
@@ -23,7 +23,7 @@ export async function ensureUser(db: D1Database, email: string, username?: strin
     .bind(handle, now, normalizedEmail)
     .run();
   await db
-    .prepare(`INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, org_id, created_at) VALUES (?, 'user', ?, NULL, ?)`)
+    .prepare(`INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, created_at) VALUES (?, 'user', ?, ?)`)
     .bind(handleCi, normalizedEmail, now)
     .run();
   return handle;
@@ -45,18 +45,15 @@ export async function seedVolume(
     name: string;
     isPrivate?: boolean;
     description?: string | null;
-    ownerType?: string;
-    orgId?: string | null;
   },
 ): Promise<string> {
   const id = crypto.randomUUID();
   const now = Math.floor(Date.now() / 1000);
   const ownerUsername = await ensureUser(db, input.ownerEmail, input.owner);
-  const ownerType = input.ownerType ?? 'user';
   await db
     .prepare(
-      `INSERT OR IGNORE INTO dav_volumes (id, owner_email, owner, name, description, is_private, created_at, updated_at, owner_type, owner_ci, name_ci, owner_user_email, org_id) ` +
-        `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      `INSERT OR IGNORE INTO dav_volumes (id, owner_email, owner, name, description, is_private, created_at, updated_at, owner_ci, name_ci) ` +
+        `VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
     .bind(
       id,
@@ -67,11 +64,8 @@ export async function seedVolume(
       input.isPrivate === true ? 1 : 0,
       now,
       now,
-      ownerType,
       ownerUsername.toLowerCase(),
       input.name.toLowerCase(),
-      ownerType === 'user' ? input.ownerEmail.toLowerCase() : null,
-      input.orgId ?? null,
     )
     .run();
   return id;
@@ -94,7 +88,7 @@ export async function mintPatForEmail(
   await ensureUser(db, normalized);
   const tokenId = crypto.randomUUID();
   const raw = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
-  const tokenHash = await sha256Hex(`duradav-pat:${raw}`);
+  const tokenHash = await sha256Hex(`durable-dav-pat:${raw}`);
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + (input.expiresInDays ?? 90) * 86_400;
   const scopes = input.scopes ?? ['dav:read', 'dav:write', 'admin'];

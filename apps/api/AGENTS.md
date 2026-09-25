@@ -1,9 +1,9 @@
-# DuraDAV — API Worker
+# Durable-DAV — API Worker
 
 Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 
-- `src/index.ts` — `fetch`/`scheduled` via `DuraDavWorker`; re-exports `CronTasksWorker`, `DavVolumeWorker` from `@duradav/background` for DO bindings.
-- `src/workers/DuraDavWorker.ts` — Hono routes (no file-routing). `src/types.d.ts` — global `Env`.
+- `src/index.ts` — `fetch`/`scheduled` via `DurableDavWorker`; re-exports `CronTasksWorker`, `DavVolumeWorker` from `@durable-dav/background` for DO bindings.
+- `src/workers/DurableDavWorker.ts` — Hono routes (no file-routing). `src/types.d.ts` — global `Env`.
 - `src/workers/doStubs.ts` — `getVolumeStub(env, owner, volume)` (`DAV_VOLUME.getByName(normalizeVolumeKey)`) + `ensureVolume`.
 - `src/middleware/` — `MiddlewareHandlers.userAuthentication()` (`/user/*` via `AccessAuthService` + `UserService.upsertUser`) + `DavAuth.davAuthForVolume()` (PAT Basic/Bearer via `TokenService.authenticateWithPAT` → `coversScope` (`dav:read`/`dav:write`, legacy `repo:*` alias) → per-bucket grant check (`volumeGrants` empty = full access, else matching `volumeId+scope`) → `DavPermissionService.getRole`; private volumes hide existence as 404 for authed-no-access, 401 for anon; `DatabaseError` fails closed to 503).
 - `src/workers/routes/` — `DavRoutes` (`/:owner/:volume` + `/:owner/:volume/*` for all `SUPPORT_METHODS`, auth then `stub.fetch` forward with `X-Dav-Base/X-Dav-Path/X-Dav-User` + CORS) + `VolumeRoutes` (`GET|POST /user/volumes` (quota `MAX_VOLUMES_PER_USER`, user-only owner check), `DELETE /user/volumes/:owner/:volume` admin-only, DO + grant/collaborator cleanup best-effort) + `TokenRoutes` (PAT CRUD with `volumeGrants`) + `UserRoutes` (`GET /user/me`, `GET /users/:username`).
@@ -24,4 +24,4 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 
 - Single scope per request: `scopeMiddleware` installs one `Container` + `ServiceContext`; handlers resolve via `BaseRoute.getScope(c).get(Tokens.X)`.
 - `src/endpoints/IBaseRoute.ts` — `BaseRoute` template (`handle()` → `handleRequest()` + `toErrorResponse()` mapping `ServiceError`; AWS envelope `{Exception:{Type,Message}}`).
-- Never import `@duradav/backend-data/dao` values in routes (type-only allowed); never import `@duradav/dav-store` directly — use `@duradav/webdav` constants + DO `fetch`.
+- Never import `@durable-dav/backend-data/dao` values in routes (type-only allowed); never import `@durable-dav/dav-store` directly — use `@durable-dav/webdav` constants + DO `fetch`.

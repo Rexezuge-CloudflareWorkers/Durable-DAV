@@ -1,7 +1,7 @@
 import type { Hono } from 'hono';
 import { davAuthForVolume } from '@/middleware/DavAuth';
 import { getVolumeStub } from '../doStubs';
-import { DAV_CLASS, SUPPORT_METHODS, applyCors } from '@duradav/webdav';
+import { DAV_CLASS, SUPPORT_METHODS, applyCors } from '@durable-dav/webdav';
 
 type App = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
 

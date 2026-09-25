@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/backend-runtime",
+  "name": "@durable-dav/backend-runtime",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -22,7 +22,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@duradav/shared": "workspace:*"
+    "@durable-dav/shared": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.6.2",

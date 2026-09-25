@@ -4,11 +4,11 @@
 const BEARER_PATTERN = /\bbearer\s+\S+/gi;
 const BASIC_PATTERN = /\bbasic\s+\S+/gi;
 const TOKEN_KV_PATTERN = /((?:access|refresh|id)[_-]?token\s*[:=]\s*).\S*/gi;
-const SECRET_KV_PATTERN = /((?:client[_-]?secret|auth[_-]?code|code[_-]?verifier|duradav-pat)\s*[:=]\s*).\S*/gi;
+const SECRET_KV_PATTERN = /((?:client[_-]?secret|auth[_-]?code|code[_-]?verifier|durable-dav-pat)\s*[:=]\s*).\S*/gi;
 const TOKEN_QUERY_PATTERN = /([?&](?:access_token|refresh_token|code|client_secret)=).[^&\s;}]*/gi;
 const JWT_PATTERN = /eyJ[\w-].+[\w-].+[\w./+=~-]/g;
 const GOOGLE_TOKEN_PATTERN = /ya29..[\w.-]+/g;
-const PAT_PATTERN = /duradav-pat:[\w-]+/g;
+const PAT_PATTERN = /durable-dav-pat:[\w-]+/g;
 
 // Secret-safe logging (Otter `ErrorSanitizationUtil` pattern).
 // Replacements are inline literals for `unicorn/no-unsafe-string-replacement`

@@ -10,11 +10,8 @@ export interface DavVolumeRow {
   is_private: number;
   created_at: number;
   updated_at: number;
-  owner_type?: string | null;
-  owner_ci?: string | null;
-  name_ci?: string | null;
-  owner_user_email?: string | null;
-  org_id?: string | null;
+  owner_ci: string;
+  name_ci: string;
 }
 
 class DavVolumeDAO extends BaseDAO {
@@ -30,19 +27,14 @@ class DavVolumeDAO extends BaseDAO {
     description: string | null;
     isPrivate: boolean;
     now: number;
-    ownerType?: string;
-    orgId?: string | null;
-    ownerUserEmail?: string | null;
   }): Promise<void> {
-    const ownerType = input.ownerType ?? 'user';
     const ownerCi = input.owner.toLowerCase();
     const nameCi = input.name.toLowerCase();
-    const ownerUserEmail = input.ownerUserEmail ?? (ownerType === 'user' ? input.ownerEmail : null);
     await this.withRetry(
       () =>
         this.database
           .prepare(
-            'INSERT INTO dav_volumes (id, owner_email, owner, name, description, is_private, created_at, updated_at, owner_type, owner_ci, name_ci, owner_user_email, org_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+            'INSERT INTO dav_volumes (id, owner_email, owner, name, description, is_private, created_at, updated_at, owner_ci, name_ci) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
           )
           .bind(
             input.id,
@@ -53,11 +45,8 @@ class DavVolumeDAO extends BaseDAO {
             input.isPrivate ? 1 : 0,
             input.now,
             input.now,
-            ownerType,
             ownerCi,
             nameCi,
-            ownerUserEmail,
-            input.orgId ?? null,
           )
           .run(),
       'create dav volume',
