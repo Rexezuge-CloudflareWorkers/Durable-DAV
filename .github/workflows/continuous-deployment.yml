@@ -59,7 +59,7 @@ jobs:
       - name: Apply Database Migration
         uses: ./.github/actions/retry-step
         with:
-          command: pnpm exec wrangler d1 migrations apply --remote duradav-db
+          command: pnpm exec wrangler d1 migrations apply DB --remote
           max_attempts: '3'
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -99,7 +99,7 @@ jobs:
 
       - name: Ensure Pages Project Exists
         run: |
-          PROJECT="${CLOUDFLARE_PAGES_PROJECT_NAME:-duradav-web}"
+          PROJECT="${CLOUDFLARE_PAGES_PROJECT_NAME:-durable-dav-web}"
           echo "Ensuring Pages project \"${PROJECT}\" exists..."
           if CREATE_OUTPUT="$(pnpm exec wrangler pages project create "${PROJECT}" --production-branch "${DEPLOY_BRANCH:-main}" 2>&1)"; then
             echo "Created Pages project \"${PROJECT}\"."
@@ -127,7 +127,7 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'duradav-web' }}
+          CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'durable-dav-web' }}
           DEPLOY_BRANCH: ${{ github.event.workflow_run.head_branch || github.event.client_payload.branch || github.ref_name }}
 
       - name: Deploy with Wrangler Pages
@@ -135,7 +135,7 @@ jobs:
         with:
           command: >
             pnpm exec wrangler pages deploy apps/web/dist
-            --project-name "${CLOUDFLARE_PAGES_PROJECT_NAME:-duradav-web}"
+            --project-name "${CLOUDFLARE_PAGES_PROJECT_NAME:-durable-dav-web}"
             --branch "${DEPLOY_BRANCH}"
             --commit-hash "${DEPLOY_SHA}"
             --commit-message "$(git log -1 --pretty=%s)"
@@ -143,6 +143,6 @@ jobs:
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
-          CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'duradav-web' }}
+          CLOUDFLARE_PAGES_PROJECT_NAME: ${{ vars.CLOUDFLARE_PAGES_PROJECT_NAME || 'durable-dav-web' }}
           DEPLOY_BRANCH: ${{ github.event.workflow_run.head_branch || github.event.client_payload.branch || github.ref_name }}
           DEPLOY_SHA: ${{ github.event.workflow_run.head_sha || github.event.client_payload.sha || github.sha }}
