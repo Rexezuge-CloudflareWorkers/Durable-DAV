@@ -142,4 +142,60 @@ describe('Durable-DAV lifecycle (buckets + WebDAV Class 1/2)', () => {
     expect(detail.description).toBe('Integration bucket');
     expect(detail.isPrivate).toBe(true);
   });
+
+  it('browser plane serves private bucket via session without a Basic challenge', async () => {
+    const body = '<?xml version="1.0"?><propfind xmlns="DAV:"><allprop/></propfind>';
+    // Protocol plane still requires bucket Basic on private buckets.
+    const anonDav = await SELF.fetch('https://example.com/test/photos/', {
+      method: 'PROPFIND',
+      headers: { Depth: '0', 'Content-Type': 'application/xml' },
+      body,
+    });
+    expect(anonDav.status).toBe(401);
+    expect(anonDav.headers.get('WWW-Authenticate')).toContain('Basic');
+
+    // Browser plane: DEV_AUTH_EMAIL session lists without Basic, no challenge.
+    const list = await SELF.fetch('https://example.com/user/volumes/test/photos/files/', {
+      method: 'PROPFIND',
+      headers: { Depth: '1', 'Content-Type': 'application/xml' },
+      body,
+    });
+    expect(list.status).toBe(207);
+    expect(list.headers.get('WWW-Authenticate')).toBeNull();
+    expect(await list.text()).toContain('multistatus');
+
+    // Browser write + read round-trip via session (no Basic).
+    const put = await SELF.fetch('https://example.com/user/volumes/test/photos/files/browser-hello.txt', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'text/plain' },
+      body: 'hello browser plane',
+    });
+    expect([201, 204]).toContain(put.status);
+    const get = await SELF.fetch('https://example.com/user/volumes/test/photos/files/browser-hello.txt');
+    expect(get.status).toBe(200);
+    expect(await get.text()).toBe('hello browser plane');
+    expect(get.headers.get('WWW-Authenticate')).toBeNull();
+
+    // Browser MOVE with a browser-style Destination is rewritten to the DAV base.
+    const move = await SELF.fetch('https://example.com/user/volumes/test/photos/files/browser-hello.txt', {
+      method: 'MOVE',
+      headers: {
+        Destination: 'https://example.com/user/volumes/test/photos/files/browser-moved.txt',
+        Overwrite: 'T',
+      },
+    });
+    expect([200, 201, 204]).toContain(move.status);
+    const moved = await SELF.fetch('https://example.com/user/volumes/test/photos/files/browser-moved.txt');
+    expect(moved.status).toBe(200);
+    expect(await moved.text()).toBe('hello browser plane');
+
+    // Missing volume hides existence without a Basic challenge.
+    const missing = await SELF.fetch('https://example.com/user/volumes/test/no-such-vol/files/', {
+      method: 'PROPFIND',
+      headers: { Depth: '0', 'Content-Type': 'application/xml' },
+      body,
+    });
+    expect(missing.status).toBe(404);
+    expect(missing.headers.get('WWW-Authenticate')).toBeNull();
+  });
 });

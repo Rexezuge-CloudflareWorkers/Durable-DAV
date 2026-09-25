@@ -3,7 +3,12 @@ import { BackendError, readDav } from '../lib/api';
 import { parseMultistatus, stripSlashes } from '../lib/davXml';
 
 function volumeBase(owner: string, volume: string): string {
-  return `/${encodeURIComponent(owner)}/${encodeURIComponent(volume)}`;
+  // Session-authenticated browser plane (Git read-model pattern):
+  // same DO content as the WebDAV plane but authed via the Access session,
+  // so private buckets never answer 401 + WWW-Authenticate (no native
+  // username/password prompt). External WebDAV clients keep using
+  // `/:owner/:volume` with bucket Basic credentials.
+  return `/user/volumes/${encodeURIComponent(owner)}/${encodeURIComponent(volume)}/files`;
 }
 
 function entryUrl(owner: string, volume: string, innerPath: string): string {
