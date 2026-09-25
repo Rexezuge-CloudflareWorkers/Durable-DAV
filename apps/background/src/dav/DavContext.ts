@@ -39,10 +39,14 @@ function decodeSegments(path: string): string {
  * Resolve the volume-relative path for a DO request.
  * Prefers the front-door `X-Dav-Path` header; falls back to stripping the
  * `/owner/volume` base prefix from the URL pathname.
+ *
+ * Both sources are percent-decoded so encoded traversal (`%2e%2e`) is
+ * rejected by `isValidInnerPath` instead of slipping into `dofs` as an
+ * opaque segment.
  */
 function resolveInnerPath(request: Request, url: URL, base: string): string {
   const header = request.headers.get('X-Dav-Path');
-  if (header !== null) return stripSlashes(header);
+  if (header !== null) return decodeSegments(stripSlashes(header));
   const pathname = url.pathname;
   if (base !== '' && pathname.startsWith(base)) {
     return decodeSegments(stripSlashes(pathname.slice(base.length)));
@@ -55,11 +59,15 @@ function resolveInnerPath(request: Request, url: URL, base: string): string {
 /**
  * Map a full decoded destination path (incl. `/owner/volume` prefix) back to
  * a volume-relative path. Returns `null` for cross-volume destinations.
+ * Base matching is case-insensitive (why: volume keys are lowercased at the
+ * front door, but `Destination` headers may preserve original casing).
  */
 function stripBase(full: string, base: string): string | null {
   const baseTrim = stripSlashes(base);
-  if (full === baseTrim) return '';
-  if (baseTrim !== '' && full.startsWith(`${baseTrim}/`)) return full.slice(baseTrim.length + 1);
+  const fullLower = full.toLowerCase();
+  const baseLower = baseTrim.toLowerCase();
+  if (fullLower === baseLower) return '';
+  if (baseTrim !== '' && fullLower.startsWith(`${baseLower}/`)) return full.slice(baseTrim.length + 1);
   if (!full.includes('/')) return full;
   const parts = full.split('/');
   if (parts.length >= 2 && `${parts[0]}/${parts[1]}`.toLowerCase() === baseTrim.toLowerCase()) {

@@ -10,13 +10,4 @@ function getVolumeStub(env: Env, owner: string, volume: string): DurableObjectSt
   return stub;
 }
 
-async function ensureVolume(env: Env, owner: string, volume: string): Promise<DurableObjectStub & DavVolumeWorker> {
-  const ns = (env as unknown as { DAV_VOLUME?: DurableObjectNamespace<DavVolumeWorker> }).DAV_VOLUME;
-  if (!ns) throw new Error('DAV_VOLUME binding is not configured');
-  const key = normalizeVolumeKey(owner, volume);
-  const stub = ns.getByName(key) as unknown as DurableObjectStub & DavVolumeWorker;
-  await stub.setVolumeKey(`${owner}/${volume}`);
-  return stub;
-}
-
-export { getVolumeStub, ensureVolume };
+export { getVolumeStub };

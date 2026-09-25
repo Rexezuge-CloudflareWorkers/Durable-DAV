@@ -13,6 +13,13 @@ function forwardLockHeaders(request: Request): Headers {
   return headers;
 }
 
+// `Overwrite` is case-insensitive per RFC 4918 (`T`/`F`); default is `T`.
+function isOverwriteAllowed(request: Request): boolean {
+  const raw = request.headers.get('Overwrite');
+  if (raw === null) return true;
+  return raw.trim().toUpperCase() !== 'F';
+}
+
 async function handleCopy(
   request: Request,
   innerPath: string,
@@ -35,7 +42,7 @@ async function handleCopy(
   if (!srcStat.exists) return new Response('Not Found', { status: 404 });
   const destParent = getParentPath(destInner);
   if (destParent !== '' && !repo.statInner(destParent).isDirectory) return new Response('Conflict', { status: 409 });
-  const overwrite = request.headers.get('Overwrite') !== 'F';
+  const overwrite = isOverwriteAllowed(request);
   const destExists = repo.statInner(destInner).exists;
   if (!overwrite && destExists) return new Response('Precondition Failed', { status: 412 });
   if (destExists) {
@@ -110,7 +117,7 @@ async function handleMove(
   if (!srcStat.exists) return new Response('Not Found', { status: 404 });
   const destParent = getParentPath(destInner);
   if (destParent !== '' && !repo.statInner(destParent).isDirectory) return new Response('Conflict', { status: 409 });
-  const overwrite = (request.headers.get('Overwrite') ?? 'T') !== 'F';
+  const overwrite = isOverwriteAllowed(request);
   const destExists = repo.statInner(destInner).exists;
   if (!overwrite && destExists) return new Response('Precondition Failed', { status: 412 });
   if (destExists) {

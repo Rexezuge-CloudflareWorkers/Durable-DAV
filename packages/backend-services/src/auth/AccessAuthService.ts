@@ -1,5 +1,5 @@
 import { jwtVerify, createRemoteJWKSet } from 'jose';
-import { ConfigurationManager } from '@durable-dav/backend-runtime/config';
+import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { UnauthorizedError } from '@durable-dav/backend-errors';
 import { DEMO_USER_EMAIL } from '@durable-dav/shared/constants';
 import { isValidEmailFormat } from '@durable-dav/shared/utils';
@@ -21,12 +21,12 @@ interface AccessIdentityContext {
 type AccessAuthStrategy = (env: AccessAuthEnv, request: Request, accessCtx?: AccessIdentityContext) => Promise<string | null>;
 
 function isBypassAllowed(env: AccessAuthEnv): boolean {
-  return ConfigurationManager.auth.isBypassAllowed(env);
+  return AppConfiguration.fromEnv(env).isBypassAllowed();
 }
 
 function demoModeStrategy(env: AccessAuthEnv): Promise<string | null> {
   if (!isBypassAllowed(env)) return Promise.resolve(null);
-  return Promise.resolve(ConfigurationManager.auth.isDemoMode(env) ? DEMO_USER_EMAIL : null);
+  return Promise.resolve(AppConfiguration.fromEnv(env).isDemoMode() ? DEMO_USER_EMAIL : null);
 }
 
 function isValidAuthEmail(raw: string): boolean {

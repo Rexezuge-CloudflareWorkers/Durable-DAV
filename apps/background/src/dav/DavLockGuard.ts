@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-base-to-string -- DO SQLite rows are primitives (TEXT/INTEGER); Record<string, unknown> trips the object-stringification guard. */
 import type { DurableSqlStorage } from '@durable-dav/dav-store';
-import { getParentPath, getRequestLockTokens, hasAlwaysFalseIfCondition } from '@durable-dav/webdav';
+import { getParentPath, getRequestLockTokens, hasAlwaysFalseIfCondition, normalizeLockToken } from '@durable-dav/webdav';
 
 // Lock precondition guard (why: every mutating method duplicated the
 // ancestor-walk + token-match logic; one Policy object keeps RFC 4918 §9.10
@@ -33,7 +33,11 @@ class DavLockGuard {
         return true;
       });
       if (active.length === 0) continue;
-      if (active.every((r) => !tokens.includes(String(r['token'] ?? '')))) {
+      // Normalize both sides (why: `If`/`Lock-Token` headers arrive as
+      // `<opaquelocktoken:…>`/`urn:uuid:…` while `dav_locks.token` stores the
+      // raw value; raw comparison never matched and every locked write 423'd).
+      const normalizedTokens = new Set(tokens.map((t) => normalizeLockToken(t)));
+      if (active.every((r) => !normalizedTokens.has(normalizeLockToken(String(r['token'] ?? ''))))) {
         return new Response('Locked', { status: 423 });
       }
     }
@@ -42,8 +46,11 @@ class DavLockGuard {
 
   public activeTokensForPath(innerPath: string, tokens: string[]): string[] {
     try {
+      const normalized = new Set(tokens.map((t) => normalizeLockToken(t)));
       const rows = this.sql.exec(`SELECT token FROM dav_locks WHERE path = ? AND expires_at > ?`, innerPath, Date.now()).toArray();
-      return rows.map((r) => String(r['token'] ?? '')).filter((t) => t !== '' && !tokens.includes(t));
+      return rows
+        .map((r) => String(r['token'] ?? ''))
+        .filter((t) => t !== '' && !normalized.has(normalizeLockToken(t)));
     } catch {
       return [];
     }

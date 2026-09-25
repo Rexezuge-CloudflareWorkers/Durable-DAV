@@ -12,6 +12,10 @@ const RANGE_RE = /bytes=(\d*)-(\d*)/;
 
 function parseRangeHeader(rangeHeader: string | null, size: number): ParsedRange {
   if (!rangeHeader) return { offset: 0, length: undefined, contentRange: undefined, status: 200 };
+  // Empty files have no satisfiable range; fall back to full-body 200.
+  if (!Number.isSafeInteger(size) || size <= 0) {
+    return { offset: 0, length: undefined, contentRange: undefined, status: 200 };
+  }
   const match = RANGE_RE.exec(rangeHeader);
   if (!match) return { offset: 0, length: undefined, contentRange: undefined, status: 200 };
   const [, startText, endText] = match;
@@ -28,10 +32,13 @@ function parseRangeHeader(rangeHeader: string | null, size: number): ParsedRange
   if (!Number.isFinite(offset) || offset < 0 || offset >= size) {
     return { offset: 0, length: undefined, contentRange: undefined, status: 200 };
   }
-  const length = endText === '' ? size - offset : Number(endText) - offset + 1;
+  // Clamp the end to the representation size (why: `bytes=0-9999` on a
+  // 10-byte file must yield `bytes 0-9/10`, not an unsatisfiable `0-9999/10`).
+  let length = endText === '' ? size - offset : Number(endText) - offset + 1;
   if (!Number.isFinite(length) || length <= 0) {
     return { offset: 0, length: undefined, contentRange: undefined, status: 200 };
   }
+  length = Math.min(length, size - offset);
   return { offset, length, contentRange: `bytes ${offset}-${offset + length - 1}/${size}`, status: 206 };
 }
 

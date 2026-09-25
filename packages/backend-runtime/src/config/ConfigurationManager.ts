@@ -4,6 +4,10 @@ import { AppConfiguration } from './AppConfiguration';
  * Thin backward-compatible facade over `AppConfiguration`.
  * New code should inject `AppConfiguration` directly; statics remain so
  * existing call sites keep working while they migrate.
+ *
+ * @deprecated Prefer constructor-injected `AppConfiguration` (see
+ * `VolumeService`, `VolumeCredentialService`). This shim exists only for
+ * legacy call sites and will be removed once migration completes.
  */
 class ConfigurationManager {
   public static readonly auth = {
