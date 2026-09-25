@@ -19,7 +19,8 @@
     "remove": "Remove",
     "revoke": "Revoke",
     "saveChanges": "Save Changes",
-    "success": "Success"
+    "success": "Success",
+    "typeToConfirm": "Type {{name}} To Confirm"
   },
   "landing": {
     "title": "Self-Hosted WebDAV On Cloudflare Workers",
@@ -62,6 +63,12 @@
     "deleteThisBucket": "Delete This Bucket",
     "deleteBucketDescription": "Permanently Deletes The Bucket, Its Files, And Its Credentials. This Cannot Be Undone.",
     "deleteBucket": "Delete Bucket",
+    "changeVisibility": "Change Visibility",
+    "currentVisibility": "Current Visibility: {{visibility}}",
+    "makePublic": "Make Public",
+    "makePrivate": "Make Private",
+    "visibilityDescription": "Changing Visibility Affects Who Can Read This Bucket. Making It Public Exposes Files To Anyone.",
+    "visibilityUpdated": "Bucket Visibility Updated.",
     "volumeDeleted": "Bucket Deleted."
   },
   "credentials": {
