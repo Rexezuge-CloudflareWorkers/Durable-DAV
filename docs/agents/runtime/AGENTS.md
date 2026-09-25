@@ -21,7 +21,7 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 | Group  | Vars (default)                                                                                                                                                     |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | App    | `DEBUG_MODE` (`false`), `SITE_URL` (`""`)                                                                                                                          |
-| Limits | `MAX_VOLUMES_PER_USER` (`100`), `MAX_TOKENS_PER_USER` (`5`), `MAX_TOKEN_EXPIRY_DAYS` (`90`), `MAX_TOKEN_VOLUME_GRANTS` (`100`), `MAX_FILE_BYTES` (`52428800`), `DO_DEVICE_BYTES` (`5368709120`), `DAV_CACHE_TTL_SECONDS` (`300`, front read-cache tuning; legacy `GIT_CACHE_TTL_SECONDS` still honored as fallback) |
+| Limits | `MAX_VOLUMES_PER_USER` (`100`), `MAX_CREDENTIALS_PER_VOLUME` (`10`), `DEFAULT_CREDENTIAL_EXPIRY_DAYS` (`365`), `MAX_CREDENTIAL_EXPIRY_DAYS` (`365`), `MAX_FILE_BYTES` (`52428800`), `DO_DEVICE_BYTES` (`5368709120`), `DAV_CACHE_TTL_SECONDS` (`300`, front read-cache tuning; legacy `GIT_CACHE_TTL_SECONDS` still honored as fallback) |
 
 Add new env vars in `ConfigurationDefaults.ts` (+ `ConfigurationManager` getter + `AppConfiguration` method), not inline.
 
