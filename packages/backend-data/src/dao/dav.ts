@@ -1,6 +1,3 @@
 export { DavVolumeDAO } from './DavVolumeDAO';
 export type { DavVolumeRow } from './DavVolumeDAO';
-export { DavCollaboratorDAO } from './DavCollaboratorDAO';
-export type { DavCollaboratorRow, DavRole } from './DavCollaboratorDAO';
-export { TokenVolumeGrantDAO } from './TokenVolumeGrantDAO';
-export type { TokenVolumeGrantRow } from './TokenVolumeGrantDAO';
+export { DavCredentialDAO } from './DavCredentialDAO';

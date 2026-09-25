@@ -3,13 +3,13 @@ import { applyMigrations } from './migrations';
 /**
  * Shared setup for Durable-DAV integration tests (real D1 via `SELF.fetch`).
  * Auth is `DEV_AUTH_EMAIL`-based, so `/user/*` needs no credentials.
- * WebDAV (`/:owner/:volume/*`) additionally accepts PAT Bearer/Basic.
+ * WebDAV (`/:owner/:volume/*`) uses bucket-level Basic credentials.
  */
 
 type TestEnv = Record<string, unknown> & { DB: D1Database };
 
 export async function ensureAesSecret(_env: TestEnv): Promise<void> {
-  // No Secrets Store binding: PAT hashing is sha256 (no encryption).
+  // No Secrets Store binding: credential hashing is sha256 (no encryption).
 }
 
 export async function ensureUser(db: D1Database, email: string, username?: string): Promise<string> {
@@ -61,7 +61,7 @@ export async function seedVolume(
       ownerUsername,
       input.name,
       input.description ?? null,
-      input.isPrivate === true ? 1 : 0,
+      input.isPrivate === false ? 0 : 1,
       now,
       now,
       ownerUsername.toLowerCase(),
@@ -79,50 +79,26 @@ async function sha256Hex(text: string): Promise<string> {
   return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('');
 }
 
-export async function mintPatForEmail(
+export async function mintCredentialForVolume(
   db: D1Database,
-  email: string,
-  input: { name?: string; scopes?: string[]; expiresInDays?: number } = {},
-): Promise<{ tokenId: string; token: string }> {
-  const normalized = email.toLowerCase();
-  await ensureUser(db, normalized);
-  const tokenId = crypto.randomUUID();
-  const raw = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
-  const tokenHash = await sha256Hex(`durable-dav-pat:${raw}`);
+  volumeId: string,
+  input: { name?: string; username?: string; expiresInDays?: number } = {},
+): Promise<{ credentialId: string; username: string; password: string }> {
+  const credentialId = crypto.randomUUID();
+  const username = input.username ?? `test-credential-${credentialId.slice(0, 8)}`;
+  const raw = `ddav_test_${crypto.randomUUID().replaceAll('-', '')}`;
+  const passwordHash = await sha256Hex(raw);
   const now = Math.floor(Date.now() / 1000);
   const expiresAt = now + (input.expiresInDays ?? 90) * 86_400;
-  const scopes = input.scopes ?? ['dav:read', 'dav:write', 'admin'];
   await db
     .prepare(
-      `INSERT INTO user_access_tokens (token_id, user_email, token_hash, name, expires_at, last_used_at, created_at, token_prefix) VALUES (?, ?, ?, ?, ?, NULL, ?, ?)`,
+      `INSERT INTO dav_credentials (credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
     )
-    .bind(tokenId, normalized, tokenHash, input.name ?? 'test-token', expiresAt, now, raw.slice(0, 12))
+    .bind(credentialId, volumeId, username, passwordHash, input.name ?? 'test-credential', raw.slice(0, 10), raw.slice(-4), now, expiresAt)
     .run();
-  for (const scope of scopes) {
-    await db.prepare(`INSERT OR IGNORE INTO token_scopes (token_id, scope, created_at) VALUES (?, ?, ?)`).bind(tokenId, scope, now).run();
-  }
-  return { tokenId, token: raw };
-}
-
-export function bearerHeader(token: string): Record<string, string> {
-  return { Authorization: `Bearer ${token}` };
+  return { credentialId, username, password: raw };
 }
 
 export function basicAuthHeader(username: string, password: string): Record<string, string> {
   return { Authorization: `Basic ${btoa(`${username}:${password}`)}` };
-}
-
-export async function addCollaborator(
-  db: D1Database,
-  volumeId: string,
-  userEmail: string,
-  role: 'admin' | 'write' | 'read',
-  grantedBy?: string,
-): Promise<void> {
-  const now = Math.floor(Date.now() / 1000);
-  await ensureUser(db, userEmail);
-  await db
-    .prepare(`INSERT OR REPLACE INTO dav_collaborators (volume_id, user_email, role, granted_by, created_at) VALUES (?, ?, ?, ?, ?)`)
-    .bind(volumeId, userEmail.toLowerCase(), role, grantedBy?.toLowerCase() ?? null, now)
-    .run();
 }

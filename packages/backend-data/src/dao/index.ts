@@ -5,4 +5,11 @@ export * from './dav';
 export { BaseDAO } from './BaseDAO';
 export { buildSetClause } from './UpdateClause';
 export type { SetAssignment, SetClause } from './UpdateClause';
-export type { TokenVolumeGrantRow } from './TokenVolumeGrantDAO';
+export type DavRole = 'admin' | 'write' | 'read';
+export interface DavCollaboratorRow {
+  volume_id: string;
+  user_email: string;
+  role: DavRole;
+  granted_by: string | null;
+  created_at: number;
+}

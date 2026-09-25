@@ -1,6 +1,6 @@
 import { createLogger } from '@durable-dav/backend-runtime/logger';
 import type { ScheduledTask } from './IScheduledTask';
-import { ExpiredTokenPruningTask } from './ExpiredTokenPruningTask';
+import { ExpiredCredentialPruningTask } from './ExpiredCredentialPruningTask';
 
 const logger = createLogger('CronTasks');
 
@@ -11,7 +11,7 @@ interface TaskDefinition {
 }
 
 const CRON_TASK_FACTORIES: readonly TaskDefinition[] = [
-  { name: 'ExpiredTokenPruningTask', phase: 1, make: () => new ExpiredTokenPruningTask() },
+  { name: 'ExpiredCredentialPruningTask', phase: 1, make: () => new ExpiredCredentialPruningTask() },
 ];
 
 const CRON_TASK_DEFINITIONS: ScheduledTask[] = CRON_TASK_FACTORIES.map((d) => d.make());
@@ -29,5 +29,5 @@ async function runScheduledTasks(env: Env, cron: string, scheduledTime: number):
 }
 
 export { CRON_TASK_DEFINITIONS, CRON_TASK_FACTORIES, tasksForPhase, runScheduledTasks };
-export { ExpiredTokenPruningTask } from './ExpiredTokenPruningTask';
+export { ExpiredCredentialPruningTask } from './ExpiredCredentialPruningTask';
 export type { ScheduledTask } from './IScheduledTask';

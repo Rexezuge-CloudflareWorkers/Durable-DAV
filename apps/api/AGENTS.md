@@ -5,19 +5,20 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 - `src/index.ts` — `fetch`/`scheduled` via `DurableDavWorker`; re-exports `CronTasksWorker`, `DavVolumeWorker` from `@durable-dav/background` for DO bindings.
 - `src/workers/DurableDavWorker.ts` — Hono routes (no file-routing). `src/types.d.ts` — global `Env`.
 - `src/workers/doStubs.ts` — `getVolumeStub(env, owner, volume)` (`DAV_VOLUME.getByName(normalizeVolumeKey)`) + `ensureVolume`.
-- `src/middleware/` — `MiddlewareHandlers.userAuthentication()` (`/user/*` via `AccessAuthService` + `UserService.upsertUser`) + `DavAuth.davAuthForVolume()` (PAT Basic/Bearer via `TokenService.authenticateWithPAT` → `coversScope` (`dav:read`/`dav:write`, legacy `repo:*` alias) → per-bucket grant check (`volumeGrants` empty = full access, else matching `volumeId+scope`) → `DavPermissionService.getRole`; private volumes hide existence as 404 for authed-no-access, 401 for anon; `DatabaseError` fails closed to 503).
-- `src/workers/routes/` — `DavRoutes` (`/:owner/:volume` + `/:owner/:volume/*` for all `SUPPORT_METHODS`, auth then `stub.fetch` forward with `X-Dav-Base/X-Dav-Path/X-Dav-User` + CORS) + `VolumeRoutes` (`GET|POST /user/volumes` (quota `MAX_VOLUMES_PER_USER`, user-only owner check), `DELETE /user/volumes/:owner/:volume` admin-only, DO + grant/collaborator cleanup best-effort) + `TokenRoutes` (PAT CRUD with `volumeGrants`) + `UserRoutes` (`GET /user/me`, `GET /users/:username`).
+- `src/middleware/` — `MiddlewareHandlers.userAuthentication()` (`/user/*` via `AccessAuthService` + `UserService.upsertUser`) + `DavAuth.davAuthForVolume()` (bucket Basic `username:password` via `DavCredentialDAO.getByUsernameAndHash` + volume-id binding + expiry check + `last_used_at` touch; public anon reads via `DavPermissionService.getRole`; 401 with `WWW-Authenticate: Basic` on fail; `DatabaseError` fails closed to 503).
+- `src/workers/routes/` — `DavRoutes` (`/:owner/:volume` + `/:owner/:volume/*` for all `SUPPORT_METHODS`, auth then `stub.fetch` forward with `X-Dav-Base/X-Dav-Path/X-Dav-User` + CORS) + `VolumeRoutes` (`GET|POST /user/volumes` (quota `MAX_VOLUMES_PER_USER`, user-only owner check, private-by-default), `GET|PATCH|DELETE /user/volumes/:owner/:volume` owner-only, DO cleanup best-effort) + `CredentialRoutes` (per-bucket credentials) + `UserRoutes` (`GET /user/me`, `GET /users/:username`).
 
 ## Auth
 
 - `/user/*` — Cloudflare Access (`DEMO_MODE` → `DEV_AUTH_EMAIL` → JWT → `ctx.access` fallback).
-- WebDAV `/:owner/:volume/*` — anon `read` only for public volumes; private needs `read`, all writes need `write` via PAT (Basic password or Bearer). PAT scope gate: reads need `dav:read`, writes need `dav:write` (legacy `repo:*` alias accepted) (`coversScope` hierarchy; 403 on insufficiency) + per-bucket grant gate (scoped tokens need a matching `volumeGrants` entry; unscoped = full access).
+- WebDAV `/:owner/:volume/*` — bucket-level Basic only (username AND password validated, bound to volume id, expiry enforced). Public buckets allow anon reads; all writes and all private access require a bucket credential. No Bearer, no user-level PAT, no collaborators.
 
 ## Routes
 
 - WebDAV: `OPTIONS` (`Allow` + `DAV: 1, 2`) · `PROPFIND` · `PROPPATCH` · `MKCOL` · `GET`/`HEAD` (Range, HTML browser for collections) · `PUT` · `DELETE` · `COPY`/`MOVE` (`Destination` same-origin, `Overwrite`) · `LOCK`/`UNLOCK` (all in `DavVolumeWorker`, front only auth + forward + CORS).
-- Volumes: `GET|POST /user/volumes` · `DELETE /user/volumes/:owner/:volume`.
-- Users/Tokens: `GET /user/me` · `GET /users/:username` · `GET|POST /user/tokens` (+ rotate/delete).
+- Volumes: `GET|POST /user/volumes` · `GET|PATCH|DELETE /user/volumes/:owner/:volume`.
+- Credentials: `GET|POST /user/volumes/:owner/:volume/credentials` · `DELETE /user/volumes/:owner/:volume/credentials/:id`.
+- Users: `GET /user/me` · `GET /users/:username`.
 - Public: `GET /` (minimal HTML volume browser) · `GET /health` · `/docs`.
 
 ## Composition

@@ -54,7 +54,7 @@ async function hideExistence<T>(fn: () => Promise<T | null>): Promise<T | null> 
 }
 
 // Fail-closed policy: auth/permission reads must never degrade to allow.
-// Use for `TokenService` grant reads, `gitAuthForRepo` role checks, and
+// Use for credential lookups, `DavPermissionService` role checks, and
 // push-protection resolution — errors propagate instead of becoming null.
 async function failClosed<T>(fn: () => Promise<T>): Promise<T> {
   return fn();

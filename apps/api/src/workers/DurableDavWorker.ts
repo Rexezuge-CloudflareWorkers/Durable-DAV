@@ -7,7 +7,7 @@ import { scopeMiddleware } from '@/middleware/scopeMiddleware';
 import { RESERVED_NAMESPACE_NAMES } from '@durable-dav/shared/constants';
 import { registerDavRoutes } from './routes/DavRoutes';
 import { registerVolumeRoutes } from './routes/VolumeRoutes';
-import { registerTokenRoutes } from './routes/TokenRoutes';
+import { registerCredentialRoutes } from './routes/CredentialRoutes';
 import { registerUserProfileRoutes } from './routes/UserRoutes';
 import { SPA_HTML } from '@/generated/spa-shell';
 
@@ -61,7 +61,7 @@ class DurableDavWorker extends AbstractEntrypointWorker {
     app.use('/user/*', MiddlewareHandlers.userAuthentication());
 
     registerVolumeRoutes(app);
-    registerTokenRoutes(app);
+    registerCredentialRoutes(app);
     registerUserProfileRoutes(app);
 
     // Volume-root content negotiation (recommended option): browser document

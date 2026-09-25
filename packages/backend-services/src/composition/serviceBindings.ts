@@ -1,12 +1,5 @@
 // Service bindings for the per-request composition root.
-import type {
-  DavCollaboratorDAO,
-  DavVolumeDAO,
-  NamespaceDAO,
-  TokenVolumeGrantDAO,
-  UserAccessTokenDAO,
-  UserDAO,
-} from '@durable-dav/backend-data/dao';
+import type { DavCredentialDAO, DavVolumeDAO, NamespaceDAO, UserDAO } from '@durable-dav/backend-data/dao';
 import type { Container, Token } from '@durable-dav/backend-runtime/di';
 import { Tokens } from './tokens';
 import type { RequestScopeEnv } from './serviceFactory';
@@ -18,11 +11,9 @@ function bindServiceBindings(scope: Container, env: RequestScopeEnv): void {
 
   const daos: DaoThunks = {
     userDAO: getDao<UserDAO>(Tokens.UserDAO),
-    tokenDAO: getDao<UserAccessTokenDAO>(Tokens.UserAccessTokenDAO),
     namespaceDAO: getDao<NamespaceDAO>(Tokens.NamespaceDAO),
-    tokenVolumeGrantDAO: getDao<TokenVolumeGrantDAO>(Tokens.TokenVolumeGrantDAO),
     davVolumeDAO: getDao<DavVolumeDAO>(Tokens.DavVolumeDAO),
-    davCollaboratorDAO: getDao<DavCollaboratorDAO>(Tokens.DavCollaboratorDAO),
+    davCredentialDAO: getDao<DavCredentialDAO>(Tokens.DavCredentialDAO),
   };
 
   bindCoreServices(scope, { env, daos });

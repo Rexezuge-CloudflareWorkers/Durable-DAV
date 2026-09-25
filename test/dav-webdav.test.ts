@@ -19,7 +19,7 @@ import {
   isProtectedProperty,
   generatePropfindResponse,
 } from '@durable-dav/webdav';
-import { coversScope as coversTokenScope } from '@durable-dav/backend-services/auth';
+import { DavCredentialUtil } from '@durable-dav/shared/utils';
 
 describe('DuraDAV path helpers (RFC 4918)', () => {
   it('escapes XML', () => {
@@ -136,11 +136,10 @@ describe('DuraDAV protocol surface', () => {
     }
   });
 
-  it('PAT scopes cover DAV read/write (dav:* primary, repo:* legacy)', () => {
-    expect(coversTokenScope(['dav:write'], 'dav:read')).toBe(true);
-    expect(coversTokenScope(['dav:read'], 'dav:write')).toBe(false);
-    expect(coversTokenScope(['admin'], 'dav:write')).toBe(true);
-    expect(coversTokenScope(['repo:write'], 'dav:read')).toBe(true);
-    expect(coversTokenScope(['dav:write'], 'repo:read')).toBe(true);
+  it('bucket credential usernames are descriptive and validated', () => {
+    const username = DavCredentialUtil.generateUsername('photos');
+    expect(username.startsWith('photos-')).toBe(true);
+    expect(username).toMatch(/^[a-z0-9-]+$/);
+    expect(username.includes(':')).toBe(false);
   });
 });

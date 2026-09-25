@@ -1,6 +1,7 @@
 export { TimestampUtil } from './TimestampUtil';
 export { UUIDUtil } from './UUIDUtil';
 export { CryptoUtil } from './CryptoUtil';
+export { DavCredentialUtil, CREDENTIAL_ANIMALS, CREDENTIAL_ADJECTIVES, slugifyVolume } from './DavCredentialUtil';
 export { err, getOrThrow, isOk, mapResult, ok } from './Result';
 export type { Err, Ok, Result } from './Result';
 export { EmailAddress, isValidEmailFormat } from './Identity';

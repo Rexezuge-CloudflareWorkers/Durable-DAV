@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
-import { DavPermissionService, VolumeService, checkVolumeQuota } from '@durable-dav/backend-services/dav';
-import { TokenService } from '@durable-dav/backend-services/auth';
-import { coversScope } from '@durable-dav/backend-services/auth';
+import { DavPermissionService, VolumeService, VolumeCredentialService, checkVolumeQuota } from '@durable-dav/backend-services/dav';
+import { DavCredentialUtil } from '@durable-dav/shared/utils';
 
 function fakeVolumeDb(opts: { ownedCount?: number; username?: string | null; existing?: unknown } = {}) {
-  const calls = { volumeGrantsDeleted: 0, collaboratorsDeleted: 0 };
+  const calls = { credentialsDeleted: 0 };
   const volumeDAO = {
     getByOwnerName: async () => (opts.existing as never) ?? null,
     getById: async () => (opts.existing as never) ?? null,
     listByOwnerEmail: async () => Array.from({ length: opts.ownedCount ?? 0 }, (_, i) => ({ id: `v${i}` })),
     create: async () => undefined,
+    update: async () => undefined,
     deleteById: async () => undefined,
   };
   const userDAO = {
@@ -21,19 +21,11 @@ function fakeVolumeDb(opts: { ownedCount?: number; username?: string | null; exi
     deps: {
       volumeDAO: () => Promise.resolve(volumeDAO as never),
       userDAO: () => Promise.resolve(userDAO as never),
-      davCollaboratorDAO: () =>
+      credentialDAO: () =>
         Promise.resolve({
           deleteByVolume: async () => {
-            calls.collaboratorsDeleted += 1;
+            calls.credentialsDeleted += 1;
           },
-        } as never),
-      tokenVolumeGrantDAO: () =>
-        Promise.resolve({
-          deleteByToken: async () => undefined,
-          deleteByVolume: async () => {
-            calls.volumeGrantsDeleted += 1;
-          },
-          listByToken: async () => [],
         } as never),
     },
   };
@@ -61,29 +53,33 @@ describe('VolumeService user-only buckets', () => {
     await expect(svc.createVolume({ owner: 'bob', name: 'b1', creatorEmail: 'a@x.co' })).rejects.toThrow(/owner/);
   });
 
-  it('creates user buckets and cleans per-bucket grants on delete', async () => {
+  it('creates private-by-default buckets and cleans credentials on delete', async () => {
     const created = {
       id: 'vol-1',
       owner_email: 'a@x.co',
       owner: 'alice',
       name: 'photos',
-      is_private: 0,
+      is_private: 1,
     };
+    const seen: Array<{ isPrivate: boolean }> = [];
     const { deps, calls } = fakeVolumeDb({ ownedCount: 0, username: 'alice', existing: null });
     const svc = new VolumeService({ DB: {} as never }, {
       ...deps,
       volumeDAO: () =>
         Promise.resolve({
-          getByOwnerName: async (owner: string, name: string) =>
-            owner === 'alice' && name === 'photos' ? null : null,
+          getByOwnerName: async () => null,
           getById: async () => created as never,
           listByOwnerEmail: async () => [],
-          create: async () => undefined,
+          create: async (input: { isPrivate: boolean }) => {
+            seen.push({ isPrivate: input.isPrivate });
+          },
+          update: async () => undefined,
           deleteById: async () => undefined,
         } as never),
     });
     const row = await svc.createVolume({ owner: 'alice', name: 'photos', creatorEmail: 'A@X.co' });
     expect(row.owner_email).toBe('a@x.co');
+    expect(seen[0]?.isPrivate).toBe(true);
 
     const deleter = new VolumeService({ DB: {} as never }, {
       ...deps,
@@ -93,64 +89,84 @@ describe('VolumeService user-only buckets', () => {
           getById: async () => created as never,
           listByOwnerEmail: async () => [],
           create: async () => undefined,
+          update: async () => undefined,
           deleteById: async () => undefined,
         } as never),
     });
     await deleter.deleteVolume('alice', 'photos');
-    expect(calls.volumeGrantsDeleted).toBe(1);
-    expect(calls.collaboratorsDeleted).toBe(1);
+    expect(calls.credentialsDeleted).toBe(1);
+  });
+
+  it('updates description and visibility owner-only', async () => {
+    const stored = {
+      id: 'vol-1',
+      owner_email: 'a@x.co',
+      owner: 'alice',
+      name: 'photos',
+      description: null,
+      is_private: 1,
+    };
+    const { deps } = fakeVolumeDb({ ownedCount: 0, username: 'alice' });
+    const svc = new VolumeService({ DB: {} as never }, {
+      ...deps,
+      volumeDAO: () =>
+        Promise.resolve({
+          getByOwnerName: async () => stored as never,
+          getById: async () => ({ ...stored, description: 'hi', is_private: 0 }) as never,
+          listByOwnerEmail: async () => [],
+          create: async () => undefined,
+          update: async () => undefined,
+          deleteById: async () => undefined,
+        } as never),
+    });
+    const updated = await svc.updateVolume('alice', 'photos', 'a@x.co', { description: 'hi', isPrivate: false });
+    expect(updated.description).toBe('hi');
+    await expect(svc.updateVolume('alice', 'photos', 'other@x.co', { isPrivate: true })).rejects.toThrow(/owner/);
   });
 });
 
-describe('DavPermissionService user-only', () => {
-  const volume = { id: 'v1', owner_email: 'owner@x.co', is_private: 0 } as never;
+describe('DavPermissionService owner-only', () => {
+  const volume = { id: 'v1', owner_email: 'owner@x.co', is_private: 1 } as never;
 
-  it('owner is admin, collaborator role wins, public read, private hidden', async () => {
-    const svc = new VolumeService({ DB: {} as never });
-    void svc;
-    const perm = new DavPermissionService({ DB: {} as never }, {
-      davCollaboratorDAO: () => Promise.resolve({ get: async () => ({ role: 'write' }) } as never),
-    });
+  it('owner is admin, others hidden on private, public read', async () => {
+    const perm = new DavPermissionService();
     await expect(perm.getRole('owner@x.co', volume)).resolves.toBe('admin');
-    await expect(perm.getRole('friend@x.co', volume)).resolves.toBe('write');
-
-    const anonPublic = new DavPermissionService({ DB: {} as never }, {
-      davCollaboratorDAO: () => Promise.resolve({ get: async () => null } as never),
-    });
-    await expect(anonPublic.getRole(null, volume)).resolves.toBe('read');
-    await expect(anonPublic.getRole(null, { ...volume, is_private: 1 } as never)).resolves.toBeNull();
+    await expect(perm.getRole('friend@x.co', volume)).resolves.toBeNull();
+    await expect(perm.getRole(null, volume)).resolves.toBeNull();
+    await expect(perm.getRole(null, { ...volume, is_private: 0 } as never)).resolves.toBe('read');
+    await expect(perm.getRole('friend@x.co', { ...volume, is_private: 0 } as never)).resolves.toBe('read');
   });
 });
 
-describe('TokenService per-bucket grants', () => {
-  it('coversVolumeGrant: empty grants mean full access', () => {
-    expect(TokenService.coversVolumeGrant([], 'v1', 'dav:read')).toBe(true);
-    expect(TokenService.coversVolumeGrant([{ volumeId: 'v1', scope: 'dav:read' }], 'v1', 'dav:read')).toBe(true);
-    expect(TokenService.coversVolumeGrant([{ volumeId: 'v1', scope: 'dav:read' }], 'v1', 'dav:write')).toBe(false);
-    expect(TokenService.coversVolumeGrant([{ volumeId: 'v2', scope: 'dav:write' }], 'v1', 'dav:read')).toBe(false);
-    expect(TokenService.coversVolumeGrant([{ volumeId: 'v1', scope: 'dav:write' }], 'v1', 'dav:read')).toBe(true);
+describe('DavCredentialUtil username pattern', () => {
+  it('generates volume-adjective-animal usernames', () => {
+    const username = DavCredentialUtil.generateUsername('Photos');
+    expect(username.startsWith('photos-')).toBe(true);
+    expect(username).toMatch(/^[a-z0-9-]{1,64}$/);
+    expect(username).not.toContain(':');
+    const parts = username.split('-');
+    expect(parts.length).toBeGreaterThanOrEqual(4);
   });
 
-  it('mints volume-scoped tokens and enforces grant caps', async () => {
-    const db = {} as never;
-    const svc = new TokenService(
-      { DB: db, MAX_TOKEN_VOLUME_GRANTS: '1' },
+  it('hashes passwords deterministically', async () => {
+    const a = await DavCredentialUtil.hashPassword('secret');
+    const b = await DavCredentialUtil.hashPassword('secret');
+    expect(a).toBe(b);
+    expect(a).toMatch(/^[0-9a-f]{64}$/);
+  });
+});
+
+describe('VolumeCredentialService per-bucket quota', () => {
+  it('enforces MAX_CREDENTIALS_PER_VOLUME', async () => {
+    const svc = new VolumeCredentialService(
+      { DB: {} as never, MAX_CREDENTIALS_PER_VOLUME: '1' },
       {
-        tokenDAO: () => Promise.resolve({ getByUserEmail: async () => [], create: async () => undefined } as never),
-        volumeDAO: () => Promise.resolve({ getByOwnerName: async () => ({ id: 'v1' }) } as never),
-        tokenVolumeGrantDAO: () => Promise.resolve({ setGrants: async () => undefined } as never),
+        credentialDAO: () =>
+          Promise.resolve({
+            countByVolume: async () => 1,
+          } as never),
       },
     );
-    await expect(
-      svc.createToken('a@x.co', 't', 30, ['dav:read'], [
-        { owner: 'alice', name: 'b1', scope: 'dav:read' },
-        { owner: 'alice', name: 'b2', scope: 'dav:read' },
-      ]),
-    ).rejects.toThrow(/At most 1 volume grants/);
-  });
-
-  it('dav scopes cover legacy repo aliases', () => {
-    expect(coversScope(['dav:write'], 'repo:read')).toBe(true);
-    expect(coversScope(['repo:write'], 'dav:read')).toBe(true);
+    await expect(svc.createCredential('v1', 'photos', 'laptop')).rejects.toThrow(/Maximum 1 credentials/);
   });
 });

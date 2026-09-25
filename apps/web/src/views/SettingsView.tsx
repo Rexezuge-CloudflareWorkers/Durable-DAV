@@ -3,7 +3,6 @@ import { UserRound } from 'lucide-react';
 import type { CurrentUser } from '../types';
 import { LanguageSettingsCard } from '../components/settings/LanguageSettingsCard';
 import { ProfileSettingsCard } from '../components/settings/ProfileSettingsCard';
-import { TokensTab } from '../components/settings/TokensTab';
 import { ContextBar } from '../components/layout/ContextBar';
 import { AppPage } from '../components/layout/AppPage';
 import { PageHeaderCard } from '../components/layout/PageHeaderCard';
@@ -43,8 +42,6 @@ export function SettingsView({
         <ProfileSettingsCard user={user} setUser={setUser} showNotice={showNotice} />
 
         <LanguageSettingsCard language={language} onLanguageChange={onLanguageChange} disabled={languageDisabled} />
-
-        <TokensTab showNotice={showNotice} />
       </AppPage>
     </div>
   );
