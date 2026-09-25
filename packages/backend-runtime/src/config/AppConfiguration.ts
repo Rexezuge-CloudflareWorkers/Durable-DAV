@@ -120,6 +120,10 @@ class AppConfiguration {
     return this.git.getGitCacheTtlSeconds();
   }
 
+  public getDavCacheTtlSeconds(): number {
+    return this.git.getDavCacheTtlSeconds();
+  }
+
   public getMaxFetchWants(): number {
     return this.git.getMaxFetchWants();
   }
@@ -386,6 +390,7 @@ class AppConfiguration {
       'MAX_CREDENTIAL_EXPIRY_DAYS',
       'MAX_PACK_OBJECTS',
       'GIT_CACHE_TTL_SECONDS',
+      'DAV_CACHE_TTL_SECONDS',
       'MAX_FETCH_WANTS',
       'MAX_FETCH_HAVES',
       'MAX_PUSH_COMMANDS',

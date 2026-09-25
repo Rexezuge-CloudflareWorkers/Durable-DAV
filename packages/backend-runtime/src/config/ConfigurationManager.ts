@@ -96,6 +96,7 @@ class ConfigurationManager {
   public static readonly dav = {
     getMaxVolumesPerUser: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxVolumesPerUser(),
     getMaxTokenVolumeGrants: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxTokenVolumeGrants(),
+    getCacheTtlSeconds: (env: unknown): number => AppConfiguration.fromEnv(env).getDavCacheTtlSeconds(),
   };
 
   public static getDebugMode(env: unknown): boolean {

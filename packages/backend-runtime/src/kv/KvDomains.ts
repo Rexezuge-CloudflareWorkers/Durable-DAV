@@ -1,17 +1,33 @@
 // Single-KV keyspace: one `CACHE` binding, domains separated by key prefix.
 //
-// Rationale: D1 stays the source of truth (joins, transactions, FTS). KV is a
+// Rationale: D1 stays the source of truth (joins, transactions). KV is a
 // loss-tolerant, read-heavy cache only — a miss or eviction must always be
 // recoverable by recompute. Call sites never touch `env.CACHE` directly;
 // they go through `KvCache` with a closed `KvDomainName` registry so prefixes
 // cannot collide and TTL/size policy lives in one table.
+//
+// Ported from `../Git` (`@edge-git/backend-runtime/kv`): `KvCache` semantics
+// are identical (fail-soft, D1/DO authoritative). Git-only domains
+// (`refs`/`readmodel`/`code`/`searchCursor`/`oauth2`) are retained for
+// compat; DAV read paths use `davProp`/`davFile`/`davMeta` (see
+// `apps/api/src/workers/routes/DavReadCache.ts`).
 
 const KV_KEY_VERSION = 'v1';
 const KV_MAX_KEY_LENGTH = 512;
 const KV_MIN_TTL_SECONDS = 60;
 const KV_PLATFORM_MAX_VALUE_BYTES = 26_214_400;
 
-type KvDomainName = 'jwks' | 'oauth2' | 'code' | 'searchCursor' | 'refs' | 'readmodel' | 'ratelimit';
+type KvDomainName =
+  | 'jwks'
+  | 'oauth2'
+  | 'code'
+  | 'searchCursor'
+  | 'refs'
+  | 'readmodel'
+  | 'ratelimit'
+  | 'davProp'
+  | 'davFile'
+  | 'davMeta';
 
 interface KvDomainDef {
   ttlSeconds?: number;
@@ -53,6 +69,21 @@ const KV_DOMAINS: Record<KvDomainName, KvDomainDef> = {
     ttlSeconds: 60,
     maxValueBytes: 1024,
     description: 'Rate-limit / idempotency windows. Short-lived by design.',
+  },
+  davProp: {
+    ttlSeconds: 120,
+    maxValueBytes: 1_048_576,
+    description: 'PROPFIND multistatus snapshots per volume+path+depth+body; invalidated on write. Short-lived (120s).',
+  },
+  davFile: {
+    ttlSeconds: 300,
+    maxValueBytes: 1_048_576,
+    description: 'Small file GET bodies (base64) per volume+path; invalidated on write. Only under size cap.',
+  },
+  davMeta: {
+    ttlSeconds: 60,
+    maxValueBytes: 65_536,
+    description: 'Volume list/detail snapshots per owner email; invalidated on volume mutation. Short-lived (60s).',
   },
 };
 
