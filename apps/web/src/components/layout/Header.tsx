@@ -1,7 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
-import { FolderArchive, Plus } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { cn } from '../../lib/utils';
+import { Logo } from './Logo';
 
 export function Header({ userEmail, username }: { userEmail: string | null; username?: string | null }) {
   const navigate = useNavigate();
@@ -11,12 +12,8 @@ export function Header({ userEmail, username }: { userEmail: string | null; user
     <header className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface-base)]/95 backdrop-blur">
       <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
         <div className="flex items-center gap-5">
-          <Link to="/" className="flex items-center gap-2 text-xl font-semibold tracking-tight">
-            <FolderArchive className="h-5 w-5 text-[var(--color-accent)]" />
-            <span>
-              <span className="text-[var(--color-accent)]">Dura</span>
-              <span className="text-[var(--color-text-primary)]">DAV</span>
-            </span>
+          <Link to="/" className="flex items-center">
+            <Logo />
           </Link>
 
           {userEmail && (
