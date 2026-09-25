@@ -16,14 +16,6 @@ interface VolumeServiceDeps {
   userDAO?: () => Promise<UserDAO>;
   credentialDAO?: () => Promise<DavCredentialDAO>;
   config?: AppConfiguration;
-  /**
-   * @deprecated Bucket collaborators removed; accepted for backward compat and ignored.
-   */
-  davCollaboratorDAO?: () => Promise<unknown>;
-  /**
-   * @deprecated User-level PAT grants removed; accepted for backward compat and ignored.
-   */
-  tokenVolumeGrantDAO?: () => Promise<unknown>;
 }
 
 const OWNER_RE = /^[a-z0-9][a-z0-9-]*$/i;
@@ -36,15 +28,12 @@ class VolumeService {
     private readonly env: VolumeServiceEnv,
     deps: VolumeServiceDeps = {},
   ) {
-    const rest = { ...deps };
-    delete (rest as { davCollaboratorDAO?: unknown }).davCollaboratorDAO;
-    delete (rest as { tokenVolumeGrantDAO?: unknown }).tokenVolumeGrantDAO;
     this.deps = {
       volumeDAO: () => Promise.resolve(new DavVolumeDAO(env.DB)),
       userDAO: () => Promise.resolve(new UserDAO(env.DB)),
       credentialDAO: () => Promise.resolve(new DavCredentialDAO(env.DB)),
       config: AppConfiguration.fromEnv(env),
-      ...rest,
+      ...deps,
     };
   }
 

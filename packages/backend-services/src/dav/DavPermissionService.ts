@@ -6,30 +6,14 @@ interface DavPermissionServiceEnv {
   DB?: unknown;
 }
 
-interface DavPermissionServiceDeps {
-  /**
-   * @deprecated Bucket collaborators removed; accepted for backward compat and ignored.
-   */
-  davCollaboratorDAO?: () => Promise<unknown>;
-  strictSchema?: boolean;
-  /**
-   * @deprecated Org volumes removed; accepted for backward compat and ignored.
-   */
-  organizationDAO?: () => Promise<unknown>;
-  /**
-   * @deprecated Org volumes removed; accepted for backward compat and ignored.
-   */
-  organizationMemberDAO?: () => Promise<unknown>;
-}
-
+// Owner-only Policy: owner is implicit admin, public buckets allow anon
+// reads, private buckets hide existence. No collaborators, orgs, or grants.
 class DavPermissionService {
-  constructor(_env?: DavPermissionServiceEnv, _deps?: DavPermissionServiceDeps) {}
+  constructor(_env?: DavPermissionServiceEnv) {}
 
   public getRole(viewerEmail: string | null, volume: DavVolumeRow): Promise<DavPermission | null> {
     const isPrivate = Number(volume.is_private) === 1;
-    // Owner-only buckets: owner is implicit admin, no collaborators.
     if (viewerEmail && viewerEmail.toLowerCase() === volume.owner_email.toLowerCase()) return Promise.resolve('admin');
-    // Public buckets allow anonymous reads; private hides existence.
     if (!isPrivate) return Promise.resolve('read');
     return Promise.resolve(null);
   }
