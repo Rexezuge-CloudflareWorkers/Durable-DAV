@@ -7,7 +7,7 @@ import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle } from '../ui/Card';
 import { Label, Textarea } from '../ui/Input';
 import { RefreshButton } from '../shared/RefreshButton';
-import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal';
+import { TypeToConfirmModal } from '../modals/TypeToConfirmModal';
 import { VolumeCredentialsCard } from './VolumeCredentialsCard';
 
 export function VolumeSettingsTab({
@@ -26,11 +26,12 @@ export function VolumeSettingsTab({
   const { t } = useTranslation();
   const [detail, setDetail] = useState<VolumeDetail | null>(null);
   const [description, setDescription] = useState('');
-  const [isPrivate, setIsPrivate] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+  const [confirmingVisibility, setConfirmingVisibility] = useState(false);
+  const [savingVisibility, setSavingVisibility] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -40,7 +41,6 @@ export function VolumeSettingsTab({
         if (cancelled) return;
         setDetail(loaded);
         setDescription(loaded.description ?? '');
-        setIsPrivate(loaded.isPrivate);
         onUpdated(loaded);
       } catch (error) {
         if (cancelled) return;
@@ -55,13 +55,11 @@ export function VolumeSettingsTab({
     };
   }, [owner, volume, showNotice, t, onUpdated]);
 
-  const dirty =
-    detail !== null && (description.trim() !== (detail.description ?? '') || isPrivate !== detail.isPrivate);
+  const dirty = detail !== null && description.trim() !== (detail.description ?? '');
 
   const reset = () => {
     if (!detail) return;
     setDescription(detail.description ?? '');
-    setIsPrivate(detail.isPrivate);
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -70,7 +68,6 @@ export function VolumeSettingsTab({
     try {
       const updated = await updateVolume(owner, volume, {
         description: description.trim() === '' ? null : description.trim(),
-        isPrivate,
       });
       setDetail(updated);
       onUpdated(updated);
@@ -79,6 +76,24 @@ export function VolumeSettingsTab({
       showNotice('error', toLocalizedErrorMessage(t, error, 'errors.failedToUpdateVolume', 'Failed To Update Bucket.'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const fullName = `${owner}/${volume}`;
+
+  const confirmVisibility = async () => {
+    if (!detail) return;
+    setSavingVisibility(true);
+    try {
+      const updated = await updateVolume(owner, volume, { isPrivate: !detail.isPrivate });
+      setDetail(updated);
+      onUpdated(updated);
+      showNotice('success', t('volumes.visibilityUpdated', 'Bucket Visibility Updated.'));
+    } catch (error) {
+      showNotice('error', toLocalizedErrorMessage(t, error, 'errors.failedToUpdateVolume', 'Failed To Update Bucket.'));
+    } finally {
+      setSavingVisibility(false);
+      setConfirmingVisibility(false);
     }
   };
 
@@ -115,21 +130,6 @@ export function VolumeSettingsTab({
               onChange={(e) => setDescription(e.target.value)}
             />
           </div>
-          <label className="flex items-center gap-2.5 text-sm text-[var(--color-text-secondary)] cursor-pointer">
-            <input
-              type="checkbox"
-              checked={isPrivate}
-              onChange={(e) => setIsPrivate(e.target.checked)}
-              className="h-4 w-4 accent-[var(--color-accent)]"
-            />
-            {t('volumes.privateVolume', 'Private Volume')}
-          </label>
-          <p className="text-xs text-[var(--color-text-muted)]">
-            {t(
-              'volumes.visibilityHint',
-              'Private Buckets Need A Bucket Credential For Every Request. Public Buckets Allow Anonymous Reads.',
-            )}
-          </p>
           <div>
             <Button type="submit" variant="primary" size="sm" loading={saving} disabled={!dirty}>
               {t('common.saveChanges', 'Save Changes')}
@@ -144,28 +144,70 @@ export function VolumeSettingsTab({
         <CardHeader>
           <CardTitle>{t('volumes.dangerZone', 'Danger Zone')}</CardTitle>
         </CardHeader>
-        <div className="flex items-center justify-between gap-3 flex-wrap">
-          <div>
-            <p className="text-sm font-medium text-[var(--color-text-primary)]">
-              {t('volumes.deleteThisBucket', 'Delete This Bucket')}
-            </p>
-            <p className="text-sm text-[var(--color-text-secondary)]">
-              {t(
-                'volumes.deleteBucketDescription',
-                'Permanently Deletes The Bucket, Its Files, And Its Credentials. This Cannot Be Undone.',
+        <div className="space-y-4">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
+            <div>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('volumes.changeVisibility', 'Change Visibility')}</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {t(
+                  'volumes.visibilityDescription',
+                  'Changing Visibility Affects Who Can Read This Bucket. Making It Public Exposes Files To Anyone.',
+                )}
+              </p>
+              {detail && (
+                <p className="text-xs text-[var(--color-text-muted)] mt-1">
+                  {t('volumes.currentVisibility', 'Current Visibility: {{visibility}}', {
+                    visibility: detail.isPrivate ? t('volumes.private', 'Private') : t('volumes.public', 'Public'),
+                  })}
+                </p>
               )}
-            </p>
+            </div>
+            <Button variant="danger" size="sm" loading={savingVisibility} onClick={() => setConfirmingVisibility(true)}>
+              {detail?.isPrivate ? t('volumes.makePublic', 'Make Public') : t('volumes.makePrivate', 'Make Private')}
+            </Button>
           </div>
-          <Button variant="danger" size="sm" loading={deleting} onClick={() => setConfirmingDelete(true)}>
-            {t('volumes.deleteBucket', 'Delete Bucket')}
-          </Button>
+          <div className="flex items-center justify-between gap-3 flex-wrap border-t border-[var(--color-border)] pt-4">
+            <div>
+              <p className="text-sm font-medium text-[var(--color-text-primary)]">{t('volumes.deleteThisBucket', 'Delete This Bucket')}</p>
+              <p className="text-sm text-[var(--color-text-secondary)]">
+                {t(
+                  'volumes.deleteBucketDescription',
+                  'Permanently Deletes The Bucket, Its Files, And Its Credentials. This Cannot Be Undone.',
+                )}
+              </p>
+            </div>
+            <Button variant="danger" size="sm" loading={deleting} onClick={() => setConfirmingDelete(true)}>
+              {t('volumes.deleteBucket', 'Delete Bucket')}
+            </Button>
+          </div>
         </div>
       </Card>
 
+      {confirmingVisibility && detail && (
+        <TypeToConfirmModal
+          title={detail.isPrivate ? t('volumes.makePublic', 'Make Public') : t('volumes.makePrivate', 'Make Private')}
+          description={t(
+            'volumes.visibilityDescription',
+            'Changing Visibility Affects Who Can Read This Bucket. Making It Public Exposes Files To Anyone.',
+          )}
+          expectedName={fullName}
+          confirmLabel={detail.isPrivate ? t('volumes.makePublic', 'Make Public') : t('volumes.makePrivate', 'Make Private')}
+          loading={savingVisibility}
+          onConfirm={() => void confirmVisibility()}
+          onCancel={() => setConfirmingVisibility(false)}
+        />
+      )}
+
       {confirmingDelete && (
-        <ConfirmDeleteModal
+        <TypeToConfirmModal
           title={t('volumes.deleteBucket', 'Delete Bucket')}
-          displayName={`${owner}/${volume}`}
+          description={t(
+            'volumes.deleteBucketDescription',
+            'Permanently Deletes The Bucket, Its Files, And Its Credentials. This Cannot Be Undone.',
+          )}
+          expectedName={fullName}
+          confirmLabel={t('volumes.deleteBucket', 'Delete Bucket')}
+          loading={deleting}
           onConfirm={() => void confirmDelete()}
           onCancel={() => setConfirmingDelete(false)}
         />
