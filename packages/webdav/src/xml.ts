@@ -1,4 +1,4 @@
-import { DOMParser } from '@xmldom/xmldom';
+import { DOMParser, XMLSerializer, type Document as XmlDocument, type Element as XmlElement, type Node as XmlNode } from '@xmldom/xmldom';
 import { escapeXml } from './path';
 
 const DAV_NAMESPACE = 'DAV:';
@@ -18,10 +18,11 @@ type ProppatchOperation = {
   property: DeadProperty;
 };
 
-function serializeNodeChildren(node: Node): string {
+function serializeNodeChildren(node: XmlNode): string {
+  const serializer = new XMLSerializer();
   let xml = '';
   for (let child = node.firstChild; child !== null; child = child.nextSibling) {
-    xml += (child as ChildNode & { toString(): string }).toString();
+    xml += serializer.serializeToString(child);
   }
   return xml;
 }
@@ -58,8 +59,9 @@ function renderPropstat(status: string, properties: string[]): string {
   return `\n<propstat>\n<prop>\n${properties.join('\n')}\n</prop>\n<status>${status}</status>\n</propstat>`;
 }
 
-function getElementProperty(element: Element): DeadProperty | null {
+function getElementProperty(element: XmlElement): DeadProperty | null {
   if (element.prefix && (element.namespaceURI === null || element.namespaceURI === '')) return null;
+  if (element.localName === null) return null;
   return {
     namespaceURI: element.namespaceURI ?? '',
     localName: element.localName,
@@ -68,27 +70,27 @@ function getElementProperty(element: Element): DeadProperty | null {
   };
 }
 
-function parseXmlDocument(body: string): Document | null {
+function parseXmlDocument(body: string): XmlDocument | null {
   const errors: string[] = [];
-  const document = new DOMParser({
-    errorHandler: {
-      warning: () => {},
-      error: (message) => {
-        errors.push(message);
+  try {
+    const document = new DOMParser({
+      onError: (level, message) => {
+        if (level === 'error' || level === 'fatalError') {
+          errors.push(message);
+        }
       },
-      fatalError: (message) => {
-        errors.push(message);
-      },
-    },
-  }).parseFromString(body, 'application/xml');
-  if (errors.length > 0) return null;
-  return document;
+    }).parseFromString(body, 'application/xml');
+    if (errors.length > 0) return null;
+    return document;
+  } catch {
+    return null;
+  }
 }
 
-function getChildElements(element: Element): Element[] {
-  const children: Element[] = [];
+function getChildElements(element: XmlElement): XmlElement[] {
+  const children: XmlElement[] = [];
   for (let child = element.firstChild; child !== null; child = child.nextSibling) {
-    if (child.nodeType === child.ELEMENT_NODE) children.push(child as Element);
+    if (child.nodeType === 1) children.push(child as XmlElement);
   }
   return children;
 }
@@ -96,27 +98,29 @@ function getChildElements(element: Element): Element[] {
 function parsePropfindRequest(body: string): PropfindRequest | null {
   if (body.trim() === '') return { mode: 'allprop' };
   const document = parseXmlDocument(body);
-  if (document === null || document.documentElement.localName.toLowerCase() !== 'propfind') return null;
-  const propfindChildren = getChildElements(document.documentElement);
-  if (propfindChildren.some((child) => child.localName.toLowerCase() === 'propname')) return { mode: 'propname' };
-  const propElement = propfindChildren.find((child) => child.localName.toLowerCase() === 'prop');
+  const root = document?.documentElement;
+  if (root === null || root === undefined || (root.localName ?? '').toLowerCase() !== 'propfind') return null;
+  const propfindChildren = getChildElements(root);
+  if (propfindChildren.some((child) => (child.localName ?? '').toLowerCase() === 'propname')) return { mode: 'propname' };
+  const propElement = propfindChildren.find((child) => (child.localName ?? '').toLowerCase() === 'prop');
   if (propElement !== undefined) {
     const properties = getChildElements(propElement).map(getElementProperty);
     if (properties.includes(null)) return null;
     return { mode: 'prop', properties: properties as DeadProperty[] };
   }
-  if (propfindChildren.some((child) => child.localName.toLowerCase() === 'allprop')) return { mode: 'allprop' };
+  if (propfindChildren.some((child) => (child.localName ?? '').toLowerCase() === 'allprop')) return { mode: 'allprop' };
   return null;
 }
 
 function parseProppatchRequest(body: string): { operations: ProppatchOperation[] } | null {
   const document = parseXmlDocument(body);
-  if (document === null || document.documentElement.localName.toLowerCase() !== 'propertyupdate') return null;
+  const root = document?.documentElement;
+  if (root === null || root === undefined || (root.localName ?? '').toLowerCase() !== 'propertyupdate') return null;
   const operations: ProppatchOperation[] = [];
-  for (const actionElement of getChildElements(document.documentElement)) {
-    const action = actionElement.localName.toLowerCase();
+  for (const actionElement of getChildElements(root)) {
+    const action = (actionElement.localName ?? '').toLowerCase();
     if (action !== 'set' && action !== 'remove') continue;
-    const propElement = getChildElements(actionElement).find((child) => child.localName.toLowerCase() === 'prop');
+    const propElement = getChildElements(actionElement).find((child) => (child.localName ?? '').toLowerCase() === 'prop');
     if (propElement === undefined) continue;
     for (const propertyElement of getChildElements(propElement)) {
       const property = getElementProperty(propertyElement);

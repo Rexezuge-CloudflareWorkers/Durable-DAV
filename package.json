@@ -50,6 +50,6 @@
   },
   "packageManager": "pnpm@11.2.2",
   "dependencies": {
-    "@xmldom/xmldom": "^0.8.15"
+    "@xmldom/xmldom": "^0.9.12"
   }
 }
