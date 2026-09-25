@@ -25,14 +25,12 @@ function cacheKeyForVolume(owner: string, volume: string): string {
 function isFresh(request: Request, etag: string | null): boolean {
   if (!etag) return false;
   const incoming = request.headers.get('If-None-Match');
-  if (!incoming) return false;
-  return incoming.split(',').some((part) => part.trim() === etag || part.trim() === '*');
+  return incoming ? incoming.split(',').some((part) => part.trim() === etag || part.trim() === '*') : false;
 }
 
 function cacheControlFor(kind: string): string {
   if (kind === 'file') return 'private, max-age=300, must-revalidate';
-  if (kind === 'propfind') return 'private, max-age=60, must-revalidate';
-  return 'private, max-age=30, must-revalidate';
+  return kind === 'propfind' ? 'private, max-age=60, must-revalidate' : 'private, max-age=30, must-revalidate';
 }
 
 function withEtagHeaders(response: Response, etag: string, cacheControl: string): Response {

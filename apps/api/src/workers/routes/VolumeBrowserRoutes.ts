@@ -31,8 +31,7 @@ function innerFromPath(pathname: string): string {
   // Browser prefix is /user/volumes/:owner/:volume/files[/inner...].
   // Split on '/' so owner/volume case or encoding never breaks extraction.
   const parts = stripSlashes(pathname).split('/');
-  if (parts.length <= 5) return '';
-  return parts.slice(5).join('/');
+  return parts.length <= 5 ? '' : parts.slice(5).join('/');
 }
 
 function rewriteDestination(destinationHeader: string | null, requestUrl: string, davBase: string): string | null {

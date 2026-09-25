@@ -38,11 +38,12 @@ function getDeadPropertyKey(namespaceURI: string, localName: string): string {
 
 function isProtectedProperty(propName: string | DeadProperty): boolean {
   const local = typeof propName === 'string' ? (propName.split(':').pop() ?? propName) : propName.localName;
-  if (LOCK_PROTECTED_NAMES.has(local)) return true;
-  if (typeof propName !== 'string' && propName.namespaceURI === DAV_NAMESPACE) {
-    return ['supportedlock', 'lockdiscovery', 'resourcetype'].includes(local);
-  }
-  return false;
+  return (
+    LOCK_PROTECTED_NAMES.has(local) ||
+    (typeof propName !== 'string' &&
+      propName.namespaceURI === DAV_NAMESPACE &&
+      ['supportedlock', 'lockdiscovery', 'resourcetype'].includes(local))
+  );
 }
 
 function toLiveProperties(node: DavNodeInfo | null): DavLiveProperties {
@@ -80,8 +81,7 @@ function toLiveProperties(node: DavNodeInfo | null): DavLiveProperties {
 }
 
 function getLivePropertyValue(node: DavNodeInfo | null, property: DeadProperty): string | undefined {
-  if (property.namespaceURI !== DAV_NAMESPACE) return undefined;
-  return toLiveProperties(node)[property.localName as keyof DavLiveProperties];
+  return property.namespaceURI === DAV_NAMESPACE ? toLiveProperties(node)[property.localName as keyof DavLiveProperties] : undefined;
 }
 
 function generatePropfindResponse(

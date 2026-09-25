@@ -86,8 +86,7 @@ abstract class BaseRoute {
       const raw = new URL(url).searchParams.get('limit');
       if (raw === null || raw.trim() === '') return def;
       const n = Number(raw.trim());
-      if (!Number.isFinite(n)) return def;
-      return Math.min(max, Math.max(1, Math.floor(n)));
+      return Number.isFinite(n) ? Math.min(max, Math.max(1, Math.floor(n))) : def;
     } catch {
       return def;
     }
@@ -138,10 +137,7 @@ abstract class BaseRoute {
   public static jsonError(c: HonoContext, message: string, status: number): Response;
   public static jsonError(c: HonoContext, type: string, message: string, status: number): Response;
   public static jsonError(c: HonoContext, typeOrMessage: string, messageOrStatus: string | number, status = 400): Response {
-    if (typeof messageOrStatus === 'number') {
-      return c.json({ Exception: { Type: this.toErrorType(messageOrStatus), Message: typeOrMessage } }, messageOrStatus as 400);
-    }
-    return c.json({ Exception: { Type: typeOrMessage, Message: messageOrStatus } }, status as 400);
+    return typeof messageOrStatus === 'number' ? c.json({ Exception: { Type: this.toErrorType(messageOrStatus), Message: typeOrMessage } }, messageOrStatus as 400) : c.json({ Exception: { Type: typeOrMessage, Message: messageOrStatus } }, status as 400);
   }
 
   public static toErrorResponse(c: HonoContext, error: unknown): Response {

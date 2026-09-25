@@ -8,8 +8,7 @@ function escapeXml(value: string): string {
 }
 
 function encodeHrefPath(href: string): string {
-  if (href === '/') return '/';
-  return href
+  return href === '/' ? '/' : href
     .split('/')
     .map((segment, index) => (index === 0 ? segment : encodeURIComponent(segment)))
     .join('/');
@@ -44,8 +43,7 @@ function getParentPath(resourcePath: string): string {
 function parseDestinationPath(destinationHeader: string, requestUrl: string): string | null {
   try {
     const destinationUrl = new URL(destinationHeader, requestUrl);
-    if (destinationUrl.origin !== new URL(requestUrl).origin) return null;
-    return decodeResourcePath(destinationUrl.pathname);
+    return destinationUrl.origin === new URL(requestUrl).origin ? decodeResourcePath(destinationUrl.pathname) : null;
   } catch {
     return null;
   }
@@ -53,8 +51,7 @@ function parseDestinationPath(destinationHeader: string, requestUrl: string): st
 
 function isSameOrDescendantPath(resourcePath: string, destinationPath: string): boolean {
   if (destinationPath === resourcePath) return true;
-  if (resourcePath === '') return destinationPath !== '';
-  return destinationPath.startsWith(`${resourcePath}/`);
+  return resourcePath === '' ? destinationPath !== '' : destinationPath.startsWith(`${resourcePath}/`);
 }
 
 function normalizeVolumeKey(owner: string, name: string): string {
@@ -81,8 +78,7 @@ function splitVolumePath(pathname: string): { owner: string; volume: string; inn
   });
   if (parts.length < 2) return null;
   const [owner, volume, ...rest] = parts;
-  if (!owner || !volume) return null;
-  return { owner, volume, innerPath: rest.join('/') };
+  return !owner || !volume ? null : { owner, volume, innerPath: rest.join('/') };
 }
 
 export {

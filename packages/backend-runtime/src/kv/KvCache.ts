@@ -89,8 +89,7 @@ class KvCache {
     } catch {
       return false;
     }
-    if (typeof raw !== 'string') return false;
-    return this.putText(domain, parts, raw, options);
+    return typeof raw === 'string' && this.putText(domain, parts, raw, options);
   }
 
   public async del(domain: KvDomainName, parts: readonly string[]): Promise<void> {

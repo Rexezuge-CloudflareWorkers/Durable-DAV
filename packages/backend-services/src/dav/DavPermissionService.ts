@@ -14,8 +14,7 @@ class DavPermissionService {
   public getRole(viewerEmail: string | null, volume: DavVolumeRow): Promise<DavPermission | null> {
     const isPrivate = Number(volume.is_private) === 1;
     if (viewerEmail && viewerEmail.toLowerCase() === volume.owner_email.toLowerCase()) return Promise.resolve('admin');
-    if (!isPrivate) return Promise.resolve('read');
-    return Promise.resolve(null);
+    return isPrivate ? Promise.resolve(null) : Promise.resolve('read');
   }
 }
 

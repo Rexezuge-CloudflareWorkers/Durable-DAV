@@ -38,8 +38,7 @@ export function normalizeLanguage(tag: string | null | undefined): SupportedLang
   }
   const base = canonical.split('-', 1)[0]?.toLowerCase() ?? 'en';
   const match = (SUPPORTED_LANGUAGES as readonly string[]).find((l) => l.toLowerCase() === base);
-  if (match) return match as SupportedLanguage;
-  return 'en';
+  return (match || 'en') as SupportedLanguage;
 }
 
 export function detectInitialLanguage(): SupportedLanguage {

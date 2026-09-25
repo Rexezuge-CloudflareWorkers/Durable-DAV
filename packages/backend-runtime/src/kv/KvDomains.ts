@@ -121,8 +121,7 @@ function utf8ByteLength(value: string): number {
 function clampTtl(ttlSeconds: number | undefined, domain: KvDomainName): number | undefined {
   const effective = ttlSeconds ?? KV_DOMAINS[domain].ttlSeconds;
   if (effective === undefined) return undefined;
-  if (!Number.isFinite(effective)) return undefined;
-  return Math.max(KV_MIN_TTL_SECONDS, Math.floor(effective));
+  return Number.isFinite(effective) ? Math.max(KV_MIN_TTL_SECONDS, Math.floor(effective)) : undefined;
 }
 
 export { KV_DOMAINS, KV_KEY_VERSION, KV_MAX_KEY_LENGTH, KV_MIN_TTL_SECONDS, KV_PLATFORM_MAX_VALUE_BYTES };

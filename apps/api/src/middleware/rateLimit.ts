@@ -16,8 +16,7 @@ function clientIp(c: RateLimitContext): string {
   // Local dev without CF headers shares the `unknown` bucket (fail-closed
   // grouping rather than per-spoofed-IP isolation).
   const cfIp = c.req.header('CF-Connecting-IP')?.trim();
-  if (cfIp) return cfIp;
-  return 'unknown';
+  return cfIp || 'unknown';
 }
 
 function getRateLimitBucketCountForTests(): number {
