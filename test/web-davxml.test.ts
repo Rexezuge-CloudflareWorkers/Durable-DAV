@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { generatePropfindResponse } from '@duradav/webdav';
-import type { DavNodeInfo } from '@duradav/webdav';
+import { generatePropfindResponse } from '@durable-dav/webdav';
+import type { DavNodeInfo } from '@durable-dav/webdav';
 import { parseMultistatus, joinDavPath, parentDavPath } from '../apps/web/src/lib/davXml';
 
 function node(key: string, isCollection: boolean, size = 0): DavNodeInfo {

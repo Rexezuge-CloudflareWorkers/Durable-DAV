@@ -1,5 +1,5 @@
 import type { Hono } from 'hono';
-import { Tokens } from '@duradav/backend-services/composition';
+import { Tokens } from '@durable-dav/backend-services/composition';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 
 type UserApp = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;

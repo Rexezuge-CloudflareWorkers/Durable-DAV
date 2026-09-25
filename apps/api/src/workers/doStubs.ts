@@ -1,5 +1,5 @@
-import type { DavVolumeWorker } from '@duradav/background';
-import { normalizeVolumeKey } from '@duradav/webdav';
+import type { DavVolumeWorker } from '@durable-dav/background';
+import { normalizeVolumeKey } from '@durable-dav/webdav';
 
 function getVolumeStub(env: Env, owner: string, volume: string): DurableObjectStub & DavVolumeWorker {
   const ns = (env as unknown as { DAV_VOLUME?: DurableObjectNamespace<DavVolumeWorker> }).DAV_VOLUME;

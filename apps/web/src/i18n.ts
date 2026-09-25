@@ -6,7 +6,7 @@ export const SUPPORTED_LANGUAGES = ['en'] as const;
 
 export type SupportedLanguage = (typeof SUPPORTED_LANGUAGES)[number];
 
-export const LANGUAGE_STORAGE_KEY = 'duradav-lng';
+export const LANGUAGE_STORAGE_KEY = 'durable-dav-lng';
 
 const baseResources = {
   en: { translation: en },
@@ -14,7 +14,7 @@ const baseResources = {
 
 function canonicalizeTag(tag: string): string {
   // Same BCP 47-ish normalization as `../Git` (web ships with 0
-  // `@duradav/*` runtime deps, so the body is intentionally local).
+  // `@durable-dav/*` runtime deps, so the body is intentionally local).
   const normalized = tag.trim().replaceAll('_', '-');
   const parts = normalized.split('-').filter(Boolean);
   if (parts.length === 0) return 'en';

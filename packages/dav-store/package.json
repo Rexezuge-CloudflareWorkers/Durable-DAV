@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/dav-store",
+  "name": "@durable-dav/dav-store",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -12,9 +12,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@duradav/backend-errors": "workspace:*",
-    "@duradav/shared": "workspace:*",
-    "@duradav/webdav": "workspace:*",
+    "@durable-dav/backend-errors": "workspace:*",
+    "@durable-dav/shared": "workspace:*",
+    "@durable-dav/webdav": "workspace:*",
     "dofs": "^0.1.0"
   },
   "devDependencies": {

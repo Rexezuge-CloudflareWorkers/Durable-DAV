@@ -43,12 +43,12 @@ export function listKVNamespaces(): KVNamespace[] {
 }
 
 export function getKVNamespaceName(config: WranglerConfig, binding: string): string {
-  return DEFAULT_KV_NAMESPACE_NAMES[binding] ?? `${config.name ?? 'duradav'}-${binding.toLowerCase()}`;
+  return DEFAULT_KV_NAMESPACE_NAMES[binding] ?? `${config.name ?? 'durable-dav'}-${binding.toLowerCase()}`;
 }
 
 export function ensureKVNamespace(config: WranglerConfig, binding: string): string {
   const namespaceName = getKVNamespaceName(config, binding);
-  const candidateNames = new Set([namespaceName, `${config.name ?? 'duradav'}-${binding}`, binding]);
+  const candidateNames = new Set([namespaceName, `${config.name ?? 'durable-dav'}-${binding}`, binding]);
   let namespace = listKVNamespaces().find((candidate) => {
     const candidateName = candidate.title ?? candidate.name;
     return candidate.id && candidateName && candidateNames.has(candidateName);

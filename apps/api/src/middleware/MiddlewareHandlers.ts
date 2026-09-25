@@ -1,8 +1,8 @@
 import type { Context, Next } from 'hono';
-import { Tokens } from '@duradav/backend-services/composition';
-import type { AccessIdentityContext } from '@duradav/backend-services/auth';
-import { UnauthorizedError, ForbiddenError, DefaultInternalServerError } from '@duradav/backend-errors';
-import { ErrorSanitizationUtil } from '@duradav/shared/utils';
+import { Tokens } from '@durable-dav/backend-services/composition';
+import type { AccessIdentityContext } from '@durable-dav/backend-services/auth';
+import { UnauthorizedError, ForbiddenError, DefaultInternalServerError } from '@durable-dav/backend-errors';
+import { ErrorSanitizationUtil } from '@durable-dav/shared/utils';
 import { BaseRoute } from '../endpoints/IBaseRoute';
 
 type RequestContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;

@@ -5,8 +5,8 @@ import {
   InternalServerError,
   NotFoundError,
   UnauthorizedError,
-} from '@duradav/backend-errors';
-import type { ServiceError, ErrorResponse } from '@duradav/backend-errors';
+} from '@durable-dav/backend-errors';
+import type { ServiceError, ErrorResponse } from '@durable-dav/backend-errors';
 
 // Strategy: `Response` carrying `{Exception:{Type,Message}}` → typed `ServiceError`.
 // Mirrors AWS `ErrorDeserializationUtil`; unknown types degrade to

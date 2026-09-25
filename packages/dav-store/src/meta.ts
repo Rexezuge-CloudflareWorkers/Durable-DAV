@@ -1,4 +1,4 @@
-import type { DeadProperty, LockDetails } from '@duradav/webdav';
+import type { DeadProperty, LockDetails } from '@durable-dav/webdav';
 
 type SqlExecutor = {
   exec: (sql: string, ...params: unknown[]) => unknown;

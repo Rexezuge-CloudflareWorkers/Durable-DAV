@@ -167,7 +167,7 @@ export default tseslint.config(
   },
 
   // --- Import direction guardrails ---
-  // Layer 0: shared — zero @duradav/* deps
+  // Layer 0: shared — zero @durable-dav/* deps
   {
     files: ['packages/shared/**/*.{ts,js}'],
     rules: {
@@ -176,15 +176,15 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@duradav/*'],
-              message: 'shared must not import from other @duradav packages — it is a zero-dependency base layer',
+              group: ['@durable-dav/*'],
+              message: 'shared must not import from other @durable-dav packages — it is a zero-dependency base layer',
             },
           ],
         },
       ],
     },
   },
-  // Layer 0: backend-errors — zero @duradav/* deps
+  // Layer 0: backend-errors — zero @durable-dav/* deps
   {
     files: ['packages/backend-errors/**/*.{ts,js}'],
     rules: {
@@ -193,8 +193,8 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@duradav/*'],
-              message: 'backend-errors must not import from other @duradav packages — it is a zero-dependency base layer',
+              group: ['@durable-dav/*'],
+              message: 'backend-errors must not import from other @durable-dav packages — it is a zero-dependency base layer',
             },
           ],
         },
@@ -210,23 +210,23 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@duradav/backend-data', '@duradav/backend-data/*'],
+              group: ['@durable-dav/backend-data', '@durable-dav/backend-data/*'],
               message: 'backend-runtime must not import from backend-data (higher layer)',
             },
             {
-              group: ['@duradav/webdav', '@duradav/webdav/*'],
+              group: ['@durable-dav/webdav', '@durable-dav/webdav/*'],
               message: 'backend-runtime must not import from git-protocol (higher layer)',
             },
             {
-              group: ['@duradav/dav-store', '@duradav/dav-store/*'],
+              group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
               message: 'backend-runtime must not import from git-service (higher layer)',
             },
             {
-              group: ['@duradav/backend-services', '@duradav/backend-services/*'],
+              group: ['@durable-dav/backend-services', '@durable-dav/backend-services/*'],
               message: 'backend-runtime must not import from backend-services (higher layer)',
             },
-            { group: ['@duradav/api', '@duradav/api/*'], message: 'backend-runtime must not import from apps/api' },
-            { group: ['@duradav/background', '@duradav/background/*'], message: 'backend-runtime must not import from apps/background' },
+            { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'backend-runtime must not import from apps/api' },
+            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'backend-runtime must not import from apps/background' },
           ],
         },
       ],
@@ -241,20 +241,20 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@duradav/backend-runtime', '@duradav/backend-runtime/*'],
+              group: ['@durable-dav/backend-runtime', '@durable-dav/backend-runtime/*'],
               message: 'backend-data must not import from backend-runtime',
             },
-            { group: ['@duradav/webdav', '@duradav/webdav/*'], message: 'backend-data must not import from git-protocol' },
+            { group: ['@durable-dav/webdav', '@durable-dav/webdav/*'], message: 'backend-data must not import from git-protocol' },
             {
-              group: ['@duradav/dav-store', '@duradav/dav-store/*'],
+              group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
               message: 'backend-data must not import from git-service (higher layer)',
             },
             {
-              group: ['@duradav/backend-services', '@duradav/backend-services/*'],
+              group: ['@durable-dav/backend-services', '@durable-dav/backend-services/*'],
               message: 'backend-data must not import services (higher layer)',
             },
-            { group: ['@duradav/api', '@duradav/api/*'], message: 'backend-data must not import from apps/api' },
-            { group: ['@duradav/background', '@duradav/background/*'], message: 'backend-data must not import from apps/background' },
+            { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'backend-data must not import from apps/api' },
+            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'backend-data must not import from apps/background' },
           ],
         },
       ],
@@ -269,23 +269,23 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@duradav/backend-data', '@duradav/backend-data/*'],
+              group: ['@durable-dav/backend-data', '@durable-dav/backend-data/*'],
               message: 'webdav must not import DAOs from backend-data',
             },
             {
-              group: ['@duradav/backend-runtime', '@duradav/backend-runtime/*'],
+              group: ['@durable-dav/backend-runtime', '@durable-dav/backend-runtime/*'],
               message: 'webdav must not import from backend-runtime',
             },
             {
-              group: ['@duradav/dav-store', '@duradav/dav-store/*'],
+              group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
               message: 'webdav must not import from git-service (higher layer)',
             },
             {
-              group: ['@duradav/backend-services', '@duradav/backend-services/*'],
+              group: ['@durable-dav/backend-services', '@durable-dav/backend-services/*'],
               message: 'webdav must not import from backend-services (higher layer)',
             },
-            { group: ['@duradav/api', '@duradav/api/*'], message: 'webdav must not import from apps/api' },
-            { group: ['@duradav/background', '@duradav/background/*'], message: 'webdav must not import from apps/background' },
+            { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'webdav must not import from apps/api' },
+            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'webdav must not import from apps/background' },
           ],
         },
       ],
@@ -300,11 +300,11 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@duradav/backend-services', '@duradav/backend-services/*'],
+              group: ['@durable-dav/backend-services', '@durable-dav/backend-services/*'],
               message: 'dav-store must not import from backend-services (higher layer)',
             },
-            { group: ['@duradav/api', '@duradav/api/*'], message: 'dav-store must not import from apps/api' },
-            { group: ['@duradav/background', '@duradav/background/*'], message: 'dav-store must not import from apps/background' },
+            { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'dav-store must not import from apps/api' },
+            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'dav-store must not import from apps/background' },
           ],
         },
       ],
@@ -318,15 +318,15 @@ export default tseslint.config(
         'error',
         {
           patterns: [
-            { group: ['@duradav/api', '@duradav/api/*'], message: 'backend-services must not import from apps/api' },
-            { group: ['@duradav/background', '@duradav/background/*'], message: 'backend-services must not import from apps/background' },
+            { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'backend-services must not import from apps/api' },
+            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'backend-services must not import from apps/background' },
           ],
         },
       ],
     },
   },
   // Layer 5: apps/api — route through backend-services, not directly to git-service.
-  // apps/api may use @duradav/background (DO bindings re-exported from
+  // apps/api may use @durable-dav/background (DO bindings re-exported from
   // src/index.ts plus the transfer runners used by ImportRoutes/MirrorRoutes);
   // backend-data values stay banned (type-only allowed).
   {
@@ -337,19 +337,19 @@ export default tseslint.config(
         {
           patterns: [
             {
-              group: ['@duradav/dav-store', '@duradav/dav-store/*'],
+              group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
               message:
-                'apps/api must not import git-service directly; use @duradav/webdav + DO RPC via @duradav/background instead',
+                'apps/api must not import git-service directly; use @durable-dav/webdav + DO RPC via @durable-dav/background instead',
             },
             {
-              group: ['@duradav/backend-data/dao', '@duradav/backend-data/dao/*'],
-              message: 'apps/api must not import DAOs directly; use @duradav/backend-services instead (type-only imports are allowed)',
+              group: ['@durable-dav/backend-data/dao', '@durable-dav/backend-data/dao/*'],
+              message: 'apps/api must not import DAOs directly; use @durable-dav/backend-services instead (type-only imports are allowed)',
               allowTypeImports: true,
             },
             {
-              group: ['@duradav/backend-data', '@duradav/backend-data/*'],
+              group: ['@durable-dav/backend-data', '@durable-dav/backend-data/*'],
               message:
-                'apps/api must not import backend-data values directly; use @duradav/backend-services instead (type-only imports are allowed)',
+                'apps/api must not import backend-data values directly; use @durable-dav/backend-services instead (type-only imports are allowed)',
               allowTypeImports: true,
             },
           ],
@@ -364,7 +364,7 @@ export default tseslint.config(
       'no-restricted-imports': [
         'error',
         {
-          patterns: [{ group: ['@duradav/api', '@duradav/api/*'], message: 'apps/background must not import from apps/api' }],
+          patterns: [{ group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'apps/background must not import from apps/api' }],
         },
       ],
     },

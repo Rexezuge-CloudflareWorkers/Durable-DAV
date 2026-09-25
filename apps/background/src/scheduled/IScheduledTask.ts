@@ -1,5 +1,5 @@
-import { TimestampUtil } from '@duradav/shared/utils';
-import { createLogger } from '@duradav/backend-runtime/logger';
+import { TimestampUtil } from '@durable-dav/shared/utils';
+import { createLogger } from '@durable-dav/backend-runtime/logger';
 
 const logger = createLogger('CronTasks');
 

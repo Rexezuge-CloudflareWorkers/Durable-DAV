@@ -14,17 +14,14 @@ const SECURITY_HEADERS: Record<string, string> = {
 };
 
 // Paths carrying bearer secrets or private user data — never cache.
-// Exact-prefix match (not substring) so future `/hooks`-like paths cannot
-// accidentally inherit `no-store`, and secret routes cannot be missed.
-// BREAKING: all `/user/*` JSON is `no-store` by default (collaborators,
-// orgs, notifications, stars/watches, search reflecting private titles).
-// Public `/repos/*` stays cacheable except issues/pulls/audit reflections.
+// All `/user/*` JSON is `no-store` by default (tokens, volumes,
+// collaborators); public volume reads stay cacheable.
 function isSensitiveJsonPath(pathname: string): boolean {
-  if (['/user/tokens', '/user/realtime/ticket', '/user/realtime/inbox-ticket'].includes(pathname)) {
+  if (['/user/tokens'].includes(pathname)) {
     return true;
   }
   if (pathname.startsWith('/user/')) return true;
-  return pathname.includes('/issues') || pathname.includes('/pulls') || pathname.includes('/audit');
+  return false;
 }
 
 /**
@@ -45,8 +42,7 @@ function applySecurityHeaders(c: HeaderContext): void {
       "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
     );
   }
-  // Bearer-secret JSON (PATs, hook secrets, realtime tickets) must never be
-  // cached by browsers or CDNs.
+  // Bearer-secret JSON (PATs) must never be cached by browsers or CDNs.
   try {
     const pathname = new URL(c.req.url).pathname;
     if (isSensitiveJsonPath(pathname)) {

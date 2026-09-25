@@ -1,13 +1,12 @@
 import { BaseDAO } from './BaseDAO';
 import type { D1Queryable } from '../utils/D1Types';
 
-export type NamespaceKind = 'user' | 'org';
+export type NamespaceKind = 'user';
 
 export interface NamespaceRow {
   username_ci: string;
   kind: NamespaceKind;
   user_email: string | null;
-  org_id: string | null;
   created_at: number;
 }
 
@@ -29,14 +28,13 @@ class NamespaceDAO extends BaseDAO {
     usernameCi: string;
     kind: NamespaceKind;
     userEmail?: string | null;
-    orgId?: string | null;
     now: number;
   }): Promise<void> {
     await this.withRetry(
       () =>
         this.database
-          .prepare('INSERT INTO namespaces (username_ci, kind, user_email, org_id, created_at) VALUES (?, ?, ?, ?, ?)')
-          .bind(input.usernameCi, input.kind, input.userEmail ?? null, input.orgId ?? null, input.now)
+          .prepare('INSERT INTO namespaces (username_ci, kind, user_email, created_at) VALUES (?, ?, ?, ?)')
+          .bind(input.usernameCi, input.kind, input.userEmail ?? null, input.now)
           .run(),
       'claim namespace',
     );
@@ -46,14 +44,13 @@ class NamespaceDAO extends BaseDAO {
     usernameCi: string;
     kind: NamespaceKind;
     userEmail?: string | null;
-    orgId?: string | null;
     now: number;
   }): Promise<void> {
     await this.withRetry(
       () =>
         this.database
-          .prepare('INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, org_id, created_at) VALUES (?, ?, ?, ?, ?)')
-          .bind(input.usernameCi, input.kind, input.userEmail ?? null, input.orgId ?? null, input.now)
+          .prepare('INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, created_at) VALUES (?, ?, ?, ?)')
+          .bind(input.usernameCi, input.kind, input.userEmail ?? null, input.now)
           .run(),
       'claim namespace ignore',
     );

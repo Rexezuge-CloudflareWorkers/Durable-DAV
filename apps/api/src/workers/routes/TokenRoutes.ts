@@ -1,6 +1,6 @@
 import type { Hono } from 'hono';
-import { Tokens } from '@duradav/backend-services/composition';
-import { tokenIdSchema } from '@duradav/shared/validation';
+import { Tokens } from '@durable-dav/backend-services/composition';
+import { tokenIdSchema } from '@durable-dav/shared/validation';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 
 type TokenApp = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
@@ -25,7 +25,6 @@ function registerTokenRoutes(app: TokenApp): void {
         scopes: t.scopes,
         tokenPrefix: t.tokenPrefix,
         volumeGrants: t.volumeGrants ?? [],
-        repoGrants: t.repoGrants ?? [],
       })),
     });
   });
@@ -37,13 +36,12 @@ function registerTokenRoutes(app: TokenApp): void {
       expiresInDays?: number;
       scopes?: unknown;
       volumeGrants?: unknown;
-      repoGrants?: unknown;
     } | null;
     if (!body) return c.json({ Exception: { Type: 'BadRequest', Message: 'Invalid JSON body' } }, 400);
     if (!body.name) return c.json({ Exception: { Type: 'BadRequest', Message: 'name is required' } }, 400);
     try {
       const svc = scopeOf(c as never).get(Tokens.TokenService);
-      const created = await svc.createToken(email, body.name, body.expiresInDays, body.scopes, body.volumeGrants, body.repoGrants);
+      const created = await svc.createToken(email, body.name, body.expiresInDays, body.scopes, body.volumeGrants);
       return c.json(created, 201);
     } catch (error) {
       return BaseRoute.toErrorResponse(c as never, error);

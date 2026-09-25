@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/shared",
+  "name": "@durable-dav/shared",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -11,8 +11,6 @@
     "./i18n": "./src/i18n/index.ts",
     "./model": "./src/model/index.ts",
     "./model/*": "./src/model/*.ts",
-    "./realtime": "./src/realtime/index.ts",
-    "./realtime/*": "./src/realtime/*.ts",
     "./utils": "./src/utils/index.ts",
     "./utils/*": "./src/utils/*.ts",
     "./validation": "./src/validation/index.ts",

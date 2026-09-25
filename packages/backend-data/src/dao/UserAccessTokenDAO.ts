@@ -1,6 +1,6 @@
 import { BaseDAO } from './BaseDAO';
 import type { D1Queryable } from '../utils/D1Types';
-import type { TokenScope, UserAccessTokenMetadata } from '@duradav/shared';
+import type { TokenScope, UserAccessTokenMetadata } from '@durable-dav/shared';
 
 export interface TokenRow {
   token_id: string;

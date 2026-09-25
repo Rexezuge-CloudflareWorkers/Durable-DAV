@@ -3,12 +3,12 @@ import {
   DavVolumeDAO,
   TokenVolumeGrantDAO,
   UserDAO,
-} from '@duradav/backend-data/dao';
-import type { DavVolumeRow } from '@duradav/backend-data/dao';
-import type { D1Queryable } from '@duradav/backend-data/utils';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@duradav/backend-errors';
-import { TimestampUtil, UUIDUtil } from '@duradav/shared/utils';
-import { AppConfiguration } from '@duradav/backend-runtime/config';
+} from '@durable-dav/backend-data/dao';
+import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
+import type { D1Queryable } from '@durable-dav/backend-data/utils';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@durable-dav/backend-errors';
+import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
+import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { checkVolumeQuota } from './VolumeCreatePolicy';
 
 interface VolumeServiceEnv {
@@ -80,8 +80,7 @@ class VolumeService {
     description?: string | null;
     isPrivate?: boolean;
     creatorEmail: string;
-  }): Promise<DavVolumeRow> {
-    const owner = VolumeService.normalizeOwner(input.owner);
+  }): Promise<DavVolumeRow> {    const owner = VolumeService.normalizeOwner(input.owner);
     if (!OWNER_RE.test(owner) || owner.length > 39) throw new BadRequestError('Invalid owner name');
     const name = VolumeService.normalizeName(input.name);
     if (!VOLUME_RE.test(name) || name.length > 100) throw new BadRequestError('Invalid volume name');
@@ -94,7 +93,7 @@ class VolumeService {
     }
     const dao = await this.deps.volumeDAO();
     const owned = await dao.listByOwnerEmail(input.creatorEmail.toLowerCase(), 1000).catch(() => []);
-    // Fail-open on outage like Git RepoService: quota is soft, auth stays fail-closed.
+    // Fail-open on outage: quota is soft, auth stays fail-closed.
     checkVolumeQuota(owned.length, this.deps.config.getMaxVolumesPerUser());
     const existing = await dao.getByOwnerName(owner, name).catch(() => null);
     if (existing) throw new BadRequestError('Volume already exists');
@@ -108,9 +107,6 @@ class VolumeService {
       description: input.description ?? null,
       isPrivate: input.isPrivate ?? false,
       now,
-      ownerType: 'user',
-      orgId: null,
-      ownerUserEmail: input.creatorEmail.toLowerCase(),
     });
     const created = await dao.getById(id);
     if (!created) throw new NotFoundError('Volume not found after create');

@@ -97,13 +97,4 @@ abstract class BaseDAO {
   }
 }
 
-abstract class EncryptedDAO extends BaseDAO {
-  constructor(
-    database: D1Queryable,
-    protected readonly masterKey: string,
-  ) {
-    super(database);
-  }
-}
-
-export { BaseDAO, EncryptedDAO };
+export { BaseDAO };

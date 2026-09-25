@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/backend-data",
+  "name": "@durable-dav/backend-data",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -17,8 +17,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@duradav/backend-errors": "workspace:*",
-    "@duradav/shared": "workspace:*"
+    "@durable-dav/backend-errors": "workspace:*",
+    "@durable-dav/shared": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260921.1",

@@ -1,4 +1,4 @@
-import { DatabaseError } from '@duradav/backend-errors';
+import { DatabaseError } from '@durable-dav/backend-errors';
 import { isD1ErrorRetryable } from './D1ErrorClassifier';
 import type { D1Result } from './D1Types';
 

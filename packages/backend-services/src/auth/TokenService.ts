@@ -1,20 +1,17 @@
-import { ConfigurationManager } from '@duradav/backend-runtime/config';
+import { ConfigurationManager } from '@durable-dav/backend-runtime/config';
 import {
   DavVolumeDAO,
-  RepositoryDAO,
-  TokenRepoGrantDAO,
   TokenVolumeGrantDAO,
   UserAccessTokenDAO,
-} from '@duradav/backend-data/dao';
-import type { D1Queryable } from '@duradav/backend-data/utils';
-import { BadRequestError, NotFoundError, UnauthorizedError } from '@duradav/backend-errors';
+} from '@durable-dav/backend-data/dao';
+import type { D1Queryable } from '@durable-dav/backend-data/utils';
+import { BadRequestError, NotFoundError, UnauthorizedError } from '@durable-dav/backend-errors';
 import type {
   TokenScope,
-  TokenRepoGrantMetadata,
   TokenVolumeGrantMetadata,
   UserAccessTokenMetadata,
-} from '@duradav/shared';
-import { TimestampUtil, UUIDUtil, CryptoUtil, mapWithConcurrency } from '@duradav/shared/utils';
+} from '@durable-dav/shared';
+import { TimestampUtil, UUIDUtil, CryptoUtil, mapWithConcurrency } from '@durable-dav/shared/utils';
 import { DEFAULT_TOKEN_SCOPES, TOKEN_SCOPES, coversScope, normalizeTokenScopes } from './TokenScopes';
 
 interface TokenServiceEnv {
@@ -22,7 +19,6 @@ interface TokenServiceEnv {
   MAX_TOKENS_PER_USER?: string;
   MAX_TOKEN_EXPIRY_DAYS?: string;
   MAX_TOKEN_VOLUME_GRANTS?: string;
-  MAX_TOKEN_REPO_GRANTS?: string;
 }
 
 interface CreatedToken {
@@ -39,25 +35,17 @@ interface VolumeGrantInput {
   scope: TokenScope;
 }
 
-interface RepoGrantInput {
-  repositoryId: string;
-  scope: TokenScope;
-}
-
 interface AuthenticatedToken {
   email: string;
   scopes: TokenScope[];
   tokenId: string;
   volumeGrants: VolumeGrantInput[];
-  repoGrants: RepoGrantInput[];
 }
 
 interface TokenServiceDeps {
   tokenDAO?: () => Promise<UserAccessTokenDAO>;
   volumeDAO?: () => Promise<DavVolumeDAO>;
   tokenVolumeGrantDAO?: () => Promise<TokenVolumeGrantDAO>;
-  repositoryDAO?: () => Promise<RepositoryDAO>;
-  tokenGrantDAO?: () => Promise<TokenRepoGrantDAO>;
 }
 
 function tokenPrefixOf(token: string): string {
@@ -75,14 +63,12 @@ class TokenService {
       tokenDAO: () => Promise.resolve(new UserAccessTokenDAO(env.DB)),
       volumeDAO: () => Promise.resolve(new DavVolumeDAO(env.DB)),
       tokenVolumeGrantDAO: () => Promise.resolve(new TokenVolumeGrantDAO(env.DB)),
-      repositoryDAO: () => Promise.resolve(new RepositoryDAO(env.DB)),
-      tokenGrantDAO: () => Promise.resolve(new TokenRepoGrantDAO(env.DB)),
       ...deps,
     };
   }
 
   public static async hashToken(token: string): Promise<string> {
-    return CryptoUtil.sha256Hex(`duradav-pat:${token}`);
+    return CryptoUtil.sha256Hex(`durable-dav-pat:${token}`);
   }
 
   public async authenticateWithPAT(token: string): Promise<AuthenticatedToken> {
@@ -93,18 +79,12 @@ class TokenService {
     if (tokenData) {
       // Best-effort touch: D1 transient failure must not deny a valid token.
       await dao.updateLastUsedByHash(tokenHash, now).catch(() => undefined);
-      // Fail closed: if either grant list cannot be read, deny rather than
-      // treating a scoped token as unrestricted. Unscoped tokens (both lists
-      // empty) keep full access per bucket policy.
+      // Fail closed: if the grant list cannot be read, deny rather than
+      // treating a scoped token as unrestricted. Unscoped tokens (empty
+      // list) keep full access per bucket policy.
       let volumeGrants: Array<{ volume_id: string; scope: TokenScope }>;
       try {
         volumeGrants = await this.deps.tokenVolumeGrantDAO().then((d) => d.listByToken(tokenData.tokenId));
-      } catch {
-        throw new UnauthorizedError('Your personal access token is temporarily unavailable.');
-      }
-      let repoGrants: Array<{ repository_id: string; scope: TokenScope }>;
-      try {
-        repoGrants = await this.deps.tokenGrantDAO().then((d) => d.listByToken(tokenData.tokenId));
       } catch {
         throw new UnauthorizedError('Your personal access token is temporarily unavailable.');
       }
@@ -113,7 +93,6 @@ class TokenService {
         scopes: tokenData.scopes,
         tokenId: tokenData.tokenId,
         volumeGrants: volumeGrants.map((g) => ({ volumeId: g.volume_id, scope: g.scope })),
-        repoGrants: repoGrants.map((g) => ({ repositoryId: g.repository_id, scope: g.scope })),
       };
     }
     throw new UnauthorizedError('Your personal access token is invalid or has expired.');
@@ -164,47 +143,12 @@ class TokenService {
     return resolved;
   }
 
-  private async resolveGrantInputs(grants: unknown): Promise<RepoGrantInput[]> {
-    if (grants === undefined || grants === null) return [];
-    if (!Array.isArray(grants)) throw new BadRequestError('repoGrants must be an array of {owner, name, scope}');
-    const max = ConfigurationManager.transfer.getMaxTokenVolumeGrants(this.env);
-    if (grants.length > max) throw new BadRequestError(`At most ${max} repository grants per token`);
-    // Validate shapes first (fail fast without D1), then batch repo lookups
-    // concurrently (was sequential N+1).
-    const allowedScopes = new Set<string>([...TOKEN_SCOPES, 'repo:read', 'repo:write']);
-    const parsed = grants.map((entry) => {
-      const owner = typeof (entry as { owner?: unknown }).owner === 'string' ? (entry as { owner: string }).owner.trim() : '';
-      const rawName = typeof (entry as { name?: unknown }).name === 'string' ? (entry as { name: string }).name.trim() : '';
-      const name = rawName.toLowerCase().endsWith('.git') ? rawName.slice(0, -4) : rawName;
-      if (!owner || !name) throw new BadRequestError('Each repoGrant needs owner and name');
-      const scope = (entry as { scope?: unknown }).scope;
-      if (typeof scope !== 'string' || !allowedScopes.has(scope)) {
-        throw new BadRequestError(`Each repoGrant scope must be one of ${TOKEN_SCOPES.join(', ')}`);
-      }
-      return { owner, name, scope: scope as TokenScope };
-    });
-    const repoDAO = await this.deps.repositoryDAO();
-    // Fail closed: null means missing repo; `DatabaseError` (outage) propagates.
-    const repos = await mapWithConcurrency(parsed, 10, (p) => repoDAO.getByOwnerAndName(p.owner, p.name));
-    const resolved: RepoGrantInput[] = [];
-    const seen = new Set<string>();
-    for (const [i, p] of parsed.entries()) {
-      const repo = repos.at(i);
-      if (!repo) throw new NotFoundError('Repository not found');
-      if (seen.has(repo.id)) throw new BadRequestError(`Duplicate grant for ${p.owner}/${p.name}`);
-      seen.add(repo.id);
-      resolved.push({ repositoryId: repo.id, scope: p.scope });
-    }
-    return resolved;
-  }
-
   public async createToken(
     userEmail: string,
     name: string,
     expiresInDays?: unknown,
     scopes?: unknown,
     volumeGrants?: unknown,
-    repoGrants?: unknown,
   ): Promise<CreatedToken> {
     const dao = await this.deps.tokenDAO();
     const normalized = userEmail.toLowerCase();
@@ -222,8 +166,7 @@ class TokenService {
       effectiveExpiryInDays = maxExpiryInDays;
     } else {
       // Strict numeric-string handling: only clean integer strings coerce
-      // (matches DeployKeyService's reject-non-number posture for real
-      // numbers while tolerating JSON clients that send "30").
+      // (tolerates JSON clients that send "30").
       let numeric: unknown = expiresInDays;
       if (typeof expiresInDays === 'string') {
         const trimmed = expiresInDays.trim();
@@ -243,7 +186,6 @@ class TokenService {
     }
     const effectiveScopes: TokenScope[] = scopes === undefined ? [...DEFAULT_TOKEN_SCOPES] : normalizeTokenScopes(scopes);
     const resolvedVolumeGrants = await this.resolveVolumeGrantInputs(volumeGrants);
-    const resolvedRepoGrants = await this.resolveGrantInputs(repoGrants);
     const tokenId: string = UUIDUtil.getRandomUUID();
     const token: string = UUIDUtil.getRandomUUIDNoDash() + UUIDUtil.getRandomUUIDNoDash();
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
@@ -278,20 +220,6 @@ class TokenService {
         throw new Error('Failed to persist volume grants for token', { cause: error });
       }
     }
-    if (resolvedRepoGrants.length > 0) {
-      const grantDAO = await this.deps.tokenGrantDAO();
-      try {
-        await grantDAO.setGrants(tokenId, resolvedRepoGrants, now);
-      } catch (error) {
-        // Fail closed: a scoped token whose grants cannot persist must not
-        // silently become unrestricted. Best-effort rollback then throw so
-        // the caller sees 500 (masked) instead of a full-access token.
-        // `cause` preserves the D1 outage stack (why: bare `new Error` lost it).
-        await this.deps.tokenVolumeGrantDAO().then((d) => d.deleteByToken(tokenId).catch(() => undefined));
-        await dao.delete(tokenId, normalized).catch(() => undefined);
-        throw new Error('Failed to persist repository grants for token', { cause: error });
-      }
-    }
     return { tokenId, token, name: trimmedName, expiresAt, scopes: effectiveScopes, prefix };
   }
 
@@ -301,27 +229,14 @@ class TokenService {
     if (tokens.length === 0) return [];
     const volumeGrantDAO = await this.deps.tokenVolumeGrantDAO();
     const volumeDAO = await this.deps.volumeDAO();
-    const grantDAO = await this.deps.tokenGrantDAO();
-    const repoDAO = await this.deps.repositoryDAO();
-    // Perf: concurrent grant + entity fan-out. Fail-closed on grants.
-    const [volumeGrantsByToken, repoGrantsByToken] = await Promise.all([
-      Promise.all(tokens.map((t) => volumeGrantDAO.listByToken(t.tokenId))),
-      Promise.all(tokens.map((t) => grantDAO.listByToken(t.tokenId))),
-    ]);
+    // Perf: concurrent grant fan-out. Fail-closed on grants.
+    const volumeGrantsByToken = await Promise.all(tokens.map((t) => volumeGrantDAO.listByToken(t.tokenId)));
     const allVolumeIds = [...new Set(volumeGrantsByToken.flat().map((g) => g.volume_id))];
     const volumeById = new Map<string, { owner: string; name: string }>();
     await Promise.all(
       allVolumeIds.map(async (id) => {
         const volume = await volumeDAO.getById(id).catch(() => null);
         if (volume) volumeById.set(id, { owner: volume.owner, name: volume.name });
-      }),
-    );
-    const allRepoIds = [...new Set(repoGrantsByToken.flat().map((g) => g.repository_id))];
-    const repoById = new Map<string, { owner: string; name: string }>();
-    await Promise.all(
-      allRepoIds.map(async (id) => {
-        const repo = await repoDAO.getById(id).catch(() => null);
-        if (repo) repoById.set(id, { owner: repo.owner, name: repo.name });
       }),
     );
     return tokens.map((token, i) => {
@@ -339,38 +254,8 @@ class TokenService {
           scope: grant.scope,
         });
       }
-      const repoDetailed: TokenRepoGrantMetadata[] = [];
-      const repoGrants = repoGrantsByToken[i] ?? [];
-      for (const grant of repoGrants) {
-        const repo = repoById.get(grant.repository_id);
-        if (!repo) continue;
-        repoDetailed.push({
-          tokenId: grant.token_id,
-          repositoryId: grant.repository_id,
-          owner: repo.owner,
-          name: repo.name,
-          fullName: `${repo.owner}/${repo.name}`,
-          scope: grant.scope,
-        });
-      }
-      return { ...token, volumeGrants: volumeDetailed, repoGrants: repoDetailed };
+      return { ...token, volumeGrants: volumeDetailed };
     });
-  }
-
-  private async grantMetadata(
-    repoDAO: RepositoryDAO,
-    grant: { token_id: string; repository_id: string; scope: TokenScope },
-  ): Promise<TokenRepoGrantMetadata | null> {
-    const repo = await repoDAO.getById(grant.repository_id).catch(() => null);
-    if (!repo) return null;
-    return {
-      tokenId: grant.token_id,
-      repositoryId: grant.repository_id,
-      owner: repo.owner,
-      name: repo.name,
-      fullName: `${repo.owner}/${repo.name}`,
-      scope: grant.scope,
-    };
   }
 
   public async rotateToken(tokenId: string, userEmail: string): Promise<{ token: string; expiresAt: number; prefix: string }> {
@@ -402,9 +287,8 @@ class TokenService {
     const deleted = await dao.delete(tokenId, userEmail.toLowerCase());
     if (!deleted) throw new NotFoundError('Token not found');
     await this.deps.tokenVolumeGrantDAO().then((d) => d.deleteByToken(tokenId).catch(() => undefined));
-    await this.deps.tokenGrantDAO().then((d) => d.deleteByToken(tokenId).catch(() => undefined));
     // Junction cleanup mirrors the grant cleanup above (never throws: the
-    // row is already gone, orphans are inert until the drop migration).
+    // row is already gone, orphans are inert).
     if (typeof dao.deleteScopes === 'function') {
       await dao.deleteScopes(tokenId).catch(() => undefined);
     }
@@ -412,4 +296,4 @@ class TokenService {
 }
 
 export { TokenService };
-export type { CreatedToken, AuthenticatedToken, VolumeGrantInput, RepoGrantInput, TokenServiceDeps, TokenServiceEnv };
+export type { CreatedToken, AuthenticatedToken, VolumeGrantInput, TokenServiceDeps, TokenServiceEnv };

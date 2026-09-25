@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/backend-errors",
+  "name": "@durable-dav/backend-errors",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",

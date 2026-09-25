@@ -1,4 +1,4 @@
-import { BadRequestError } from '@duradav/backend-errors';
+import { BadRequestError } from '@durable-dav/backend-errors';
 
 const MAX_VOLUME_DESCRIPTION_LENGTH = 500;
 

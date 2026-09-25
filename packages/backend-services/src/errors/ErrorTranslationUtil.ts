@@ -1,4 +1,4 @@
-import type { ServiceError, ErrorResponse } from '@duradav/backend-errors';
+import type { ServiceError, ErrorResponse } from '@durable-dav/backend-errors';
 import { buildBody } from './ErrorMapper';
 
 // Strategy: domain `ServiceError` → transport HTTP exception payload.

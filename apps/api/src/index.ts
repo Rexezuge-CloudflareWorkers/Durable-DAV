@@ -1,10 +1,10 @@
-import { DuraDavWorker } from './workers/DuraDavWorker';
+import { DurableDavWorker } from './workers/DurableDavWorker';
 
-const worker = new DuraDavWorker();
+const worker = new DurableDavWorker();
 
 export default {
   fetch: (request: Request, env: Env, ctx: ExecutionContext) => worker.fetch(request, env, ctx),
   scheduled: (event: ScheduledController, env: Env, ctx: ExecutionContext) => worker.scheduled(event, env, ctx),
 };
 
-export { CronTasksWorker, DavVolumeWorker } from '@duradav/background';
+export { CronTasksWorker, DavVolumeWorker } from '@durable-dav/background';

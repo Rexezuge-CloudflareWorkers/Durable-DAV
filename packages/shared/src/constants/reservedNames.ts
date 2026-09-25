@@ -11,7 +11,7 @@
  * renames, auto-bootstrap, and repo-owner validation reject these names.
  */
 const RESERVED_NAMESPACE_NAMES_LIST: readonly string[] = [
-  // Worker / API roots (DuraDavWorker + public read-model).
+  // Worker / API roots (DurableDavWorker + public read-model).
   'health',
   'docs',
   'repos',

@@ -1,8 +1,8 @@
 import type { Context } from 'hono';
-import { Tokens } from '@duradav/backend-services/composition';
-import type { AuthenticatedToken } from '@duradav/backend-services/auth';
-import { coversScope } from '@duradav/backend-services/auth';
-import { DatabaseError } from '@duradav/backend-errors';
+import { Tokens } from '@durable-dav/backend-services/composition';
+import type { AuthenticatedToken } from '@durable-dav/backend-services/auth';
+import { coversScope } from '@durable-dav/backend-services/auth';
+import { DatabaseError } from '@durable-dav/backend-errors';
 import { BaseRoute } from '../endpoints/IBaseRoute';
 
 type RequestContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
@@ -41,7 +41,7 @@ function getBearerToken(header: string | null): string | null {
 function unauthorizedDav(): Response {
   return new Response('Unauthorized', {
     status: 401,
-    headers: { 'WWW-Authenticate': 'Basic realm="DuraDAV"' },
+    headers: { 'WWW-Authenticate': 'Basic realm="Durable-DAV"' },
   });
 }
 
@@ -125,7 +125,7 @@ async function davAuthForVolumeInner(
   if (!role) {
     // Private hides existence for anon (401), forbidden for authenticated
     if (!viewerEmail) return unauthorizedDav();
-    // Authenticated but no access: 404 to hide existence (Edge-Git public-read-model parity)
+    // Authenticated but no access: 404 to hide existence of private volumes
     return new Response('Not Found', { status: 404 });
   }
   if (needWrite && role === 'read') return new Response('Forbidden', { status: 403 });

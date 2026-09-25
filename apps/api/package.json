@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/api",
+  "name": "@durable-dav/api",
   "version": "0.1.0",
   "private": true,
   "main": "src/index.ts",
@@ -7,13 +7,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@duradav/backend-data": "workspace:*",
-    "@duradav/backend-errors": "workspace:*",
-    "@duradav/backend-runtime": "workspace:*",
-    "@duradav/backend-services": "workspace:*",
-    "@duradav/background": "workspace:*",
-    "@duradav/shared": "workspace:*",
-    "@duradav/webdav": "workspace:*",
+    "@durable-dav/backend-data": "workspace:*",
+    "@durable-dav/backend-errors": "workspace:*",
+    "@durable-dav/backend-runtime": "workspace:*",
+    "@durable-dav/backend-services": "workspace:*",
+    "@durable-dav/background": "workspace:*",
+    "@durable-dav/shared": "workspace:*",
+    "@durable-dav/webdav": "workspace:*",
     "chanfana": "3.4.0",
     "hono": "4.13.8",
     "zod": "4.6.5"

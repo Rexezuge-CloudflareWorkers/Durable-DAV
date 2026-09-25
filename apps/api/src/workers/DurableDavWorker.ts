@@ -1,10 +1,10 @@
-import { AbstractEntrypointWorker } from '@duradav/backend-runtime/base';
+import { AbstractEntrypointWorker } from '@durable-dav/backend-runtime/base';
 import { fromHono } from 'chanfana';
 import type { HonoOpenAPIRouterType } from 'chanfana';
 import { Hono } from 'hono';
 import { MiddlewareHandlers, securityHeaders } from '@/middleware';
 import { scopeMiddleware } from '@/middleware/scopeMiddleware';
-import { RESERVED_NAMESPACE_NAMES } from '@duradav/shared/constants';
+import { RESERVED_NAMESPACE_NAMES } from '@durable-dav/shared/constants';
 import { registerDavRoutes } from './routes/DavRoutes';
 import { registerVolumeRoutes } from './routes/VolumeRoutes';
 import { registerTokenRoutes } from './routes/TokenRoutes';
@@ -20,7 +20,7 @@ function acceptsHtml(request: Request): boolean {
   return (request.headers.get('Accept') ?? '').includes('text/html');
 }
 
-class DuraDavWorker extends AbstractEntrypointWorker {
+class DurableDavWorker extends AbstractEntrypointWorker {
   protected readonly app: AppRouter;
 
   constructor() {
@@ -37,7 +37,7 @@ class DuraDavWorker extends AbstractEntrypointWorker {
       return c.json({ Exception: { Type: 'InternalServerError', Message: 'Internal Server Error.' } }, 500);
     });
 
-    app.get('/health', (c) => c.json({ ok: true, service: 'duradav' }));
+    app.get('/health', (c) => c.json({ ok: true, service: 'durable-dav' }));
 
     // Web SPA shell (Vite build embeds `apps/web/dist/index.html` into
     // `apps/api/src/generated/spa-shell.ts`; no per-request scope needed).
@@ -103,4 +103,4 @@ class DuraDavWorker extends AbstractEntrypointWorker {
   }
 }
 
-export { DuraDavWorker };
+export { DurableDavWorker };

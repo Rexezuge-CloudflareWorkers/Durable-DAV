@@ -1,5 +1,5 @@
 {
-  "name": "@duradav/background",
+  "name": "@durable-dav/background",
   "version": "0.1.0",
   "private": true,
   "main": "./src/index.ts",
@@ -15,13 +15,13 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@duradav/backend-data": "workspace:*",
-    "@duradav/backend-errors": "workspace:*",
-    "@duradav/backend-runtime": "workspace:*",
-    "@duradav/backend-services": "workspace:*",
-    "@duradav/dav-store": "workspace:*",
-    "@duradav/shared": "workspace:*",
-    "@duradav/webdav": "workspace:*"
+    "@durable-dav/backend-data": "workspace:*",
+    "@durable-dav/backend-errors": "workspace:*",
+    "@durable-dav/backend-runtime": "workspace:*",
+    "@durable-dav/backend-services": "workspace:*",
+    "@durable-dav/dav-store": "workspace:*",
+    "@durable-dav/shared": "workspace:*",
+    "@durable-dav/webdav": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "26.6.2",

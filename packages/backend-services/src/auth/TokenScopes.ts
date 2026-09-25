@@ -1,5 +1,5 @@
-import { BadRequestError } from '@duradav/backend-errors';
-import type { TokenScope } from '@duradav/shared';
+import { BadRequestError } from '@durable-dav/backend-errors';
+import type { TokenScope } from '@durable-dav/shared';
 
 const TOKEN_SCOPES: readonly TokenScope[] = ['dav:read', 'dav:write', 'admin'];
 

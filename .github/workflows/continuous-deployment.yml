@@ -66,7 +66,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
 
       - name: Build Web App
-        run: pnpm --filter @duradav/web build
+        run: pnpm --filter @durable-dav/web build
 
       - name: Deploy with Wrangler
         uses: ./.github/actions/retry-step
@@ -92,7 +92,7 @@ jobs:
         uses: ./.github/actions/setup-env
 
       - name: Build Frontend
-        run: pnpm --filter @duradav/web build
+        run: pnpm --filter @durable-dav/web build
 
       - name: Configure Pages Service Bindings
         run: cp apps/web/wrangler.template.jsonc wrangler.jsonc

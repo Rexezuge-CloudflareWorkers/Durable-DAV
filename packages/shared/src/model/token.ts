@@ -11,5 +11,4 @@ export interface UserAccessTokenMetadata {
   scopes: TokenScope[];
   tokenPrefix: string | null;
   volumeGrants?: import('./transfer').TokenVolumeGrantMetadata[];
-  repoGrants?: import('./transfer').TokenRepoGrantMetadata[];
 }

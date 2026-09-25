@@ -2,18 +2,18 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import { setupIntegrationTest, ensureUser } from '../helpers/setup';
 
-describe('DuraDAV lifecycle (volumes + WebDAV Class 1/2)', () => {
+describe('Durable-DAV lifecycle (volumes + WebDAV Class 1/2)', () => {
   beforeAll(async () => {
     const testEnv = env as unknown as { DB: D1Database } & Record<string, unknown>;
     await setupIntegrationTest(testEnv, 'test@example.com');
     await ensureUser(testEnv.DB, 'test@example.com', 'test');
   });
 
-  it('health reports duradav', async () => {
+  it('health reports durable-dav', async () => {
     const res = await SELF.fetch('https://example.com/health');
     expect(res.status).toBe(200);
     const body = (await res.json()) as { service: string };
-    expect(body.service).toBe('duradav');
+    expect(body.service).toBe('durable-dav');
   });
 
   it('creates a volume and speaks OPTIONS/PROPFIND (Class 1)', async () => {
@@ -47,13 +47,13 @@ describe('DuraDAV lifecycle (volumes + WebDAV Class 1/2)', () => {
     const put = await SELF.fetch('https://example.com/test/photos/dir/hello.txt', {
       method: 'PUT',
       headers: { 'Content-Type': 'text/plain' },
-      body: 'hello duradav',
+      body: 'hello durable-dav',
     });
     expect([201, 204]).toContain(put.status);
 
     const get = await SELF.fetch('https://example.com/test/photos/dir/hello.txt');
     expect(get.status).toBe(200);
-    expect(await get.text()).toBe('hello duradav');
+    expect(await get.text()).toBe('hello durable-dav');
   });
 
   it('LOCK/UNLOCK round-trip (Class 2)', async () => {

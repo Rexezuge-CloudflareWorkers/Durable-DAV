@@ -1,6 +1,6 @@
 import type { Context, Next } from 'hono';
-import { createServiceContext, setRequestScope, asScopedContext } from '@duradav/backend-runtime/di';
-import { createRequestScope } from '@duradav/backend-services/composition';
+import { createServiceContext, setRequestScope, asScopedContext } from '@durable-dav/backend-runtime/di';
+import { createRequestScope } from '@durable-dav/backend-services/composition';
 
 type ScopeContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
 

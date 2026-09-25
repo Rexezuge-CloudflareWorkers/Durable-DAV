@@ -14,10 +14,10 @@
     "strict": true,
     "skipLibCheck": true,
     "paths": {
-      "@duradav/backend-errors": ["../backend-errors/src"],
-      "@duradav/backend-errors/*": ["../backend-errors/src/*"],
-      "@duradav/shared": ["../shared/src"],
-      "@duradav/shared/*": ["../shared/src/*"]
+      "@durable-dav/backend-errors": ["../backend-errors/src"],
+      "@durable-dav/backend-errors/*": ["../backend-errors/src/*"],
+      "@durable-dav/shared": ["../shared/src"],
+      "@durable-dav/shared/*": ["../shared/src/*"]
     }
   },
   "include": ["src/**/*.ts"],

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AccessAuthService } from '@duradav/backend-services/auth';
+import { AccessAuthService } from '@durable-dav/backend-services/auth';
 
 describe('AccessAuthService', () => {
   it('returns DEV_AUTH_EMAIL bypass', async () => {

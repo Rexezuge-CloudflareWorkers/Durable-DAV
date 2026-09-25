@@ -1,4 +1,4 @@
-# `@duradav/webdav` — Pure RFC 4918 Helpers
+# `@durable-dav/webdav` — Pure RFC 4918 Helpers
 
 Zero-runtime-dependency WebDAV core (except `@xmldom/xmldom` for XML parsing). No `dofs`, no D1, no DO — unit-testable in Node.
 
