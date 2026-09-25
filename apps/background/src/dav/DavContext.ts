@@ -5,8 +5,7 @@ import { stripSlashes } from '@durable-dav/webdav';
 // traversal edge cases and made unit testing impossible).
 
 function fsPathOf(innerPath: string): string {
-  if (innerPath === '') return '/';
-  return `/${innerPath}`;
+  return innerPath === '' ? '/' : `/${innerPath}`;
 }
 
 function hrefOf(base: string, innerPath: string, isCollection: boolean): string {
@@ -52,8 +51,7 @@ function resolveInnerPath(request: Request, url: URL, base: string): string {
     return decodeSegments(stripSlashes(pathname.slice(base.length)));
   }
   const parts = stripSlashes(pathname).split('/');
-  if (parts.length >= 3) return decodeSegments(parts.slice(2).join('/'));
-  return '';
+  return parts.length >= 3 ? decodeSegments(parts.slice(2).join('/')) : '';
 }
 
 /**
@@ -70,10 +68,7 @@ function stripBase(full: string, base: string): string | null {
   if (baseTrim !== '' && fullLower.startsWith(`${baseLower}/`)) return full.slice(baseTrim.length + 1);
   if (!full.includes('/')) return full;
   const parts = full.split('/');
-  if (parts.length >= 2 && `${parts[0]}/${parts[1]}`.toLowerCase() === baseTrim.toLowerCase()) {
-    return parts.slice(2).join('/');
-  }
-  return null;
+  return parts.length >= 2 && `${parts[0]}/${parts[1]}`.toLowerCase() === baseTrim.toLowerCase() ? parts.slice(2).join('/') : null;
 }
 
 export { fsPathOf, hrefOf, isValidInnerPath, resolveInnerPath, stripBase };

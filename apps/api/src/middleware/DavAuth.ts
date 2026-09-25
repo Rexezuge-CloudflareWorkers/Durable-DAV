@@ -29,8 +29,7 @@ function getBasicCredentials(header: string | null): { username: string; passwor
     if (idx === -1) return null;
     const username = decoded.slice(0, idx).trim();
     const password = decoded.slice(idx + 1);
-    if (!username || !password) return null;
-    return { username, password };
+    return !username || !password ? null : { username, password };
   } catch {
     return null;
   }

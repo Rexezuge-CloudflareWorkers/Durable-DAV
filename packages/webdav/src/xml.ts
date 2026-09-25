@@ -55,8 +55,7 @@ function renderEmptyPropertyElement(property: DeadProperty): string {
 }
 
 function renderPropstat(status: string, properties: string[]): string {
-  if (properties.length === 0) return '';
-  return `\n<propstat>\n<prop>\n${properties.join('\n')}\n</prop>\n<status>${status}</status>\n</propstat>`;
+  return properties.length === 0 ? '' : `\n<propstat>\n<prop>\n${properties.join('\n')}\n</prop>\n<status>${status}</status>\n</propstat>`;
 }
 
 function getElementProperty(element: XmlElement): DeadProperty | null {
@@ -80,8 +79,7 @@ function parseXmlDocument(body: string): XmlDocument | null {
         }
       },
     }).parseFromString(body, 'application/xml');
-    if (errors.length > 0) return null;
-    return document;
+    return errors.length > 0 ? null : document;
   } catch {
     return null;
   }
@@ -105,11 +103,9 @@ function parsePropfindRequest(body: string): PropfindRequest | null {
   const propElement = propfindChildren.find((child) => (child.localName ?? '').toLowerCase() === 'prop');
   if (propElement !== undefined) {
     const properties = getChildElements(propElement).map(getElementProperty);
-    if (properties.includes(null)) return null;
-    return { mode: 'prop', properties: properties as DeadProperty[] };
+    return properties.includes(null) ? null : { mode: 'prop', properties: properties as DeadProperty[] };
   }
-  if (propfindChildren.some((child) => (child.localName ?? '').toLowerCase() === 'allprop')) return { mode: 'allprop' };
-  return null;
+  return propfindChildren.some((child) => (child.localName ?? '').toLowerCase() === 'allprop') ? { mode: 'allprop' } : null;
 }
 
 function parseProppatchRequest(body: string): { operations: ProppatchOperation[] } | null {

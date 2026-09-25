@@ -64,8 +64,7 @@ function normalizeBackendLocale(locale: string | null | undefined): SupportedBac
   const base = canonical.split('-', 1)[0]?.toLowerCase() ?? 'en';
   if (base === 'zh') return 'zh-CN';
   const match = (SUPPORTED_BACKEND_LOCALES as readonly string[]).find((l) => l.toLowerCase() === base);
-  if (match) return match as SupportedBackendLocale;
-  return 'en';
+  return (match || 'en') as SupportedBackendLocale;
 }
 
 export type {

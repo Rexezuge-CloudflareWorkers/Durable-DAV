@@ -30,8 +30,7 @@ function demoModeStrategy(env: AccessAuthEnv): Promise<string | null> {
 }
 
 function isValidAuthEmail(raw: string): boolean {
-  if (!raw || /\s/.test(raw)) return false;
-  return isValidEmailFormat(raw);
+  return raw !== '' && !/\s/.test(raw) && isValidEmailFormat(raw);
 }
 
 function devEmailStrategy(env: AccessAuthEnv): Promise<string | null> {
@@ -40,8 +39,7 @@ function devEmailStrategy(env: AccessAuthEnv): Promise<string | null> {
   if (!raw) return Promise.resolve(null);
   // Fail closed on malformed bypass emails — fall through to JWT instead of
   // authenticating an invalid identity.
-  if (!isValidAuthEmail(raw)) return Promise.resolve(null);
-  return Promise.resolve(raw.toLowerCase());
+  return isValidAuthEmail(raw) ? Promise.resolve(raw.toLowerCase()) : Promise.resolve(null);
 }
 
 async function accessJwtStrategy(env: AccessAuthEnv, request: Request): Promise<string | null> {
@@ -65,8 +63,7 @@ async function accessCtxStrategy(_env: AccessAuthEnv, _request: Request, accessC
   // unverified identity must never authenticate.
   if (identity?.emailVerified === false || identity?.email_verified === false) return null;
   const raw = identity?.email?.trim().toLowerCase() ?? '';
-  if (!isValidAuthEmail(raw)) return null;
-  return raw;
+  return isValidAuthEmail(raw) ? raw : null;
 }
 
 const DEFAULT_ACCESS_AUTH_STRATEGIES: readonly AccessAuthStrategy[] = [

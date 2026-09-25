@@ -57,16 +57,14 @@ function nowMs(): number {
 function stringField(row: SqlRow, key: string, fallback = ''): string {
   const value = row[key];
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
-  return fallback;
+  return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint' ? String(value) : fallback;
 }
 
 function nullableStringField(row: SqlRow, key: string): string | undefined {
   const value = row[key];
   if (value == null) return undefined;
   if (typeof value === 'string') return value;
-  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
-  return undefined;
+  return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint' ? String(value) : undefined;
 }
 
 function pruneExpiredLocks(sql: DurableSqlStorage, now = nowMs()): void {

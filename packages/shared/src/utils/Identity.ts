@@ -7,8 +7,7 @@
 const EMAIL_FORMAT_RE = /^[^@\s]+@[^\s@][^\s.@]*\.[^\s@]+$/;
 
 function isValidEmailFormat(raw: string): boolean {
-  if (!raw || raw.length > 254) return false;
-  return EMAIL_FORMAT_RE.test(raw);
+  return raw !== '' && raw.length <= 254 && EMAIL_FORMAT_RE.test(raw);
 }
 
 class EmailAddress {

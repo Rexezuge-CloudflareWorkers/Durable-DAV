@@ -16,8 +16,7 @@ function forwardLockHeaders(request: Request): Headers {
 // `Overwrite` is case-insensitive per RFC 4918 (`T`/`F`); default is `T`.
 function isOverwriteAllowed(request: Request): boolean {
   const raw = request.headers.get('Overwrite');
-  if (raw === null) return true;
-  return raw.trim().toUpperCase() !== 'F';
+  return raw === null || raw.trim().toUpperCase() !== 'F';
 }
 
 async function handleCopy(

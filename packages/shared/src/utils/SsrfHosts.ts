@@ -12,8 +12,7 @@ const MAX_URL_LENGTH = 2048;
 
 function stripBrackets(host: string): string {
   const h = host.trim();
-  if (h.startsWith('[') && h.endsWith(']')) return h.slice(1, -1);
-  return h;
+  return h.startsWith('[') && h.endsWith(']') ? h.slice(1, -1) : h;
 }
 
 function stripTrailingDot(host: string): string {
@@ -25,24 +24,14 @@ function stripTrailingDot(host: string): string {
 
 function isEncodedNumericHost(host: string): boolean {
   const h = host.toLowerCase();
-  if (/^0x[\da-f]+$/i.test(h)) return true;
-  if (/^\d+$/.test(h)) return true;
-  if (/^0[0-7]+(?:\.0[0-7]+)+$/.test(h)) return true;
-  if (/^0x[\da-f.]+$/i.test(h)) return true;
+  if (/^0x[\da-f]+$/i.test(h) || /^\d+$/.test(h) || /^0[0-7]+(?:\.0[0-7]+)+$/.test(h) || /^0x[\da-f.]+$/i.test(h)) return true;
   if (/^[\d.]+$/.test(h) && !/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(h)) return true;
   return false;
 }
 
 function isBlockedIpv6Host(host: string): boolean {
   const h = host.toLowerCase();
-  if (h === '::' || h === '::1') return true;
-  if (h.startsWith('::ffff:')) return true;
-  if (/^::ffff:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/i.test(h)) return true;
-  if (h.startsWith('fc') || h.startsWith('fd')) return true;
-  if (/^fe[89ab]/i.test(h)) return true;
-  if (h.startsWith('ff')) return true;
-  if (h.startsWith('fe80:')) return true;
-  return false;
+  return (h === '::' || h === '::1' || h.startsWith('::ffff:') || /^::ffff:\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/i.test(h) || h.startsWith('fc') || h.startsWith('fd') || /^fe[89ab]/i.test(h) || h.startsWith('ff') || h.startsWith('fe80:'));
 }
 
 function isLoopbackHost(host: string): boolean {

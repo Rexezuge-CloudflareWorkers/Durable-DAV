@@ -56,8 +56,7 @@ function pickTag(block: string, local: string): string | null {
     contentStart = exactAt + exact.length;
   }
   const end = block.indexOf(`</${local}>`, contentStart);
-  if (end === -1) return null;
-  return stripTags(block.slice(contentStart, end)).trim();
+  return end === -1 ? null : stripTags(block.slice(contentStart, end)).trim();
 }
 
 function splitResponses(xml: string): string[] {
