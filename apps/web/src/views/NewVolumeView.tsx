@@ -20,7 +20,7 @@ export function NewVolumeView({
   const { t } = useTranslation();
   const [owner, setOwner] = useState(defaultOwner);
   const [name, setName] = useState('');
-  const [isPrivate, setIsPrivate] = useState(false);
+  const [isPrivate, setIsPrivate] = useState(true);
   const [saving, setSaving] = useState(false);
 
   const submit = async (e: React.FormEvent) => {

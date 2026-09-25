@@ -1,20 +1,13 @@
-import type {
-  DavCollaboratorDAO,
-  DavVolumeDAO,
-  NamespaceDAO,
-  TokenVolumeGrantDAO,
-  UserAccessTokenDAO,
-  UserDAO,
-} from '@durable-dav/backend-data/dao';
+import type { DavCredentialDAO, DavVolumeDAO, NamespaceDAO, UserDAO } from '@durable-dav/backend-data/dao';
 import type { D1Queryable } from '@durable-dav/backend-data/utils';
 import type { Token } from '@durable-dav/backend-runtime/di';
 import type { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import type { KvCache } from '@durable-dav/backend-runtime/kv';
 import type { AccessAuthService } from '../auth/AccessAuthService';
-import type { TokenService } from '../auth/TokenService';
 import type { UserService } from '../user/UserService';
 import type { DavPermissionService } from '../dav/DavPermissionService';
 import type { VolumeService } from '../dav/VolumeService';
+import type { VolumeCredentialService } from '../dav/VolumeCredentialService';
 
 // Central token registry for the per-request composition root
 // (`requestScope.ts`). Call sites resolve services via
@@ -32,16 +25,14 @@ const Tokens = {
   KvCache: Symbol('KvCache') as Token<KvCache>,
   AppConfig: Symbol('AppConfig') as Token<AppConfiguration>,
   UserDAO: Symbol('UserDAO') as Token<() => Promise<UserDAO>>,
-  UserAccessTokenDAO: Symbol('UserAccessTokenDAO') as Token<() => Promise<UserAccessTokenDAO>>,
   NamespaceDAO: Symbol('NamespaceDAO') as Token<() => Promise<NamespaceDAO>>,
-  TokenVolumeGrantDAO: Symbol('TokenVolumeGrantDAO') as Token<() => Promise<TokenVolumeGrantDAO>>,
   DavVolumeDAO: Symbol('DavVolumeDAO') as Token<() => Promise<DavVolumeDAO>>,
-  DavCollaboratorDAO: Symbol('DavCollaboratorDAO') as Token<() => Promise<DavCollaboratorDAO>>,
+  DavCredentialDAO: Symbol('DavCredentialDAO') as Token<() => Promise<DavCredentialDAO>>,
   AccessAuthService: Symbol('AccessAuthService') as Token<AccessAuthService>,
-  TokenService: Symbol('TokenService') as Token<TokenService>,
   UserService: Symbol('UserService') as Token<UserService>,
   DavPermissionService: Symbol('DavPermissionService') as Token<DavPermissionService>,
   VolumeService: Symbol('VolumeService') as Token<VolumeService>,
+  VolumeCredentialService: Symbol('VolumeCredentialService') as Token<VolumeCredentialService>,
 } satisfies Record<string, Token<unknown>>;
 
 export { Tokens };

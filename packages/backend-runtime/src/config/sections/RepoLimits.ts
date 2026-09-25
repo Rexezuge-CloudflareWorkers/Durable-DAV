@@ -14,6 +14,9 @@ import {
   DEFAULT_MAX_SNIPPETS_PER_USER,
   DEFAULT_MAX_FILES_PER_SNIPPET,
   DEFAULT_MAX_SNIPPET_BYTES,
+  DEFAULT_MAX_CREDENTIALS_PER_VOLUME,
+  DEFAULT_DEFAULT_CREDENTIAL_EXPIRY_DAYS,
+  DEFAULT_MAX_CREDENTIAL_EXPIRY_DAYS,
 } from '../ConfigurationDefaults';
 
 // Repository / identity limits.
@@ -34,6 +37,18 @@ class RepoLimits {
 
   public getMaxTokenExpiryDays(): number {
     return EnvParser.positiveInt(this.env, 'MAX_TOKEN_EXPIRY_DAYS', DEFAULT_MAX_TOKEN_EXPIRY_DAYS);
+  }
+
+  public getMaxCredentialsPerVolume(): number {
+    return EnvParser.positiveInt(this.env, 'MAX_CREDENTIALS_PER_VOLUME', DEFAULT_MAX_CREDENTIALS_PER_VOLUME);
+  }
+
+  public getDefaultCredentialExpiryDays(): number {
+    return EnvParser.positiveInt(this.env, 'DEFAULT_CREDENTIAL_EXPIRY_DAYS', DEFAULT_DEFAULT_CREDENTIAL_EXPIRY_DAYS);
+  }
+
+  public getMaxCredentialExpiryDays(): number {
+    return EnvParser.positiveInt(this.env, 'MAX_CREDENTIAL_EXPIRY_DAYS', DEFAULT_MAX_CREDENTIAL_EXPIRY_DAYS);
   }
 
   public getMaxTokenVolumeGrants(): number {

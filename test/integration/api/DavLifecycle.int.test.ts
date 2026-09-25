@@ -2,7 +2,11 @@ import { describe, expect, it, beforeAll } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import { setupIntegrationTest, ensureUser } from '../helpers/setup';
 
-describe('Durable-DAV lifecycle (volumes + WebDAV Class 1/2)', () => {
+function basic(username: string, password: string): Record<string, string> {
+  return { Authorization: `Basic ${btoa(`${username}:${password}`)}` };
+}
+
+describe('Durable-DAV lifecycle (buckets + WebDAV Class 1/2)', () => {
   beforeAll(async () => {
     const testEnv = env as unknown as { DB: D1Database } & Record<string, unknown>;
     await setupIntegrationTest(testEnv, 'test@example.com');
@@ -16,22 +20,46 @@ describe('Durable-DAV lifecycle (volumes + WebDAV Class 1/2)', () => {
     expect(body.service).toBe('durable-dav');
   });
 
-  it('creates a volume and speaks OPTIONS/PROPFIND (Class 1)', async () => {
+  it('creates a private-by-default bucket, credentials, and speaks OPTIONS/PROPFIND', async () => {
     const create = await SELF.fetch('https://example.com/user/volumes', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ owner: 'test', name: 'photos', isPrivate: false }),
+      body: JSON.stringify({ owner: 'test', name: 'photos' }),
     });
     expect([201, 400]).toContain(create.status);
+    if (create.status === 201) {
+      const created = (await create.json()) as { isPrivate?: boolean };
+      expect(created.isPrivate).toBe(true);
+    }
 
-    const options = await SELF.fetch('https://example.com/test/photos/', { method: 'OPTIONS' });
+    // Mint a bucket credential via the API.
+    const minted = await SELF.fetch('https://example.com/user/volumes/test/photos/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'integration' }),
+    });
+    expect(minted.status).toBe(201);
+    const { username, password } = (await minted.json()) as { username: string; password: string };
+    expect(username.startsWith('photos-')).toBe(true);
+    expect(password.startsWith('ddav_')).toBe(true);
+
+    // Wrong username with valid password shape is rejected (username validated).
+    const badUser = await SELF.fetch('https://example.com/test/photos/', {
+      method: 'PROPFIND',
+      headers: { ...basic('photos-wrong-user-0000', password), Depth: '0', 'Content-Type': 'application/xml' },
+      body: '<?xml version="1.0"?><propfind xmlns="DAV:"><allprop/></propfind>',
+    });
+    expect(badUser.status).toBe(401);
+
+    const auth = basic(username, password);
+    const options = await SELF.fetch('https://example.com/test/photos/', { method: 'OPTIONS', headers: auth });
     expect(options.status).toBe(200);
     expect(options.headers.get('DAV')).toContain('1');
     expect(options.headers.get('DAV')).toContain('2');
 
     const propfind = await SELF.fetch('https://example.com/test/photos/', {
       method: 'PROPFIND',
-      headers: { Depth: '0', 'Content-Type': 'application/xml' },
+      headers: { ...auth, Depth: '0', 'Content-Type': 'application/xml' },
       body: '<?xml version="1.0"?><propfind xmlns="DAV:"><allprop/></propfind>',
     });
     expect(propfind.status).toBe(207);
@@ -40,26 +68,56 @@ describe('Durable-DAV lifecycle (volumes + WebDAV Class 1/2)', () => {
     expect(xml).toContain('resourcetype');
   });
 
-  it('PUT/GET/MKCOL round-trip', async () => {
-    const mkcol = await SELF.fetch('https://example.com/test/photos/dir', { method: 'MKCOL' });
-    expect([201, 405]).toContain(mkcol.status);
+  it('PUT/GET/MKCOL round-trip with bucket credentials', async () => {
+    const listed = await SELF.fetch('https://example.com/user/volumes/test/photos/credentials');
+    expect(listed.status).toBe(200);
+    const { credentials } = (await listed.json()) as { credentials: Array<{ username: string }> };
+    expect(credentials.length).toBeGreaterThan(0);
 
-    const put = await SELF.fetch('https://example.com/test/photos/dir/hello.txt', {
+    // Re-mint a fresh credential for write isolation.
+    const minted = await SELF.fetch('https://example.com/user/volumes/test/photos/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'writer' }),
+    });
+    const { username, password } = (await minted.json()) as { username: string; password: string };
+    const auth = basic(username, password);
+
+    // Unauthenticated writes are rejected even before credential check.
+    const anonPut = await SELF.fetch('https://example.com/test/photos/dir/hello.txt', {
       method: 'PUT',
       headers: { 'Content-Type': 'text/plain' },
       body: 'hello durable-dav',
     });
+    expect(anonPut.status).toBe(401);
+
+    const mkcol = await SELF.fetch('https://example.com/test/photos/dir', { method: 'MKCOL', headers: auth });
+    expect([201, 405]).toContain(mkcol.status);
+
+    const put = await SELF.fetch('https://example.com/test/photos/dir/hello.txt', {
+      method: 'PUT',
+      headers: { ...auth, 'Content-Type': 'text/plain' },
+      body: 'hello durable-dav',
+    });
     expect([201, 204]).toContain(put.status);
 
-    const get = await SELF.fetch('https://example.com/test/photos/dir/hello.txt');
+    const get = await SELF.fetch('https://example.com/test/photos/dir/hello.txt', { headers: auth });
     expect(get.status).toBe(200);
     expect(await get.text()).toBe('hello durable-dav');
   });
 
-  it('LOCK/UNLOCK round-trip (Class 2)', async () => {
+  it('LOCK/UNLOCK round-trip (Class 2) with bucket credentials', async () => {
+    const minted = await SELF.fetch('https://example.com/user/volumes/test/photos/credentials', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: 'locker' }),
+    });
+    const { username, password } = (await minted.json()) as { username: string; password: string };
+    const auth = basic(username, password);
+
     const lock = await SELF.fetch('https://example.com/test/photos/dir/hello.txt', {
       method: 'LOCK',
-      headers: { Depth: '0', Timeout: 'Second-60', 'Content-Type': 'application/xml' },
+      headers: { ...auth, Depth: '0', Timeout: 'Second-60', 'Content-Type': 'application/xml' },
       body: '<?xml version="1.0"?><lockinfo xmlns="DAV:"><lockscope><exclusive/></lockscope><locktype><write/></locktype></lockinfo>',
     });
     expect([200, 201]).toContain(lock.status);
@@ -68,8 +126,20 @@ describe('Durable-DAV lifecycle (volumes + WebDAV Class 1/2)', () => {
 
     const unlock = await SELF.fetch('https://example.com/test/photos/dir/hello.txt', {
       method: 'UNLOCK',
-      headers: { 'Lock-Token': token ?? '' },
+      headers: { ...auth, 'Lock-Token': token ?? '' },
     });
     expect(unlock.status).toBe(204);
+  });
+
+  it('PATCH visibility and DELETE bucket (danger zone)', async () => {
+    const patched = await SELF.fetch('https://example.com/user/volumes/test/photos', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ description: 'Integration bucket', isPrivate: true }),
+    });
+    expect(patched.status).toBe(200);
+    const detail = (await patched.json()) as { description: string | null; isPrivate: boolean };
+    expect(detail.description).toBe('Integration bucket');
+    expect(detail.isPrivate).toBe(true);
   });
 });

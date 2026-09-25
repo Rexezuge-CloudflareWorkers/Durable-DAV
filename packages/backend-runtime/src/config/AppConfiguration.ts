@@ -100,6 +100,18 @@ class AppConfiguration {
     return this.repos.getMaxTokenExpiryDays();
   }
 
+  public getMaxCredentialsPerVolume(): number {
+    return this.repos.getMaxCredentialsPerVolume();
+  }
+
+  public getDefaultCredentialExpiryDays(): number {
+    return this.repos.getDefaultCredentialExpiryDays();
+  }
+
+  public getMaxCredentialExpiryDays(): number {
+    return this.repos.getMaxCredentialExpiryDays();
+  }
+
   public getMaxPackObjects(): number {
     return this.git.getMaxPackObjects();
   }
@@ -370,6 +382,8 @@ class AppConfiguration {
       'MAX_VOLUMES_PER_USER',
       'MAX_TOKENS_PER_USER',
       'MAX_TOKEN_EXPIRY_DAYS',
+      'MAX_CREDENTIALS_PER_VOLUME',
+      'MAX_CREDENTIAL_EXPIRY_DAYS',
       'MAX_PACK_OBJECTS',
       'GIT_CACHE_TTL_SECONDS',
       'MAX_FETCH_WANTS',

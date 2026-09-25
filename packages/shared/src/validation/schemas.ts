@@ -17,10 +17,12 @@ function parsePositiveInt(raw: string | undefined | null, max: number = MAX_RESO
 }
 
 const tokenIdSchema = z.string().trim().uuid('Invalid token id');
+const credentialIdSchema = z.string().trim().uuid('Invalid credential id');
 
 export {
   usernameSchema,
   parsePositiveInt,
   tokenIdSchema,
+  credentialIdSchema,
   MAX_RESOURCE_NUMBER,
 };

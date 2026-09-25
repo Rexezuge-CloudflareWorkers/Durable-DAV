@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { Link, useParams, useSearchParams } from 'react-router-dom';
+import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { ChevronRight, Download, File as FileIcon, Folder as FolderIcon, Pencil, Plus, Trash2, Upload } from 'lucide-react';
-import type { DavEntry } from '../types';
+import type { DavEntry, VolumeDetail } from '../types';
 import { toLocalizedErrorMessage } from '../lib/backendErrors';
 import { formatBytes } from '../lib/format';
 import { parentDavPath, stripSlashes } from '../lib/davXml';
@@ -16,6 +16,8 @@ import { EmptyState, LoadingSpinner } from '../components/layout/PageState';
 import { RefreshButton } from '../components/shared/RefreshButton';
 import { ModalShell, ModalHeader, ModalBody } from '../components/modals/ModalShell';
 import { ConfirmDeleteModal } from '../components/modals/ConfirmDeleteModal';
+import { VolumeSettingsTab } from '../components/volume/VolumeSettingsTab';
+import { VisibilityBadge } from '../components/ui/Badge';
 
 function cleanPath(raw: string | null): string {
   return stripSlashes(raw ?? '');
@@ -29,9 +31,12 @@ export function VolumeView({
   showNotice: (type: 'success' | 'error', text: string) => void;
 }) {
   const { owner = '', volume = '' } = useParams<{ owner: string; volume: string }>();
+  const navigate = useNavigate();
   const { t } = useTranslation();
   const [params, setParams] = useSearchParams();
   const path = cleanPath(params.get('path'));
+  const activeTab = params.get('tab') === 'settings' ? 'settings' : 'files';
+  const [volumeDetail, setVolumeDetail] = useState<VolumeDetail | null>(null);
   const [entries, setEntries] = useState<DavEntry[]>([]);
   const [status, setStatus] = useState<'loading' | 'ready' | 'missing'>('loading');
   const [reloadKey, setReloadKey] = useState(0);
@@ -46,9 +51,22 @@ export function VolumeView({
 
   const setPath = useCallback(
     (next: string) => {
-      setParams(next === '' ? {} : { path: next }, { replace: false });
+      const nextParams: Record<string, string> = {};
+      if (next !== '') nextParams['path'] = next;
+      if (activeTab === 'settings') nextParams['tab'] = 'settings';
+      setParams(nextParams, { replace: false });
     },
-    [setParams],
+    [setParams, activeTab],
+  );
+
+  const setTab = useCallback(
+    (tab: 'files' | 'settings') => {
+      const nextParams: Record<string, string> = {};
+      if (path !== '') nextParams['path'] = path;
+      if (tab === 'settings') nextParams['tab'] = 'settings';
+      setParams(nextParams, { replace: false });
+    },
+    [setParams, path],
   );
 
   useEffect(() => {
@@ -198,26 +216,58 @@ export function VolumeView({
       <ContextBar
         crumb={
           <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">
-            <Link to={`/${owner}/${volume}`} onClick={() => setPath('')} className="hover:text-[var(--color-accent)]">
+            <Link
+              to={`/${owner}/${volume}`}
+              onClick={() => {
+                setTab('files');
+                setPath('');
+              }}
+              className="hover:text-[var(--color-accent)]"
+            >
               {owner}/{volume}
             </Link>
-            {crumbs.map((segment, index) => (
-              <span key={`${segment}-${index}`}>
-                <ChevronRight className="inline h-4 w-4 mx-1 text-[var(--color-text-muted)]" />
-                <button
-                  type="button"
-                  className="hover:text-[var(--color-accent)]"
-                  onClick={() => setPath(crumbs.slice(0, index + 1).join('/'))}
-                >
-                  {segment}
-                </button>
+            {activeTab === 'files' &&
+              crumbs.map((segment, index) => (
+                <span key={`${segment}-${index}`}>
+                  <ChevronRight className="inline h-4 w-4 mx-1 text-[var(--color-text-muted)]" />
+                  <button
+                    type="button"
+                    className="hover:text-[var(--color-accent)]"
+                    onClick={() => setPath(crumbs.slice(0, index + 1).join('/'))}
+                  >
+                    {segment}
+                  </button>
+                </span>
+              ))}
+            {volumeDetail && (
+              <span className="ml-2 align-middle">
+                <VisibilityBadge isPrivate={volumeDetail.isPrivate} />
               </span>
-            ))}
+            )}
           </span>
         }
         actions={<RefreshButton onRefresh={refresh} loading={status === 'loading'} />}
       />
-      <AppPage>
+      <div className="max-w-7xl mx-auto px-6 pt-4 flex gap-2">
+        <Button variant={activeTab === 'files' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('files')}>
+          {t('volumes.filesTab', 'Files')}
+        </Button>
+        <Button variant={activeTab === 'settings' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('settings')}>
+          {t('volumes.settingsTab', 'Settings')}
+        </Button>
+      </div>
+      {activeTab === 'settings' ? (
+        <AppPage>
+          <VolumeSettingsTab
+            owner={owner}
+            volume={volume}
+            showNotice={showNotice}
+            onUpdated={setVolumeDetail}
+            onDeleted={() => void navigate('/')}
+          />
+        </AppPage>
+      ) : (
+        <AppPage>
         <Card>
           <CardHeader>
             <CardTitle>
@@ -377,7 +427,8 @@ export function VolumeView({
             </ModalBody>
           </ModalShell>
         )}
-      </AppPage>
+        </AppPage>
+      )}
     </div>
   );
 }

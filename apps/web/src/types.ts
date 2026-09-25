@@ -17,47 +17,29 @@ export interface Volume {
   href: string;
 }
 
-export type TokenScope = 'dav:read' | 'dav:write' | 'admin' | 'repo:read' | 'repo:write';
-
-export interface TokenVolumeGrant {
-  tokenId: string;
-  volumeId: string;
-  owner: string;
-  name: string;
-  fullName: string;
-  scope: TokenScope;
+export interface VolumeDetail extends Volume {
+  description: string | null;
 }
 
-export interface TokenMetadata {
-  tokenId: string;
+export interface BucketCredential {
+  credentialId: string;
   name: string;
+  username: string;
+  passwordPrefix: string;
+  passwordLastFour: string;
+  createdAt: number;
   expiresAt: number;
   lastUsedAt: number | null;
-  createdAt: number;
-  scopes: TokenScope[];
-  tokenPrefix?: string | null;
-  volumeGrants?: TokenVolumeGrant[];
 }
 
-export interface CreatedToken {
-  tokenId: string;
-  token: string;
+export interface CreatedBucketCredential {
+  credentialId: string;
+  username: string;
+  password: string;
   name: string;
   expiresAt: number;
-  scopes: TokenScope[];
-  prefix?: string;
-}
-
-export interface RotatedToken {
-  token: string;
-  expiresAt: number;
-  prefix: string;
-}
-
-export interface VolumeGrantInput {
-  owner: string;
-  name: string;
-  scope: TokenScope;
+  passwordPrefix: string;
+  passwordLastFour: string;
 }
 
 export interface UserProfile {

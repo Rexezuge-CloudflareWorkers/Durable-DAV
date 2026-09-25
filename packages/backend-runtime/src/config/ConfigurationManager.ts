@@ -17,6 +17,12 @@ class ConfigurationManager {
     getMaxExpiryDays: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxTokenExpiryDays(),
   };
 
+  public static readonly davCredentials = {
+    getMaxPerVolume: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxCredentialsPerVolume(),
+    getDefaultExpiryDays: (env: unknown): number => AppConfiguration.fromEnv(env).getDefaultCredentialExpiryDays(),
+    getMaxExpiryDays: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxCredentialExpiryDays(),
+  };
+
   public static readonly repo = {
     getMaxPerUser: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxReposPerUser(),    getDoDeviceBytes: (env: unknown): number => AppConfiguration.fromEnv(env).getDoDeviceBytes(),
     getMaxPackObjects: (env: unknown): number => AppConfiguration.fromEnv(env).getMaxPackObjects(),

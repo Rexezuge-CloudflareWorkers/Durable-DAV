@@ -9,20 +9,16 @@ import { UserService } from '@durable-dav/backend-services/user';
 // top-level bindings, hence `vi.hoisted`.
 const daoMocks = vi.hoisted(() => ({
   UserDAO: vi.fn(),
-  UserAccessTokenDAO: vi.fn(),
   NamespaceDAO: vi.fn(),
-  TokenVolumeGrantDAO: vi.fn(),
   DavVolumeDAO: vi.fn(),
-  DavCollaboratorDAO: vi.fn(),
+  DavCredentialDAO: vi.fn(),
 }));
 
 vi.mock('@durable-dav/backend-data/dao', () => ({
   UserDAO: daoMocks.UserDAO,
-  UserAccessTokenDAO: daoMocks.UserAccessTokenDAO,
   NamespaceDAO: daoMocks.NamespaceDAO,
-  TokenVolumeGrantDAO: daoMocks.TokenVolumeGrantDAO,
   DavVolumeDAO: daoMocks.DavVolumeDAO,
-  DavCollaboratorDAO: daoMocks.DavCollaboratorDAO,
+  DavCredentialDAO: daoMocks.DavCredentialDAO,
 }));
 
 const EXPECTED_TOKENS = [
@@ -31,16 +27,14 @@ const EXPECTED_TOKENS = [
   'KvCache',
   'AppConfig',
   'UserDAO',
-  'UserAccessTokenDAO',
   'NamespaceDAO',
-  'TokenVolumeGrantDAO',
   'DavVolumeDAO',
-  'DavCollaboratorDAO',
+  'DavCredentialDAO',
   'AccessAuthService',
-  'TokenService',
   'UserService',
   'DavPermissionService',
   'VolumeService',
+  'VolumeCredentialService',
 ] as const;
 
 function makeEnv() {
@@ -54,20 +48,14 @@ beforeEach(() => {
   daoMocks.UserDAO.mockImplementation(function (this: unknown, db: unknown) {
     return { kind: 'UserDAO', db };
   });
-  daoMocks.UserAccessTokenDAO.mockImplementation(function (this: unknown, db: unknown) {
-    return { kind: 'UserAccessTokenDAO', db };
-  });
   daoMocks.NamespaceDAO.mockImplementation(function (this: unknown, db: unknown) {
     return { kind: 'NamespaceDAO', db };
-  });
-  daoMocks.TokenVolumeGrantDAO.mockImplementation(function (this: unknown, db: unknown) {
-    return { kind: 'TokenVolumeGrantDAO', db };
   });
   daoMocks.DavVolumeDAO.mockImplementation(function (this: unknown, db: unknown) {
     return { kind: 'DavVolumeDAO', db };
   });
-  daoMocks.DavCollaboratorDAO.mockImplementation(function (this: unknown, db: unknown) {
-    return { kind: 'DavCollaboratorDAO', db };
+  daoMocks.DavCredentialDAO.mockImplementation(function (this: unknown, db: unknown) {
+    return { kind: 'DavCredentialDAO', db };
   });
 });
 
@@ -112,11 +100,9 @@ describe('createRequestScope', () => {
     const scope = createRequestScope(makeEnv() as never);
     const pairs = [
       [Tokens.UserDAO, daoMocks.UserDAO],
-      [Tokens.UserAccessTokenDAO, daoMocks.UserAccessTokenDAO],
       [Tokens.NamespaceDAO, daoMocks.NamespaceDAO],
-      [Tokens.TokenVolumeGrantDAO, daoMocks.TokenVolumeGrantDAO],
       [Tokens.DavVolumeDAO, daoMocks.DavVolumeDAO],
-      [Tokens.DavCollaboratorDAO, daoMocks.DavCollaboratorDAO],
+      [Tokens.DavCredentialDAO, daoMocks.DavCredentialDAO],
     ] as const;
     for (const [token, mock] of pairs) {
       const first = await scope.get(token)();

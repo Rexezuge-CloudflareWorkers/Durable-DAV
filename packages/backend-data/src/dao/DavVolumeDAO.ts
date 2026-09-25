@@ -77,16 +77,45 @@ class DavVolumeDAO extends BaseDAO {
         .all<DavVolumeRow>();
       return result.results ?? [];
     }
+    // Owner-only buckets: owned rows plus public rows. No collaborators.
     const result = await this.database
       .prepare(
-        `SELECT DISTINCT v.* FROM dav_volumes v
-         LEFT JOIN dav_collaborators c ON c.volume_id = v.id AND lower(c.user_email) = lower(?)
-         WHERE v.is_private = 0 OR lower(v.owner_email) = lower(?) OR c.user_email IS NOT NULL
-         ORDER BY v.updated_at DESC LIMIT ?`,
+        `SELECT * FROM dav_volumes
+         WHERE is_private = 0 OR lower(owner_email) = lower(?)
+         ORDER BY updated_at DESC LIMIT ?`,
       )
-      .bind(userEmail, userEmail, limit)
+      .bind(userEmail, limit)
       .all<DavVolumeRow>();
     return result.results ?? [];
+  }
+
+  public async listPublicByOwner(owner: string, limit = 100): Promise<DavVolumeRow[]> {
+    const result = await this.database
+      .prepare('SELECT * FROM dav_volumes WHERE owner_ci = ? AND is_private = 0 ORDER BY updated_at DESC LIMIT ?')
+      .bind(owner.toLowerCase(), limit)
+      .all<DavVolumeRow>();
+    return result.results ?? [];
+  }
+
+  public async update(
+    id: string,
+    patch: { description?: string | null; isPrivate?: boolean; now: number },
+  ): Promise<void> {
+    const sets: string[] = ['updated_at = ?'];
+    const bindings: unknown[] = [patch.now];
+    if (patch.description !== undefined) {
+      sets.push('description = ?');
+      bindings.push(patch.description);
+    }
+    if (patch.isPrivate !== undefined) {
+      sets.push('is_private = ?');
+      bindings.push(patch.isPrivate ? 1 : 0);
+    }
+    bindings.push(id);
+    await this.withRetry(
+      () => this.database.prepare(`UPDATE dav_volumes SET ${sets.join(', ')} WHERE id = ?`).bind(...bindings).run(),
+      'update dav volume',
+    );
   }
 
   public async listByOwnerEmail(ownerEmail: string, limit = 1000): Promise<DavVolumeRow[]> {

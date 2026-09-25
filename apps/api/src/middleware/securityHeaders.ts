@@ -13,15 +13,11 @@ const SECURITY_HEADERS: Record<string, string> = {
   'Origin-Agent-Cluster': '?1',
 };
 
-// Paths carrying bearer secrets or private user data — never cache.
-// All `/user/*` JSON is `no-store` by default (tokens, volumes,
-// collaborators); public volume reads stay cacheable.
+// Paths carrying credential secrets or private user data — never cache.
+// All `/user/*` JSON is `no-store` by default (credentials, volumes);
+// public volume reads stay cacheable.
 function isSensitiveJsonPath(pathname: string): boolean {
-  if (['/user/tokens'].includes(pathname)) {
-    return true;
-  }
-  if (pathname.startsWith('/user/')) return true;
-  return false;
+  return pathname.startsWith('/user/');
 }
 
 /**
@@ -42,7 +38,7 @@ function applySecurityHeaders(c: HeaderContext): void {
       "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'; object-src 'none'; form-action 'self'; base-uri 'self'; frame-ancestors 'none'; upgrade-insecure-requests",
     );
   }
-  // Bearer-secret JSON (PATs) must never be cached by browsers or CDNs.
+  // Bucket-credential JSON must never be cached by browsers or CDNs.
   try {
     const pathname = new URL(c.req.url).pathname;
     if (isSensitiveJsonPath(pathname)) {

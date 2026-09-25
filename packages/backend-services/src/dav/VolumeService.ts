@@ -1,15 +1,10 @@
-import {
-  DavCollaboratorDAO,
-  DavVolumeDAO,
-  TokenVolumeGrantDAO,
-  UserDAO,
-} from '@durable-dav/backend-data/dao';
+import { DavCredentialDAO, DavVolumeDAO, UserDAO } from '@durable-dav/backend-data/dao';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import type { D1Queryable } from '@durable-dav/backend-data/utils';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@durable-dav/backend-errors';
 import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
-import { checkVolumeQuota } from './VolumeCreatePolicy';
+import { checkVolumeQuota, validateVolumePatch } from './VolumeCreatePolicy';
 
 interface VolumeServiceEnv {
   DB: D1Queryable;
@@ -19,28 +14,37 @@ interface VolumeServiceEnv {
 interface VolumeServiceDeps {
   volumeDAO?: () => Promise<DavVolumeDAO>;
   userDAO?: () => Promise<UserDAO>;
-  davCollaboratorDAO?: () => Promise<DavCollaboratorDAO>;
-  tokenVolumeGrantDAO?: () => Promise<TokenVolumeGrantDAO>;
+  credentialDAO?: () => Promise<DavCredentialDAO>;
   config?: AppConfiguration;
+  /**
+   * @deprecated Bucket collaborators removed; accepted for backward compat and ignored.
+   */
+  davCollaboratorDAO?: () => Promise<unknown>;
+  /**
+   * @deprecated User-level PAT grants removed; accepted for backward compat and ignored.
+   */
+  tokenVolumeGrantDAO?: () => Promise<unknown>;
 }
 
 const OWNER_RE = /^[a-z0-9][a-z0-9-]*$/i;
 const VOLUME_RE = /^[a-z0-9][\w.-]*$/i;
 
 class VolumeService {
-  private readonly deps: Required<VolumeServiceDeps>;
+  private readonly deps: Required<Pick<VolumeServiceDeps, 'volumeDAO' | 'userDAO' | 'credentialDAO' | 'config'>>;
 
   constructor(
     private readonly env: VolumeServiceEnv,
     deps: VolumeServiceDeps = {},
   ) {
+    const rest = { ...deps };
+    delete (rest as { davCollaboratorDAO?: unknown }).davCollaboratorDAO;
+    delete (rest as { tokenVolumeGrantDAO?: unknown }).tokenVolumeGrantDAO;
     this.deps = {
       volumeDAO: () => Promise.resolve(new DavVolumeDAO(env.DB)),
       userDAO: () => Promise.resolve(new UserDAO(env.DB)),
-      davCollaboratorDAO: () => Promise.resolve(new DavCollaboratorDAO(env.DB)),
-      tokenVolumeGrantDAO: () => Promise.resolve(new TokenVolumeGrantDAO(env.DB)),
+      credentialDAO: () => Promise.resolve(new DavCredentialDAO(env.DB)),
       config: AppConfiguration.fromEnv(env),
-      ...deps,
+      ...rest,
     };
   }
 
@@ -105,7 +109,7 @@ class VolumeService {
       owner,
       name,
       description: input.description ?? null,
-      isPrivate: input.isPrivate ?? false,
+      isPrivate: input.isPrivate ?? true,
       now,
     });
     const created = await dao.getById(id);
@@ -113,12 +117,33 @@ class VolumeService {
     return created;
   }
 
+  public async updateVolume(
+    owner: string,
+    name: string,
+    callerEmail: string,
+    patch: { description?: string | null; isPrivate?: boolean },
+  ): Promise<DavVolumeRow> {
+    validateVolumePatch(patch);
+    const volume = await this.requireVolume(owner, name);
+    if (volume.owner_email.toLowerCase() !== callerEmail.toLowerCase()) {
+      throw new ForbiddenError('Only the bucket owner can update this bucket');
+    }
+    if (patch.description === undefined && patch.isPrivate === undefined) {
+      throw new BadRequestError('Nothing to update');
+    }
+    const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
+    const dao = await this.deps.volumeDAO();
+    await dao.update(volume.id, { description: patch.description, isPrivate: patch.isPrivate, now });
+    const updated = await dao.getById(volume.id);
+    if (!updated) throw new NotFoundError('Volume not found after update');
+    return updated;
+  }
+
   public async deleteVolume(owner: string, name: string): Promise<void> {
     const volume = await this.requireVolume(owner, name);
-    // Best-effort sidecar cleanup: per-bucket PAT grants + collaborators.
-    // FK cascades cover D1, but explicit deletes keep fake-DB tests honest.
-    await this.deps.tokenVolumeGrantDAO().then((d) => d.deleteByVolume(volume.id).catch(() => undefined));
-    await this.deps.davCollaboratorDAO().then((d) => d.deleteByVolume(volume.id).catch(() => undefined));
+    // Best-effort credential cleanup. FK cascades cover D1, but explicit
+    // deletes keep fake-DB tests honest.
+    await this.deps.credentialDAO().then((d) => d.deleteByVolume(volume.id).catch(() => undefined));
     const dao = await this.deps.volumeDAO();
     await dao.deleteById(volume.id);
   }

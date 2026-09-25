@@ -1,7 +1,6 @@
 import type { Context } from 'hono';
 import { Tokens } from '@durable-dav/backend-services/composition';
-import type { AuthenticatedToken } from '@durable-dav/backend-services/auth';
-import { coversScope } from '@durable-dav/backend-services/auth';
+import { DavCredentialUtil } from '@durable-dav/shared/utils';
 import { DatabaseError } from '@durable-dav/backend-errors';
 import { BaseRoute } from '../endpoints/IBaseRoute';
 
@@ -18,6 +17,8 @@ export interface DavAuthResult {
   role: 'admin' | 'write' | 'read';
   volumeId: string;
   isPrivate: boolean;
+  credentialId: string;
+  credentialName: string;
 }
 
 function getBasicCredentials(header: string | null): { username: string; password: string } | null {
@@ -26,16 +27,13 @@ function getBasicCredentials(header: string | null): { username: string; passwor
     const decoded = atob(header.slice(6).trim());
     const idx = decoded.indexOf(':');
     if (idx === -1) return null;
-    return { username: decoded.slice(0, idx), password: decoded.slice(idx + 1) };
+    const username = decoded.slice(0, idx).trim();
+    const password = decoded.slice(idx + 1);
+    if (!username || !password) return null;
+    return { username, password };
   } catch {
     return null;
   }
-}
-
-function getBearerToken(header: string | null): string | null {
-  if (!header || !header.startsWith('Bearer ')) return null;
-  const token = header.slice(7).trim();
-  return token === '' ? null : token;
 }
 
 function unauthorizedDav(): Response {
@@ -43,23 +41,6 @@ function unauthorizedDav(): Response {
     status: 401,
     headers: { 'WWW-Authenticate': 'Basic realm="Durable-DAV"' },
   });
-}
-
-async function resolveViewerEmail(c: RequestContext): Promise<string | null> {
-  // Best-effort Access identity for public-volume reads; never throws.
-  try {
-    const scope = getScope(c);
-    const email = await scope
-      .get(Tokens.AccessAuthService)
-      .getAuthenticatedUserEmail(c.req.raw, c.executionCtx as unknown as never);
-    if (email) {
-      await scope.get(Tokens.UserService).upsertUser(email).catch(() => undefined);
-      return email;
-    }
-  } catch {
-    // ignore; fall through to PAT/anon
-  }
-  return null;
 }
 
 async function davAuthForVolume(
@@ -84,67 +65,50 @@ async function davAuthForVolumeInner(
 ): Promise<DavAuthResult | Response> {
   const scope = getScope(c);
   const volume = await scope.get(Tokens.VolumeService).getVolume(owner, volumeName);
-  if (!volume) {
-    // Hide existence of private volumes: try auth first, else 401 (not 404).
-    // For scaffold: unknown volume -> 404 only if anon would see nothing; else 401 to avoid probing.
-    const authHeader = c.req.header('Authorization');
-    if (!authHeader) return unauthorizedDav();
-    // fall through to PAT check which will 401 on bad token
-  }
-  const authHeader = c.req.header('Authorization');
-  let patEmail: string | null = null;
-  if (authHeader) {
-    const basic = getBasicCredentials(authHeader);
-    const bearer = getBearerToken(authHeader);
-    const pat = bearer ?? basic?.password ?? null;
-    if (pat) {
-      let authenticated: AuthenticatedToken;
-      try {
-        authenticated = await scope.get(Tokens.TokenService).authenticateWithPAT(pat);
-      } catch {
-        return unauthorizedDav();
-      }
-      const required = needWrite ? 'dav:write' : 'dav:read';
-      if (!coversScope(authenticated.scopes, required)) {
-        return new Response('Forbidden', { status: 403 });
-      }
-      // Per-bucket scoping: unscoped PATs keep full access; scoped PATs must
-      // hold a matching grant for this volume id with a covering scope.
-      if (volume && authenticated.volumeGrants.length > 0) {
-        const allowed = authenticated.volumeGrants.some(
-          (g) => g.volumeId === volume.id && coversScope([g.scope], required),
-        );
-        if (!allowed) return new Response('Forbidden', { status: 403 });
-      }
-      patEmail = authenticated.email;
-    }
-  }
-  const viewerEmail = patEmail ?? (await resolveViewerEmail(c));
   if (!volume) return new Response('Not Found', { status: 404 });
-  const role = await scope.get(Tokens.DavPermissionService).getRole(viewerEmail, volume);
-  if (!role) {
-    // Private hides existence for anon (401), forbidden for authenticated
-    if (!viewerEmail) return unauthorizedDav();
-    // Authenticated but no access: 404 to hide existence of private volumes
-    return new Response('Not Found', { status: 404 });
+
+  const isPrivate = Number(volume.is_private) === 1;
+  const authHeader = c.req.header('Authorization') ?? null;
+  const basic = getBasicCredentials(authHeader);
+
+  if (basic) {
+    // Bucket-level credential: username AND password both validated, bound
+    // to this volume id (CalDAV-style). No Bearer, no user-level PAT.
+    const passwordHash = await DavCredentialUtil.hashPassword(basic.password);
+    const credentialDAO = await scope.get(Tokens.DavCredentialDAO)();
+    const credential = await credentialDAO.getByUsernameAndHash(basic.username, passwordHash, true).catch(() => undefined);
+    if (!credential || credential.volumeId !== volume.id) return unauthorizedDav();
+    await credentialDAO.updateLastUsed(credential.credentialId).catch(() => undefined);
+    return {
+      userEmail: volume.owner_email,
+      owner: volume.owner,
+      volume: volume.name,
+      role: 'admin',
+      volumeId: volume.id,
+      isPrivate,
+      credentialId: credential.credentialId,
+      credentialName: credential.name,
+    };
   }
-  if (needWrite && role === 'read') return new Response('Forbidden', { status: 403 });
-  if (viewerEmail) {
-    try {
-      c.set('AuthenticatedUserEmailAddress', viewerEmail);
-    } catch {
-      // ignore
-    }
+
+  // No credential: public buckets allow anonymous reads only; all writes
+  // and all private access require a bucket credential.
+  if (!needWrite && !isPrivate) {
+    const role = await scope.get(Tokens.DavPermissionService).getRole(null, volume);
+    if (!role) return unauthorizedDav();
+    return {
+      userEmail: null,
+      owner: volume.owner,
+      volume: volume.name,
+      role,
+      volumeId: volume.id,
+      isPrivate,
+      credentialId: '',
+      credentialName: '',
+    };
   }
-  return {
-    userEmail: viewerEmail,
-    owner: volume.owner,
-    volume: volume.name,
-    role,
-    volumeId: volume.id,
-    isPrivate: Number(volume.is_private) === 1,
-  };
+  return unauthorizedDav();
 }
 
-export { davAuthForVolume, unauthorizedDav, getBasicCredentials, getBearerToken };
+export { davAuthForVolume, unauthorizedDav, getBasicCredentials };
 export type { RequestContext };

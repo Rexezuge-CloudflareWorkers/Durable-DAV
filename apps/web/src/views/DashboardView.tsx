@@ -62,8 +62,8 @@ export function DashboardView({ showNotice }: { showNotice: (type: 'success' | '
         <div className="space-y-3">
           <ReadOnlyField label={t('dashboard.mountAnyVolume', 'Mount Any Volume')} value={`${globalThis.location?.origin ?? ''}/<owner>/<volume>/`} showCopy />
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {t('dashboard.connectHelp', 'Private Volumes And All Writes Use A Personal Access Token As The Password: {{example}}. Public Volumes Allow Anonymous Reads. Manage Tokens In Settings.', {
-              example: 'https://<owner>:<PAT>@host/owner/volume/',
+            {t('dashboard.connectHelp', 'Each Bucket Has Its Own Credentials. Open A Bucket, Go To Settings, Create A Credential, Then Connect With: {{example}}.', {
+              example: 'https://<username>:<password>@host/owner/volume/',
             })}
           </p>
         </div>

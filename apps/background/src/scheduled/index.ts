@@ -3,7 +3,7 @@ export {
   CRON_TASK_FACTORIES,
   tasksForPhase,
   runScheduledTasks,
-  ExpiredTokenPruningTask,
+  ExpiredCredentialPruningTask,
 } from './TaskRegistry';
 export type { ScheduledTask } from './TaskRegistry';
 export { BaseScheduledTask, AbstractPruningTask } from './IScheduledTask';
