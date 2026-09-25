@@ -3,6 +3,7 @@ import { Tokens } from '@durable-dav/backend-services/composition';
 import { SUPPORT_METHODS, DAV_CLASS } from '@durable-dav/webdav';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 import { getVolumeStub } from '../doStubs';
+import { invalidateVolumeCaches } from './DavReadCache';
 
 type App = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
 type BrowserContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
@@ -101,7 +102,17 @@ async function browserHandler(c: BrowserContext): Promise<Response> {
     body: hasBody ? c.req.raw.body : undefined,
     ...(hasBody && { duplex: 'half' }),
   });
-  return stub.fetch(forward);
+  const response = await stub.fetch(forward);
+  // Browser-plane writes share the same DO state as the WebDAV plane, so
+  // invalidate the front read cache too (fail-soft, best-effort).
+  if (!['GET', 'HEAD', 'OPTIONS', 'PROPFIND'].includes(method)) {
+    try {
+      await invalidateVolumeCaches(scope.get(Tokens.KvCache), row.owner, row.name);
+    } catch {
+      // Never break writes on cache errors.
+    }
+  }
+  return response;
 }
 
 function registerVolumeBrowserRoutes(app: App): void {

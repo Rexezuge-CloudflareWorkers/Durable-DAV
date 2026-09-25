@@ -47,6 +47,12 @@
       "database_name": "durable-dav-db"
     }
   ],
+  "kv_namespaces": [
+    {
+      "binding": "CACHE",
+      "id": "00000000000000000000000000000000"
+    }
+  ],
   "triggers": {
     "crons": ["*/10 * * * *"]
   },
@@ -62,6 +68,7 @@
     "MAX_TOKEN_VOLUME_GRANTS": "100",
     "MAX_FILE_BYTES": "52428800",
     "DO_DEVICE_BYTES": "5368709120",
+    "DAV_CACHE_TTL_SECONDS": "300",
     "DEV_AUTH_EMAIL": "test@example.com"
   }
 }

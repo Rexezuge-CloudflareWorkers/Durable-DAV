@@ -6,6 +6,7 @@ declare global {
   interface Env {
     DB: any;
     REPO: any;
+    DAV_VOLUME: any;
     CRON_TASKS: any;
     CHECK_RUNNER: any;
     REALTIME: any;
@@ -21,6 +22,7 @@ declare global {
     MAX_TOKEN_EXPIRY_DAYS?: string;
     MAX_PACK_OBJECTS?: string;
     GIT_CACHE_TTL_SECONDS?: string;
+    DAV_CACHE_TTL_SECONDS?: string;
     MAX_FETCH_WANTS?: string;
     MAX_FETCH_HAVES?: string;
     MAX_PUSH_COMMANDS?: string;

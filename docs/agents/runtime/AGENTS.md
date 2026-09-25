@@ -6,7 +6,7 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 - `apps/web/vite.config.ts` proxies `/user` → `http://localhost:8787` in dev; `closeBundle` embeds `dist/index.html` into `apps/api/src/generated/spa-shell.ts` (`SPA_HTML`) on build.
 - `apps/api/wrangler.template.jsonc` is the config template — copy to `wrangler.jsonc` per deployer; no committed `wrangler.jsonc`. Local `wrangler.jsonc` uses `DEV_AUTH_EMAIL=test@example.com`.
 - The Worker serves the SPA from `/`, `/new`, `/settings`, `/:username` plus `/:owner/:volume` (content-negotiated: `Accept: text/html` → shell, else WebDAV DO forward) in `DurableDavWorker`.
-- Bindings: D1 `DB`, KV `CACHE` (single namespace, fail-soft via `KvCache`), DOs `DAV_VOLUME` (`DavVolumeWorker`, `getByName(normalizeVolumeKey)` lowercased `owner/volume`, device size from `DO_DEVICE_BYTES`) / `CRON_TASKS` (`CronTasksWorker`, `idFromName('global')`), cron `*/10 * * * *`; no R2/Queues/AI bindings.
+- Bindings: D1 `DB`, KV `CACHE` (single namespace, fail-soft via `KvCache`; DAV read paths in `apps/api/src/workers/routes/DavReadCache.ts`: `davProp` PROPFIND 120s + `davFile` small GET 300s + `davMeta` volume list/detail 60s, invalidated on write), DOs `DAV_VOLUME` (`DavVolumeWorker`, `getByName(normalizeVolumeKey)` lowercased `owner/volume`, device size from `DO_DEVICE_BYTES`) / `CRON_TASKS` (`CronTasksWorker`, `idFromName('global')`), cron `*/10 * * * *`; no R2/Queues/AI bindings.
 
 ## Required vars (no defaults)
 
@@ -21,7 +21,7 @@ Scope: Wrangler bindings, build output, env vars. Parent index: `../../../AGENTS
 | Group  | Vars (default)                                                                                                                                                     |
 | ------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | App    | `DEBUG_MODE` (`false`), `SITE_URL` (`""`)                                                                                                                          |
-| Limits | `MAX_VOLUMES_PER_USER` (`100`), `MAX_TOKENS_PER_USER` (`5`), `MAX_TOKEN_EXPIRY_DAYS` (`90`), `MAX_TOKEN_VOLUME_GRANTS` (`100`), `MAX_FILE_BYTES` (`52428800`), `DO_DEVICE_BYTES` (`5368709120`) |
+| Limits | `MAX_VOLUMES_PER_USER` (`100`), `MAX_TOKENS_PER_USER` (`5`), `MAX_TOKEN_EXPIRY_DAYS` (`90`), `MAX_TOKEN_VOLUME_GRANTS` (`100`), `MAX_FILE_BYTES` (`52428800`), `DO_DEVICE_BYTES` (`5368709120`), `DAV_CACHE_TTL_SECONDS` (`300`, front read-cache tuning; legacy `GIT_CACHE_TTL_SECONDS` still honored as fallback) |
 
 Add new env vars in `ConfigurationDefaults.ts` (+ `ConfigurationManager` getter + `AppConfiguration` method), not inline.
 

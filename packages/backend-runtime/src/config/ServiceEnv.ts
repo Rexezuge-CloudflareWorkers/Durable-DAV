@@ -5,7 +5,9 @@
 interface ServiceEnv {
   DB: unknown;
   REPO?: unknown;
+  DAV_VOLUME?: unknown;
   CRON_TASKS?: unknown;
+  CACHE?: unknown;
   DEBUG_MODE?: string;
   DEV_AUTH_EMAIL?: string;
   DEMO_MODE?: string;
@@ -17,6 +19,8 @@ interface ServiceEnv {
   MAX_TOKEN_EXPIRY_DAYS?: string;
   MAX_PACK_OBJECTS?: string;
   GIT_CACHE_TTL_SECONDS?: string;
+  DAV_CACHE_TTL_SECONDS?: string;
+  MAX_VOLUMES_PER_USER?: string;
   MAX_FETCH_WANTS?: string;
   MAX_FETCH_HAVES?: string;
   MAX_PUSH_COMMANDS?: string;
