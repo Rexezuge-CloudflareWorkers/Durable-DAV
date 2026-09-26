@@ -22,6 +22,12 @@ function useVolumeFiles(owner: string, volume: string, path: string) {
       // still `ready`, so the *previous* folder's rows stayed on screen until
       // the new PROPFIND resolved.
       setStatus('loading');
+      // Drop the previous folder's rows too, not just the status. `VolumeFileList`
+      // gates its not-found state on `entries.length === 0`, so a *failed*
+      // PROPFIND left `status: 'missing'` alongside the old rows and rendered
+      // them under the new breadcrumb — the previous folder's files displayed as
+      // if they lived in the folder that just failed to load.
+      setEntries([]);
       try {
         const rows = await listDirectory(owner, volume, path);
         if (cancelled) return;
