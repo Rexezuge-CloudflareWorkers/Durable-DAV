@@ -99,6 +99,29 @@ type IfCondition =
   | { kind: 'unknown' };
 
 /**
+The characters `\s` covers, without building a regex.
+*/
+const IF_WHITESPACE = new Set([' ', '\t', '\n', '\r', '\f', '\v']);
+
+function isIfWhitespace(char: string | undefined): boolean {
+  return char !== undefined && IF_WHITESPACE.has(char);
+}
+
+/**
+ * Case-insensitive `not` at `index`, compared by char code so the scan does not
+ * allocate a lowercase substring per group.
+ */
+function isNegationAt(header: string, index: number): boolean {
+  // `| 0x20` is the ASCII case fold, and is false for every non-ASCII code
+  // point, so it cannot fold a lookalike letter onto `not`.
+  return (
+    ((header.codePointAt(index) ?? 0) | 0x20) === 0x6e && // n
+    ((header.codePointAt(index + 1) ?? 0) | 0x20) === 0x6f && // o
+    ((header.codePointAt(index + 2) ?? 0) | 0x20) === 0x74 // t
+  );
+}
+
+/**
  * Tokenizer for the RFC 4918 §10.4 `If` header grammar.
  *
  * ```
@@ -116,24 +139,63 @@ type IfCondition =
  * `Not`*, makes the whole header always-false, yet the old code reported
  * `Not <DAV:no-lock>` as *not* always-false. It was also case-sensitive, so
  * `<dav:no-lock>` was missed entirely.
+ *
+ * The grammar is read with an `indexOf` cursor rather than
+ * `/\(\s*(Not\s+)?(<[^>]*>|\[[^\]]*\])/gi` (why: that regex is CodeQL
+ * `js/polynomial-redos`, and it is a *real* quadratic, not a theoretical one —
+ * `If: "[(".repeat(32768)` matched at every `(` and re-ran the `\[[^\]]*\]`
+ * backtrack over the rest of the header each time, 3.6 s of isolate CPU from a
+ * single 64 KB request. The V8 literal-prefix optimizer hides this on most
+ * shapes, which is exactly why it survived review).
+ *
+ * Two rules keep the scan linear rather than merely replacing one quadratic
+ * with another:
+ *
+ * - An unterminated `<`/`[` ends the scan. The cursor cannot advance past a
+ *   closing bracket that does not exist, so continuing would re-scan the tail
+ *   once per remaining `(` — the same O(n²) under a different name.
+ * - Unreadable groups set one `unknown` flag instead of one entry per group,
+ *   so `(((((…` cannot allocate 32k objects either.
  */
 function parseIfHeader(ifHeader: string | null): IfCondition[] {
   if (!ifHeader) return [];
   const conditions: IfCondition[] = [];
-  const groupRe = /\(\s*(Not\s+)?(<[^>]*>|\[[^\]]*\])/gi;
-  for (const match of ifHeader.matchAll(groupRe)) {
-    const negated = (match[1] ?? '').trim() !== '';
-    const payload = (match[2] ?? '').trim();
-    if (payload.startsWith('<')) {
-      const value = payload.slice(1, -1);
+  let unparseable = false;
+  const length = ifHeader.length;
+  let cursor = 0;
+  while (cursor < length) {
+    const open = ifHeader.indexOf('(', cursor);
+    if (open === -1) break;
+    let index = open + 1;
+    while (isIfWhitespace(ifHeader[index])) index += 1;
+    let negated = false;
+    // `Not` must be followed by whitespace, exactly as the old `\s+` required.
+    if (isNegationAt(ifHeader, index) && isIfWhitespace(ifHeader[index + 3])) {
+      negated = true;
+      index += 3;
+      while (isIfWhitespace(ifHeader[index])) index += 1;
+    }
+    const opener = ifHeader[index];
+    const close = opener === '<' ? ifHeader.indexOf('>', index + 1) : opener === '[' ? ifHeader.indexOf(']', index + 1) : -1;
+    if (opener !== '<' && opener !== '[') {
+      unparseable = true;
+      cursor = open + 1;
+      continue;
+    }
+    if (close === -1) {
+      unparseable = true;
+      break;
+    }
+    if (opener === '<') {
+      const value = ifHeader.slice(index + 1, close);
       if (value.toLowerCase() === 'dav:no-lock') conditions.push({ kind: 'no-lock', negated });
       else conditions.push({ kind: 'token', value, negated });
-    } else if (payload.startsWith('[')) {
-      conditions.push({ kind: 'etag', value: payload.slice(1, -1).trim(), negated });
     } else {
-      conditions.push({ kind: 'unknown' });
+      conditions.push({ kind: 'etag', value: ifHeader.slice(index + 1, close).trim(), negated });
     }
+    cursor = close + 1;
   }
+  if (unparseable) conditions.push({ kind: 'unknown' });
   return conditions;
 }
 

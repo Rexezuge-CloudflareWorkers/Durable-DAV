@@ -18,6 +18,7 @@ import {
   getDeadPropertyKey,
   isProtectedProperty,
   generatePropfindResponse,
+  extractLockOwner,
 } from '@durable-dav/webdav';
 import { DavCredentialUtil } from '@durable-dav/shared/utils';
 
@@ -102,6 +103,52 @@ describe('DuraDAV XML (PROPFIND/PROPPATCH)', () => {
     const xml = generatePropfindResponse(null, 'allprop');
     expect(xml).toContain('<response>');
     expect(xml).toContain('<href>/</href>');
+  });
+});
+
+describe('LOCK owner extraction', () => {
+  it('reads the owner element, tolerating attributes and case', () => {
+    expect(extractLockOwner('<owner>bob</owner>')).toBe('bob');
+    expect(extractLockOwner('<OWNER>bob</OWNER>')).toBe('bob');
+    expect(extractLockOwner('<owner   id="1">bob</owner>')).toBe('bob');
+    expect(extractLockOwner('<lockinfo><lockscope><exclusive/></lockscope><owner> bob </owner></lockinfo>')).toBe('bob');
+  });
+
+  it('keeps owner text verbatim so getLockDiscovery can escape it once', () => {
+    // `getLockDiscovery` runs `escapeXml` on the stored owner, so decoding
+    // entities here would double-escape `&amp;` into `&amp;amp;` on the wire.
+    expect(extractLockOwner('<owner>a &amp; b</owner>')).toBe('a &amp; b');
+  });
+
+  it('is undefined when there is no owner, or the element is unusable', () => {
+    expect(extractLockOwner('')).toBeUndefined();
+    expect(extractLockOwner('<lockinfo><locktype><write/></locktype></lockinfo>')).toBeUndefined();
+    expect(extractLockOwner('<owner></owner>')).toBeUndefined();
+    expect(extractLockOwner('<owner>   </owner>')).toBeUndefined();
+    expect(extractLockOwner('<owner')).toBeUndefined();
+    expect(extractLockOwner('<owner>bob')).toBeUndefined();
+  });
+
+  it('does not mistake a longer tag name for owner', () => {
+    expect(extractLockOwner('<ownership>x</ownership>')).toBeUndefined();
+    // `<owner/>` cannot open the element, so the real one behind it still wins.
+    expect(extractLockOwner('<owner/><ownerx</owner><owner>bob</owner>')).toBe('bob');
+    expect(extractLockOwner('<ownership>x</ownership><owner>bob</owner>')).toBe('bob');
+    expect(extractLockOwner('<ownerx</owner><owner>bob</owner>')).toBe('bob');
+  });
+
+  it('takes the first owner element, as a streaming client sends it', () => {
+    expect(extractLockOwner('<owner>a</owner><owner>b</owner>')).toBe('a');
+  });
+
+  it('parses a large adversarial body in linear time (CodeQL js/polynomial-redos)', () => {
+    // The old `/<owner(?:\s[^>]*)?>([\s\S]*?)<\/owner>/i` re-scanned the tail
+    // from every `<owner` start: this payload took ~1.0 s at the 64 KB
+    // `MAX_XML_BODY_BYTES` cap and ~4 s at 128 KB, from one LOCK request.
+    const hostile = '<owner '.repeat(9362).repeat(2);
+    const startedAt = performance.now();
+    expect(extractLockOwner(hostile)).toBeUndefined();
+    expect(performance.now() - startedAt).toBeLessThan(500);
   });
 });
 
