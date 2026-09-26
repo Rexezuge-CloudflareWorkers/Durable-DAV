@@ -5,16 +5,17 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 - `src/index.ts` — `fetch`/`scheduled` via `DurableDavWorker`; re-exports `CronTasksWorker`, `DavVolumeWorker` from `@durable-dav/background` for DO bindings.
 - `src/workers/DurableDavWorker.ts` — Hono routes (no file-routing). `src/types.d.ts` — global `Env`.
 - `src/workers/doStubs.ts` — `getVolumeStub(env, owner, volume)` (`DAV_VOLUME.getByName(normalizeVolumeKey)`) + `ensureVolume`.
-- `src/middleware/` — `MiddlewareHandlers.userAuthentication()` (`/user/*` via `AccessAuthService` + `UserService.upsertUser`) + `DavAuth.davAuthForVolume()` (bucket Basic `username:password` via `DavCredentialDAO.getByUsernameAndHash` + volume-id binding + expiry check + `last_used_at` touch; public anon reads via `DavPermissionService.getRole`; 401 with `WWW-Authenticate: Basic` on fail; `DatabaseError` fails closed to 503).
+- `src/middleware/` — `MiddlewareHandlers.userAuthentication()` (`/user/*` via `AccessAuthService` + `UserService.upsertUser`) + `DavAuth.davAuthForVolume()` (bucket Basic `username:password` via `DavCredentialDAO.getActiveByUsername` + `DavCredentialUtil.verifyPassword` (PBKDF2, constant-time) + volume-id binding + expiry check + `last_used_at` touch + opportunistic legacy-SHA256 rehash; public anon reads via `DavPermissionService.getRole`; 401 with `WWW-Authenticate: Basic` on fail; `DatabaseError` fails closed to 503).
 - `src/workers/routes/` — `DavRoutes` (`/:owner/:volume` + `/:owner/:volume/*` for all `SUPPORT_METHODS`, auth then `stub.fetch` forward with `X-Dav-Base/X-Dav-Path/X-Dav-User` + CORS) + `VolumeRoutes` (`GET|POST /user/volumes` (quota `MAX_VOLUMES_PER_USER`, user-only owner check, private-by-default), `GET|PATCH|DELETE /user/volumes/:owner/:volume` owner-only, DO cleanup best-effort) + `CredentialRoutes` (per-bucket credentials) + `UserRoutes` (`GET /user/me`, `GET /users/:username`).
 
 ## Auth
 
-- `/user/*` — Cloudflare Access (`DEMO_MODE` → `DEV_AUTH_EMAIL` → JWT → `ctx.access` fallback).
+- `/user/*` — Cloudflare Access (`DEMO_MODE` → `DEV_AUTH_EMAIL` → JWT → `ctx.access` fallback). Neither bypass is set in `wrangler.template.jsonc`: each authenticates *every* unauthenticated request as a fixed identity, and `AppConfiguration.validate()` warns if one is present with `ENVIRONMENT=production`.
 - WebDAV `/:owner/:volume/*` — bucket-level Basic only (username AND password validated, bound to volume id, expiry enforced). Public buckets allow anon reads; all writes and all private access require a bucket credential. No Bearer, no user-level PAT, no collaborators.
 
 ## Routes
 
+- WebDAV CORS: `applyCors(response, request, SITE_URL)` — allow-list, not origin reflection, plus `Vary: Origin`. Unset `SITE_URL` degrades to same-origin only.
 - WebDAV: `OPTIONS` (`Allow` + `DAV: 1, 2`) · `PROPFIND` · `PROPPATCH` · `MKCOL` · `GET`/`HEAD` (Range, HTML browser for collections) · `PUT` · `DELETE` · `COPY`/`MOVE` (`Destination` same-origin, `Overwrite`) · `LOCK`/`UNLOCK` (all in `DavVolumeWorker`, front only auth + forward + CORS).
 - Volumes: `GET|POST /user/volumes` · `GET|PATCH|DELETE /user/volumes/:owner/:volume`.
 - Credentials: `GET|POST /user/volumes/:owner/:volume/credentials` · `DELETE /user/volumes/:owner/:volume/credentials/:id`.
@@ -24,5 +25,6 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 ## Composition
 
 - Single scope per request: `scopeMiddleware` installs one `Container` + `ServiceContext`; handlers resolve via `BaseRoute.getScope(c).get(Tokens.X)`.
-- `src/endpoints/IBaseRoute.ts` — `BaseRoute` template (`handle()` → `handleRequest()` + `toErrorResponse()` mapping `ServiceError`; AWS envelope `{Exception:{Type,Message}}`).
+- `src/endpoints/IBaseRoute.ts` — `BaseRoute` (`readJson` with a *stream* cap via `readCappedBody`, `getScope`, `toErrorResponse` mapping `ServiceError`; AWS envelope `{Exception:{Type,Message}}`).
+- `src/workers/routes/VolumeScopedRoute.ts` — template method for every `/user/volumes/:owner/:volume/...` handler: one ownership guard, 404-vs-403 as a constructor argument (the browser plane hides existence, the credential plane does not), one error mapping. `requireUser` reads the identity `/user/*` middleware already stored.
 - Never import `@durable-dav/backend-data/dao` values in routes (type-only allowed); never import `@durable-dav/dav-store` directly — use `@durable-dav/webdav` constants + DO `fetch`.

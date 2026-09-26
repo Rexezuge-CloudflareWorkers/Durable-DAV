@@ -10,9 +10,30 @@ import { normalizeVolumeKey } from '@durable-dav/webdav';
 // (`davFile` domain) keyed by volume+path; volume list/detail snapshots live
 // 60s (`davMeta` domain) keyed by owner email / volume key.
 
-const DAV_PROP_TTL_SECONDS = 120;
-const DAV_FILE_TTL_SECONDS = 300;
+// Per-kind TTLs. `DAV_CACHE_TTL_SECONDS` scales the two content caches
+// together; the metadata snapshot is deliberately independent because it backs
+// the dashboard list, where staleness is user-visible.
+const DEFAULT_PROP_TTL_SECONDS = 120;
+const DEFAULT_FILE_TTL_SECONDS = 300;
 const DAV_META_TTL_SECONDS = 60;
+
+/**
+ * Resolve the configured content-cache TTLs.
+ *
+ * `DAV_CACHE_TTL_SECONDS` was present in the wrangler template with
+ * `AppConfiguration.getDavCacheTtlSeconds()` implemented, and nothing ever
+ * called it — so tuning the variable had no effect at all. Now wired, with the
+ * template's 300s as the default.
+ */
+function contentTtls(configuredSeconds: number | null | undefined): { prop: number; file: number } {
+  const base =
+    configuredSeconds !== null && configuredSeconds !== undefined && configuredSeconds > 0
+      ? configuredSeconds
+      : DEFAULT_FILE_TTL_SECONDS;
+  // PROPFIND snapshots are cheaper to rebuild than file bodies are to re-read,
+  // so they never outlive half the file TTL.
+  return { prop: Math.max(1, Math.floor(base / 2.5)), file: Math.floor(base) };
+}
 // Upper bound for KV-cached file bodies (raw bytes). `davFile` caps at
 // 1MiB; base64 inflates ~33%, so only small responses are cached.
 // Large files bypass the cache and always hit the DO.
@@ -131,11 +152,12 @@ async function putCachedPropfind(
   depth: string,
   body: string,
   entry: CachedPropfind,
+  ttlSeconds: number = DEFAULT_PROP_TTL_SECONDS,
 ): Promise<void> {
   if (!isCacheablePath(innerPath)) return;
   try {
     await cache.putJson('davProp', propfindCacheParts(cacheKeyForVolume(owner, volume), innerPath, depth, body), entry, {
-      ttlSeconds: DAV_PROP_TTL_SECONDS,
+      ttlSeconds,
     });
   } catch {
     // Best-effort cache population.
@@ -175,6 +197,7 @@ async function putCachedFile(
   bytes: Uint8Array,
   contentType: string,
   etag: string,
+  ttlSeconds: number = DEFAULT_FILE_TTL_SECONDS,
 ): Promise<void> {
   // Every key must stay purgeable by volume prefix — see
   // `MAX_CACHEABLE_PATH_LENGTH`.
@@ -185,7 +208,7 @@ async function putCachedFile(
       'davFile',
       fileCacheParts(cacheKeyForVolume(owner, volume), innerPath),
       { b64: bytesToBase64(bytes), contentType, etag } satisfies CachedFile,
-      { ttlSeconds: DAV_FILE_TTL_SECONDS },
+      { ttlSeconds },
     );
   } catch {
     // Best-effort cache population.
@@ -236,9 +259,9 @@ async function putCachedVolumeList(cache: KvCache, ownerEmail: string, value: un
 }
 
 export {
-  DAV_PROP_TTL_SECONDS,
-  DAV_FILE_TTL_SECONDS,
   DAV_META_TTL_SECONDS,
+  DEFAULT_PROP_TTL_SECONDS,
+  DEFAULT_FILE_TTL_SECONDS,
   MAX_CACHED_FILE_BYTES,
   cacheKeyForVolume,
   isFresh,
@@ -258,5 +281,6 @@ export {
   base64ToBytes,
   invalidatesReadCache,
   isCacheablePath,
+  contentTtls,
 };
 export type { CachedPropfind, CachedFile };

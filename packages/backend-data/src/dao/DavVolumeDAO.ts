@@ -94,8 +94,11 @@ class DavVolumeDAO extends BaseDAO {
 
   public async listByOwnerEmail(ownerEmail: string, limit = 1000): Promise<DavVolumeRow[]> {
     const result = await this.database
-      .prepare('SELECT * FROM dav_volumes WHERE lower(owner_email) = lower(?) ORDER BY updated_at DESC LIMIT ?')
-      .bind(ownerEmail, limit)
+      // `owner_email` is stored lowercased (`VolumeService.createVolume`), so
+      // the function call defeated `idx_dav_volumes_owner_email` on a hot path.
+      // Lowercase the parameter instead to keep the index usable.
+      .prepare('SELECT * FROM dav_volumes WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ?')
+      .bind(ownerEmail.toLowerCase(), limit)
       .all<DavVolumeRow>();
     return result.results ?? [];
   }
@@ -113,8 +116,8 @@ class DavVolumeDAO extends BaseDAO {
 
   public async countByOwnerEmail(ownerEmail: string): Promise<number> {
     const row = await this.database
-      .prepare('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE lower(owner_email) = lower(?)')
-      .bind(ownerEmail)
+      .prepare('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE owner_email = ?')
+      .bind(ownerEmail.toLowerCase())
       .first<{ cnt: number }>();
     return row?.cnt ?? 0;
   }

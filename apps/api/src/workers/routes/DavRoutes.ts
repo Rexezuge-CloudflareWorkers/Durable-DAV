@@ -1,14 +1,31 @@
 import { Tokens } from '@durable-dav/backend-services/composition';
+import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 import type { ApiApp, ApiContext } from '@/types/ApiContext';
 import { davAuthForVolume } from '@/middleware/DavAuth';
 import { getVolumeStub } from '../doStubs';
 import { DAV_CLASS, SUPPORT_METHODS, applyCors } from '@durable-dav/webdav';
-import { invalidateVolumeCaches, invalidatesReadCache } from './DavReadCache';
+import { contentTtls, invalidateVolumeCaches, invalidatesReadCache } from './DavReadCache';
 import { davHeaders, serveGet, servePropfind } from './DavReadServing';
 
 type App = ApiApp;
 type DavContext = ApiContext;
+
+/**
+ * `applyCors` with the deployment's `SITE_URL` as the origin allow-list.
+ * Wrapped so no call site can forget it and fall back to reflecting any
+ * `Origin`.
+ */
+function cors(c: DavContext, response: Response): Response {
+  return applyCors(response, c.req.raw, c.env.SITE_URL);
+}
+
+/**
+Resolve the content-cache TTLs from `DAV_CACHE_TTL_SECONDS` (per request).
+*/
+function ttlsOf(c: DavContext): { prop: number; file: number } {
+  return contentTtls(AppConfiguration.fromEnv(c.env).getDavCacheTtlSeconds());
+}
 
 function isDavMethod(method: string): boolean {
   return SUPPORT_METHODS.includes(method);
@@ -45,9 +62,9 @@ function stripSlashes(value: string): string {
 async function handleDav(c: DavContext, owner: string, volume: string, inner: string): Promise<Response> {
   const method = c.req.method;
   if (!isDavMethod(method)) {
-    return applyCors(
+    return cors(
+      c,
       new Response('Method Not Allowed', { status: 405, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } }),
-      c.req.raw,
     );
   }
   // `OPTIONS` is a capability probe, not an access to resource content. Many
@@ -55,7 +72,8 @@ async function handleDav(c: DavContext, owner: string, volume: string, inner: st
   // the compliance class; answering 401 on a private volume broke discovery
   // outright. Advertise capabilities without touching volume state.
   if (method === 'OPTIONS') {
-    return applyCors(
+    return cors(
+      c,
       new Response(null, {
         status: 200,
         headers: {
@@ -65,19 +83,19 @@ async function handleDav(c: DavContext, owner: string, volume: string, inner: st
           'Content-Length': '0',
         },
       }),
-      c.req.raw,
     );
   }
   const auth = await davAuthForVolume(c, owner, volume, needsWrite(method));
-  if (auth instanceof Response) return applyCors(auth, c.req.raw);
+  if (auth instanceof Response) return cors(c, auth);
   const stub = getVolumeStub(c.env, auth.owner, auth.volume);
   const base = `/${auth.owner}/${auth.volume}`;
   const cache = BaseRoute.getScope(c).get(Tokens.KvCache);
+  const ttls = ttlsOf(c);
   if (method === 'GET' || method === 'HEAD') {
-    return applyCors(await serveGet({ c, stub, auth, base, inner, cache, headOnly: method === 'HEAD' }), c.req.raw);
+    return cors(c, await serveGet({ c, stub, auth, base, inner, cache, headOnly: method === 'HEAD', ttls }));
   }
   if (method === 'PROPFIND') {
-    return applyCors(await servePropfind({ c, stub, auth, base, inner, cache }), c.req.raw);
+    return cors(c, await servePropfind({ c, stub, auth, base, inner, cache, ttls }));
   }
   const hasBody = !['GET', 'HEAD', 'OPTIONS'].includes(method);
   const forward = new Request(c.req.url, {
@@ -97,7 +115,7 @@ async function handleDav(c: DavContext, owner: string, volume: string, inner: st
       // Never break writes on cache errors.
     }
   }
-  return applyCors(response, c.req.raw);
+  return cors(c, response);
 }
 
 function registerDavRoutes(app: App): void {
@@ -128,9 +146,9 @@ function registerDavRoutes(app: App): void {
   // already contained was unreachable and clients saw "not found" for a
   // resource that plainly exists.
   const methodNotAllowed = (c: DavContext): Response =>
-    applyCors(
+    cors(
+      c,
       new Response('Method Not Allowed', { status: 405, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } }),
-      c.req.raw,
     );
   app.all('/:owner/:volume', methodNotAllowed as never);
   app.all('/:owner/:volume/*', methodNotAllowed as never);

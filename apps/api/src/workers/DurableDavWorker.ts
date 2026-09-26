@@ -2,6 +2,7 @@ import { AbstractEntrypointWorker } from '@durable-dav/backend-runtime/base';
 import { fromHono } from 'chanfana';
 import type { HonoOpenAPIRouterType } from 'chanfana';
 import { Hono } from 'hono';
+import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import type { Next } from 'hono';
 import { MiddlewareHandlers, registerRateLimits, securityHeaders } from '@/middleware';
 import type { ApiContext, ApiEnv } from '@/types/ApiContext';
@@ -30,6 +31,7 @@ async function serveSpaForBrowser(c: ApiContext, next: Next): Promise<Response |
 
 class DurableDavWorker extends AbstractEntrypointWorker {
   protected readonly app: AppRouter;
+  private configChecked = false;
 
   constructor() {
     super();
@@ -106,6 +108,14 @@ class DurableDavWorker extends AbstractEntrypointWorker {
   }
 
   protected async onRequest(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    // Fail-fast configuration check, once per isolate. `AppConfiguration.validate`
+    // documents itself as "call at worker startup"; it was never called, so a
+    // typo like `MAX_FILE_BYTES=banana` silently became the 50 MB default in
+    // production and only ever surfaced in a test.
+    if (!this.configChecked) {
+      this.configChecked = true;
+      for (const warning of AppConfiguration.fromEnv(env).validate()) console.error(warning);
+    }
     return this.app.fetch(request, env, ctx);
   }
 
