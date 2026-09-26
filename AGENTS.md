@@ -28,6 +28,7 @@ pnpm exec wrangler dev --config ./wrangler.jsonc
 
 No committed `wrangler.jsonc` secrets. God-file guard 300/400 warn-only; currently **zero** files over 300.
 `test/` is a workspace project, so `pnpm -r typecheck` and `pnpm run lint` both reach it. Integration tests collect no coverage: the v8 provider needs `node:inspector/promises`, which does not exist inside workerd.
+`pnpm run build` is the **only** build (just `apps/web`); it must be re-run after any `apps/web` change and before `wrangler deploy`. The API worker serves the last local build via the gitignored `apps/api/src/generated/spa-shell.ts`, so a frontend fix is inert until the bundle is regenerated. `scripts/verify-spa-shell.mjs` runs in `checks` and rejects a missing, stubbed, or half-refreshed artifact.
 
 ## Layers
 

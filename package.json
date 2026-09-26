@@ -5,7 +5,7 @@
   "scripts": {
     "postinstall": "node scripts/ensure-spa-shell-stub.mjs && pnpm run typegen",
     "build": "pnpm -r build",
-    "checks": "pnpm -r typecheck && pnpm run lint && node scripts/check-god-files.mjs",
+    "checks": "pnpm -r typecheck && pnpm run lint && node scripts/check-god-files.mjs && node scripts/verify-spa-shell.mjs",
     "checks:all": "pnpm run checks && pnpm run test:coverage",
     "prettier": "prettier --write .",
     "typecheck": "pnpm -r typecheck",
