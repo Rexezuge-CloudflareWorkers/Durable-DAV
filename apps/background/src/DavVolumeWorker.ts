@@ -1,8 +1,9 @@
 /* eslint-disable @typescript-eslint/require-await -- Facade keeps async for DO RPC uniformity. */
 import { DurableObject } from 'cloudflare:workers';
-import { createDofsFs, setDofsDeviceSize, ensureDavSchema, upsertNode } from '@durable-dav/dav-store';
+import { createDofsFs, setDofsDeviceSize, ensureDavSchema, getDeadProperties, upsertNode } from '@durable-dav/dav-store';
 import type { DofsFs, DurableSqlStorage } from '@durable-dav/dav-store';
 import { DAV_CLASS, SUPPORT_METHODS } from '@durable-dav/webdav';
+import type { DeadProperty } from '@durable-dav/webdav';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { DavRepository } from './dav/DavRepository';
 import { DavLockGuard } from './dav/DavLockGuard';
@@ -165,6 +166,128 @@ class DavVolumeWorker extends DurableObject<Env> {
     }
   }
 
+  // Username-rename transfer primitives (Git `RepoWorker` copy pattern).
+  // Locks are never copied (RFC 4918 §9.8); dead props follow file bytes.
+  public async listVolumeEntries(): Promise<
+    Array<{
+      path: string;
+      isCollection: boolean;
+      contentType: string | null;
+      etag: string | null;
+      props: DeadProperty[];
+    }>
+  > {
+    this.ensureSize();
+    const sql = this.sql();
+    const repo = new DavRepository(this.dofs, sql);
+    let names: string[] = [];
+    try {
+      names = repo.listRecursive('');
+    } catch {
+      return [];
+    }
+    const entries: Array<{
+      path: string;
+      isCollection: boolean;
+      contentType: string | null;
+      etag: string | null;
+      props: DeadProperty[];
+    }> = [];
+    for (const name of names) {
+      const innerPath = repo.childInner('', name);
+      if (!isValidInnerPath(innerPath)) continue;
+      const st = repo.statInner(innerPath);
+      if (!st.exists) continue;
+      const meta = repo.readMeta(innerPath);
+      let props: DeadProperty[] = [];
+      try {
+        props = getDeadProperties(sql, innerPath);
+      } catch {
+        props = [];
+      }
+      entries.push({
+        path: innerPath,
+        isCollection: st.isDirectory,
+        contentType: meta.contentType ?? null,
+        etag: meta.etag ?? null,
+        props,
+      });
+    }
+    return entries;
+  }
+
+  public async readVolumeFile(path: string): Promise<{ dataBase64: string; contentType: string | null } | null> {
+    this.ensureSize();
+    if (path === '' || !isValidInnerPath(path)) return null;
+    const sql = this.sql();
+    const repo = new DavRepository(this.dofs, sql);
+    const st = repo.statInner(path);
+    if (!st.exists || st.isDirectory) return null;
+    try {
+      const buf = this.dofs.read(fsPathOf(path), {});
+      const bytes = new Uint8Array(buf.slice(0));
+      return { dataBase64: bytesToBase64(bytes), contentType: repo.readMeta(path).contentType ?? null };
+    } catch {
+      return null;
+    }
+  }
+
+  public async writeVolumeEntry(entry: {
+    path: string;
+    isCollection: boolean;
+    contentType?: string | null;
+    etag?: string | null;
+    dataBase64?: string | null;
+    props?: DeadProperty[];
+  }): Promise<void> {
+    this.ensureSize();
+    if (!isValidInnerPath(entry.path) || entry.path === '') return;
+    const sql = this.sql();
+    const repo = new DavRepository(this.dofs, sql);
+    const parent = entry.path.split('/').slice(0, -1).join('/');
+    if (parent !== '') {
+      try {
+        this.dofs.mkdir(fsPathOf(parent), { recursive: true });
+      } catch {
+        // Parent may already exist; file/collection op surfaces real errors.
+      }
+      const segments = parent.split('/');
+      for (let i = 1; i <= segments.length; i += 1) {
+        repo.upsertCollectionNode(segments.slice(0, i).join('/'), Date.now());
+      }
+    }
+    if (entry.isCollection) {
+      try {
+        this.dofs.mkdir(fsPathOf(entry.path), { recursive: false });
+      } catch {
+        // Existing collection is fine; metadata upsert below still applies.
+      }
+      repo.upsertCollectionNode(entry.path, Date.now());
+    } else {
+      const bytes = entry.dataBase64 ? base64ToBytes(entry.dataBase64) : new Uint8Array();
+      const copy = new Uint8Array(bytes.byteLength);
+      copy.set(bytes);
+      await this.dofs.writeFile(fsPathOf(entry.path), copy.buffer, {});
+      const now = Date.now();
+      repo.upsertFileNode(entry.path, entry.contentType ?? 'application/octet-stream', entry.etag ?? `"${bytes.byteLength.toString(16)}-${now.toString(16)}"`, now);
+    }
+    const props = entry.props ?? [];
+    for (const prop of props) {
+      try {
+        sql.exec(
+          `INSERT INTO dav_props (path, namespace_uri, local_name, prefix, value_xml) VALUES (?, ?, ?, ?, ?) ON CONFLICT(path, namespace_uri, local_name) DO UPDATE SET prefix=excluded.prefix, value_xml=excluded.value_xml`,
+          entry.path,
+          prop.namespaceURI ?? '',
+          prop.localName ?? '',
+          prop.prefix ?? null,
+          prop.valueXml ?? '',
+        );
+      } catch {
+        // Dead-prop copy is best-effort; file bytes already persisted.
+      }
+    }
+  }
+
   public async deleteVolume(): Promise<void> {
     try {
       this.dofs.rmdir('/', { recursive: true });
@@ -185,6 +308,22 @@ class DavVolumeWorker extends DurableObject<Env> {
       // Lifecycle bookkeeping is best-effort.
     }
   }
+}
+
+function bytesToBase64(bytes: Uint8Array): string {
+  let binary = '';
+  const chunk = 8192;
+  for (let i = 0; i < bytes.length; i += chunk) {
+    binary += String.fromCodePoint(...bytes.subarray(i, i + chunk));
+  }
+  return btoa(binary);
+}
+
+function base64ToBytes(b64: string): Uint8Array {
+  const binary = atob(b64);
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) out[i] = (binary.codePointAt(i) ?? 0) & 0xff;
+  return out;
 }
 
 export { DavVolumeWorker };

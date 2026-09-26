@@ -118,7 +118,12 @@
     "languageDescription": "Choose Your Preferred Display Language.",
     "selectLanguage": "Select Language",
     "email": "Email",
-    "username": "Username"
+    "username": "Username",
+    "usernamePlaceholder": "your-username",
+    "renameHint": "Renaming Changes All Bucket URLs Under Your Account.",
+    "settingsUpdated": "Profile Settings Updated.",
+    "usernameReserved": "This Name Is Reserved For System Use.",
+    "failedToUpdate": "Failed To Update Profile."
   },
   "profile": {
     "user": "User",

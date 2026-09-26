@@ -126,6 +126,17 @@ class DavVolumeDAO extends BaseDAO {
     return result.results ?? [];
   }
 
+  public async renameOwner(oldOwnerCi: string, newOwner: string, now: number): Promise<void> {
+    await this.withRetry(
+      () =>
+        this.database
+          .prepare('UPDATE dav_volumes SET owner = ?, owner_ci = ?, updated_at = ? WHERE owner_ci = ?')
+          .bind(newOwner, newOwner.toLowerCase(), now, oldOwnerCi.toLowerCase())
+          .run(),
+      'rename volume owner',
+    );
+  }
+
   public async countByOwnerEmail(ownerEmail: string): Promise<number> {
     const row = await this.database
       .prepare('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE lower(owner_email) = lower(?)')
