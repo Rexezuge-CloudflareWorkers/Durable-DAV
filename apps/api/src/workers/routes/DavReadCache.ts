@@ -18,6 +18,30 @@ const DAV_META_TTL_SECONDS = 60;
 // Large files bypass the cache and always hit the DO.
 const MAX_CACHED_FILE_BYTES = 700_000;
 
+/**
+ * DAV methods that can change volume content, and therefore must drop the
+ * volume's read-cache entries.
+ *
+ * This is an explicit allow-list rather than "everything that isn't a read".
+ * The complement form (`!['GET','HEAD','OPTIONS','PROPFIND'].includes(m)`) also
+ * matched `LOCK`/`UNLOCK`, which most clients send around every operation —
+ * each one triggering two `purgePrefix` sweeps (10 list pages + up to 10 000
+ * deletes per domain), which effectively disabled the cache for real clients
+ * while still paying full price. New methods are read-only until added here.
+ */
+const CONTENT_INVALIDATING_METHODS: ReadonlySet<string> = new Set([
+  'PUT',
+  'DELETE',
+  'MKCOL',
+  'COPY',
+  'MOVE',
+  'PROPPATCH',
+]);
+
+function invalidatesReadCache(method: string): boolean {
+  return CONTENT_INVALIDATING_METHODS.has(method);
+}
+
 function cacheKeyForVolume(owner: string, volume: string): string {
   return normalizeVolumeKey(owner, volume);
 }
@@ -237,5 +261,6 @@ export {
   invalidateVolumeDetailCache,
   bytesToBase64,
   base64ToBytes,
+  invalidatesReadCache,
 };
 export type { CachedPropfind, CachedFile };

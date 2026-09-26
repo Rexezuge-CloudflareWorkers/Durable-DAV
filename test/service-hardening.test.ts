@@ -3,11 +3,28 @@ import { VolumeService } from '../packages/backend-services/src/dav/VolumeServic
 import { VolumeCredentialService } from '../packages/backend-services/src/dav/VolumeCredentialService';
 import { DavLockGuard } from '../apps/background/src/dav/DavLockGuard';
 
+/**
+ * Minimal in-memory `dav_locks` double.
+ *
+ * Understands the two query shapes `DavLockGuard` issues by counting the
+ * placeholders in the `path IN (…)` clause, rather than guessing from the
+ * position of the first binding — positional guessing silently returned `[]`
+ * when the query shape changed, which reads as "not locked" and turns a
+ * refactor into a false green.
+ */
 function lockSql(rowsByPath: Record<string, Array<Record<string, unknown>>>) {
   return {
-    exec: (_query: string, path?: unknown) => ({
-      toArray: () => (typeof path === 'string' ? (rowsByPath[path] ?? []) : []),
-    }),
+    exec: (query: string, ...bindings: unknown[]) => {
+      const inMatch = /path IN \(([^)]*)\)/.exec(query);
+      if (!inMatch) return { toArray: () => [] };
+      const pathCount = (inMatch[1]?.match(/\?/g) ?? []).length;
+      const paths = bindings.slice(0, pathCount).filter((b): b is string => typeof b === 'string');
+      const now = bindings[pathCount] as number;
+      const rows = paths
+        .flatMap((p) => (rowsByPath[p] ?? []).map((row) => ({ path: p, ...row })))
+        .filter((row) => Number(row['expires_at'] ?? 0) > now);
+      return { toArray: () => rows };
+    },
   };
 }
 

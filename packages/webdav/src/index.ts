@@ -3,3 +3,4 @@ export * from './xml';
 export * from './locks';
 export * from './constants';
 export * from './props';
+export * from './body';

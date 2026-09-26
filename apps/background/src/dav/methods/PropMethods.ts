@@ -1,19 +1,32 @@
 import type { DurableSqlStorage } from '@durable-dav/dav-store';
 import {
+  MAX_XML_BODY_BYTES,
   escapeXml,
   generatePropfindResponse,
   isProtectedProperty,
   parsePropfindRequest,
   parseProppatchRequest,
+  readCappedText,
   renderEmptyPropertyElement,
   type DeadProperty,
 } from '@durable-dav/webdav';
+
+/**
+ * Read a request body as UTF-8 XML, refusing anything over the cap.
+ * Returns `null` when the caller should answer `413`.
+ */
+async function readXmlBody(request: Request): Promise<string | null> {
+  const result = await readCappedText(request, MAX_XML_BODY_BYTES);
+  return result.ok ? result.text : null;
+}
 import { hrefOf } from '../DavContext';
 import type { DavLockGuard } from '../DavLockGuard';
 import type { DavRepository } from '../DavRepository';
 
 async function handlePropfind(request: Request, innerPath: string, base: string, repo: DavRepository): Promise<Response> {
-  const parsed = parsePropfindRequest(await request.text());
+  const xml = await readXmlBody(request);
+  if (xml === null) return new Response('Payload Too Large', { status: 413 });
+  const parsed = parsePropfindRequest(xml);
   if (!parsed) return new Response('Bad Request', { status: 400 });
   const node = innerPath === '' ? repo.rootNode() : repo.nodeInfo(innerPath, base);
   if (innerPath !== '' && !node) return new Response('Not Found', { status: 404 });
@@ -57,7 +70,9 @@ async function handleProppatch(
   if (locked) return locked;
   const node = innerPath === '' ? repo.rootNode() : repo.nodeInfo(innerPath, base);
   if (!node && innerPath !== '') return new Response('Not Found', { status: 404 });
-  const parsed = parseProppatchRequest(await request.text());
+  const requestXml = await readXmlBody(request);
+  if (requestXml === null) return new Response('Payload Too Large', { status: 413 });
+  const parsed = parseProppatchRequest(requestXml);
   if (!parsed) return new Response('Bad Request', { status: 400 });
   const okSets: DeadProperty[] = [];
   const okRemoves: DeadProperty[] = [];

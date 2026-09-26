@@ -14,6 +14,7 @@ import {
   getCachedPropfind,
   hashBody,
   invalidateVolumeCaches,
+  invalidatesReadCache,
   isFresh,
   putCachedFile,
   putCachedPropfind,
@@ -235,12 +236,16 @@ async function handleDav(c: DavContext, owner: string, volume: string, inner: st
     ...(hasBody && { duplex: 'half' }),
   });
   const response = await stub.fetch(forward);
-  // Writes invalidate the volume read cache (fail-soft, best-effort).
-  try {
-    const cache = BaseRoute.getScope(c as never).get(Tokens.KvCache);
-    await invalidateVolumeCaches(cache, auth.owner, auth.volume);
-  } catch {
-    // Never break writes on cache errors.
+  // Only content-changing methods drop the read cache (see
+  // CONTENT_INVALIDATING_METHODS). This used to run for every remaining
+  // method, which included OPTIONS/LOCK/UNLOCK.
+  if (invalidatesReadCache(method)) {
+    try {
+      const cache = BaseRoute.getScope(c as never).get(Tokens.KvCache);
+      await invalidateVolumeCaches(cache, auth.owner, auth.volume);
+    } catch {
+      // Never break writes on cache errors.
+    }
   }
   return applyCors(response, c.req.raw);
 }

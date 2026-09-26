@@ -81,7 +81,14 @@ function toLiveProperties(node: DavNodeInfo | null): DavLiveProperties {
 }
 
 function getLivePropertyValue(node: DavNodeInfo | null, property: DeadProperty): string | undefined {
-  return property.namespaceURI === DAV_NAMESPACE ? toLiveProperties(node)[property.localName as keyof DavLiveProperties] : undefined;
+  if (property.namespaceURI !== DAV_NAMESPACE) return undefined;
+  // Why `Object.hasOwn` and not a plain index: `property.localName` is
+  // client-controlled, so a plain lookup walks the prototype chain and hands
+  // back `constructor`/`__proto__`/`toString` — `escapeXml` then calls
+  // `.replaceAll` on a function and throws, turning any PROPFIND into a 500.
+  // The own-property check also removes the need for a `keyof` assertion.
+  const live: Record<string, string | undefined> = toLiveProperties(node);
+  return Object.hasOwn(live, property.localName) ? live[property.localName] : undefined;
 }
 
 function generatePropfindResponse(

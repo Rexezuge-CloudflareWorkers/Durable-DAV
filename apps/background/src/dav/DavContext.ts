@@ -4,6 +4,13 @@ import { stripSlashes } from '@durable-dav/webdav';
 // previously duplicated `fsPathOf`/`hrefOf`/base-stripping inline, which hid
 // traversal edge cases and made unit testing impossible).
 
+/**
+ * Maximum segments in a volume-relative path. Bounds the ancestor walks in
+ * `DavLockGuard` and `getParentPath` callers, so a pathological deep path
+ * cannot drive an unbounded SQL/statement loop.
+ */
+const MAX_PATH_DEPTH = 256;
+
 function fsPathOf(innerPath: string): string {
   return innerPath === '' ? '/' : `/${innerPath}`;
 }
@@ -15,12 +22,13 @@ function hrefOf(base: string, innerPath: string, isCollection: boolean): string 
 }
 
 /**
-Reject `.`/`..`/empty segments so encoded traversal can never escape the volume root.
+Reject `.`/`..`/empty segments so encoded traversal can never escape the volume root,
+and cap the depth (see `MAX_PATH_DEPTH`).
 */
 function isValidInnerPath(innerPath: string): boolean {
   if (innerPath === '') return true;
   const segments = innerPath.split('/');
-  return segments.every((s) => s !== '' && s !== '.' && s !== '..');
+  return segments.length <= MAX_PATH_DEPTH && segments.every((s) => s !== '' && s !== '.' && s !== '..');
 }
 
 function decodeSegments(path: string): string {
@@ -42,8 +50,13 @@ function decodeSegments(path: string): string {
  * Both sources are percent-decoded so encoded traversal (`%2e%2e`) is
  * rejected by `isValidInnerPath` instead of slipping into `dofs` as an
  * opaque segment.
+ *
+ * Returns `null` when the URL has no `/owner/volume` prefix to strip. The
+ * previous shape returned `''` — the volume root — for anything with fewer
+ * than three segments, so a malformed direct DO request silently operated on
+ * the bucket root instead of being rejected. Callers must answer `400`.
  */
-function resolveInnerPath(request: Request, url: URL, base: string): string {
+function resolveInnerPath(request: Request, url: URL, base: string): string | null {
   const header = request.headers.get('X-Dav-Path');
   if (header !== null) return decodeSegments(stripSlashes(header));
   const pathname = url.pathname;
@@ -51,7 +64,7 @@ function resolveInnerPath(request: Request, url: URL, base: string): string {
     return decodeSegments(stripSlashes(pathname.slice(base.length)));
   }
   const parts = stripSlashes(pathname).split('/');
-  return parts.length >= 3 ? decodeSegments(parts.slice(2).join('/')) : '';
+  return parts.length > 2 ? decodeSegments(parts.slice(2).join('/')) : null;
 }
 
 /**
@@ -71,4 +84,4 @@ function stripBase(full: string, base: string): string | null {
   return parts.length >= 2 && `${parts[0]}/${parts[1]}`.toLowerCase() === baseTrim.toLowerCase() ? parts.slice(2).join('/') : null;
 }
 
-export { fsPathOf, hrefOf, isValidInnerPath, resolveInnerPath, stripBase };
+export { MAX_PATH_DEPTH, fsPathOf, hrefOf, isValidInnerPath, resolveInnerPath, stripBase };

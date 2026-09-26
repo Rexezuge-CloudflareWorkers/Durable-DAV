@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-base-to-string -- DO SQLite rows are primitives (TEXT/INTEGER); Record<string, unknown> trips the object-stringification guard. */
 /* eslint-disable @typescript-eslint/require-await -- WebDAV LOCK handlers keep async for uniform dispatch. */
 import type { DurableSqlStorage } from '@durable-dav/dav-store';
-import { determineLockDepth, extractLockOwner, getLockDiscovery, getParentPath, getRequestLockTokens, normalizeLockDetails, normalizeLockToken, parseTimeout, type LockDetails } from '@durable-dav/webdav';
+import { MAX_XML_BODY_BYTES, determineLockDepth, extractLockOwner, getLockDiscovery, getParentPath, getRequestLockTokens, normalizeLockDetails, normalizeLockToken, parseTimeout, readCappedText, type LockDetails } from '@durable-dav/webdav';
 import { hrefOf } from '../DavContext';
 import type { DavLockGuard } from '../DavLockGuard';
 import type { DavRepository } from '../DavRepository';
@@ -41,7 +41,9 @@ async function handleLock(request: Request, innerPath: string, base: string, dep
     return new Response('Bad Request', { status: 400 });
   }
   const { timeout, expiresAt } = parseTimeout(request.headers.get('Timeout'));
-  const body = await request.text();
+  const rawBody = await readCappedText(request, MAX_XML_BODY_BYTES);
+  if (!rawBody.ok) return new Response('Payload Too Large', { status: 413 });
+  const body = rawBody.text;
   const requestedScope = /<shared\b/i.test(body) ? 'shared' : 'exclusive';
   if (body !== '' && !/<write\b/i.test(body)) return new Response('Bad Request', { status: 400 });
   const owner = extractLockOwner(body);
