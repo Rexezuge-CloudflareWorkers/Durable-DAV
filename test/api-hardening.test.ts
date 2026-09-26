@@ -9,6 +9,7 @@ import {
   rateLimit,
 } from '../apps/api/src/middleware';
 import { invalidatesReadCache } from '../apps/api/src/workers/routes/DavReadCache';
+import { acceptsHtml as acceptsHtmlForTest } from '../apps/api/src/workers/acceptsHtml';
 import { MAX_XML_BODY_BYTES, readCappedBody, readCappedText, exceedsDeclaredLength } from '@durable-dav/webdav';
 
 const env = {} as Env;
@@ -121,6 +122,30 @@ describe('rate limiting is actually wired', () => {
     const res = await app.request('https://x/x', {}, env);
     expect(calls).toBe(1);
     expect(res.status).toBe(500);
+  });
+
+  it('negotiates HTML by quality value, not substring', () => {
+    // A substring test for `text/html` served the SPA shell to DAV clients
+    // that merely list it among many accepted types, and ignored `q=0`.
+    const withAccept = (accept?: string): boolean => {
+      const headers = accept === undefined ? {} : { Accept: accept };
+      return acceptsHtmlForTest(new Request('https://x/alice/photos', { headers }));
+    };
+    expect(withAccept('text/html')).toBe(true);
+    expect(withAccept('text/html,application/xhtml+xml,*/*;q=0.8')).toBe(true);
+    // Explicit refusal.
+    expect(withAccept('text/html;q=0, */*;q=0.5')).toBe(false);
+    // XML wins on quality, so the DAV representation is correct.
+    expect(withAccept('text/html;q=0.1, application/xml;q=0.9')).toBe(false);
+    // A bare `*/*` states no preference, so the WebDAV representation wins —
+    // that is what curl and DAV clients send.
+    expect(withAccept('*/*')).toBe(false);
+    expect(withAccept('*/*;q=0.1, application/xml')).toBe(false);
+    // `text/*` is a type wildcard over html, so it is an explicit request.
+    expect(withAccept('text/*')).toBe(true);
+    // No Accept header at all.
+    expect(withAccept()).toBe(false);
+    expect(withAccept('application/xml')).toBe(false);
   });
 
   it('rejects invalid registration options at construction time', () => {

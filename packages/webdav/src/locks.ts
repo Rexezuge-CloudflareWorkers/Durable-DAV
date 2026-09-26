@@ -12,7 +12,6 @@ type LockDetails = {
 
 const DEFAULT_LOCK_TIMEOUT = 3600;
 const MAX_LOCK_TIMEOUT = 365 * 24 * 60 * 60;
-const VALID_LOCK_DEPTHS = ['0', 'infinity'] as const;
 
 function getSupportedLock(): string {
   return [
@@ -82,21 +81,95 @@ function getRequestLockTokens(request: Request): string[] {
   const tokens: string[] = [];
   const direct = request.headers.get('Lock-Token');
   if (direct) tokens.push(normalizeLockToken(direct));
-  const ifHeader = request.headers.get('If');
-  if (ifHeader) {
-    for (const match of ifHeader.matchAll(/<([^<>]+)>/g)) {
-      const token = normalizeLockToken(match[1] ?? '');
-      if (token !== '') tokens.push(token);
+  const conditions = parseIfHeader(request.headers.get('If'));
+  for (const condition of conditions) {
+    // Entity-tag conditions are not lock tokens; they are handled by the
+    // conditional guard. The old regex treated `If: (<"etag">)` as a lock
+    // token literally named `<"etag">`, so it never matched and the
+    // conditional-PUT mechanism most desktop clients rely on did nothing.
+    if (condition.kind === 'token') tokens.push(normalizeLockToken(condition.value));
+  }
+  return [...new Set(tokens.filter((t) => t !== '' && !t.toLowerCase().startsWith('dav:')))];
+}
+
+type IfCondition =
+  | { kind: 'token'; value: string; negated: boolean }
+  | { kind: 'etag'; value: string; negated: boolean }
+  | { kind: 'no-lock'; negated: boolean }
+  | { kind: 'unknown' };
+
+/**
+ * Tokenizer for the RFC 4918 §10.4 `If` header grammar.
+ *
+ * ```
+ * If             = "If" ":" ( 1*No-tag-list | 1*Tagged-list )
+ * No-tag-list    = List
+ * Tagged-list    = Resource-Tag 1*List
+ * List           = "(" 1*Condition ")"
+ * Condition      = ["Not"] ( State-token | "[" entity-tag "]" )
+ * State-token    = Coded-URL
+ * Coded-URL      = "<" absolute-URI ">"
+ * ```
+ *
+ * The previous implementation was two `String.includes` calls. That inverted
+ * §10.4.4 — the presence of `<DAV:no-lock>` anywhere, *including inside a
+ * `Not`*, makes the whole header always-false, yet the old code reported
+ * `Not <DAV:no-lock>` as *not* always-false. It was also case-sensitive, so
+ * `<dav:no-lock>` was missed entirely.
+ */
+function parseIfHeader(ifHeader: string | null): IfCondition[] {
+  if (!ifHeader) return [];
+  const conditions: IfCondition[] = [];
+  const groupRe = /\(\s*(Not\s+)?(<[^>]*>|\[[^\]]*\])/gi;
+  for (const match of ifHeader.matchAll(groupRe)) {
+    const negated = (match[1] ?? '').trim() !== '';
+    const payload = (match[2] ?? '').trim();
+    if (payload.startsWith('<')) {
+      const value = payload.slice(1, -1);
+      if (value.toLowerCase() === 'dav:no-lock') conditions.push({ kind: 'no-lock', negated });
+      else conditions.push({ kind: 'token', value, negated });
+    } else if (payload.startsWith('[')) {
+      conditions.push({ kind: 'etag', value: payload.slice(1, -1).trim(), negated });
+    } else {
+      conditions.push({ kind: 'unknown' });
     }
   }
-  return [...new Set(tokens)];
+  return conditions;
 }
 
+/**
+ * True when the `If` header cannot be evaluated and must fail.
+ *
+ * `<DAV:no-lock>` is deliberately *not* treated as statically always-false. Per
+ * §10.4.4 it "evaluates to false if the resource is locked, and true if it is
+ * not" — so `If: (<DAV:no-lock>)` on an unlocked resource is a perfectly valid
+ * request that must succeed. The previous implementation rejected exactly that
+ * with 412, while *accepting* `Not <DAV:no-lock>` on a locked resource, which
+ * is the inverse of the spec. Actual lock state is `DavLockGuard`'s job.
+ *
+ * What remains is a genuine fail-closed case: a header the grammar parser
+ * could not read must not be silently ignored.
+ */
 function hasAlwaysFalseIfCondition(request: Request): boolean {
-  const ifHeader = request.headers.get('If') ?? '';
-  return ifHeader.includes('<DAV:no-lock>') && !ifHeader.includes('Not <DAV:no-lock>');
+  const raw = request.headers.get('If');
+  if (!raw) return false;
+  const conditions = parseIfHeader(raw);
+  // A non-empty header that yielded no conditions at all is unparseable.
+  return conditions.length === 0 || conditions.some((c) => c.kind === 'unknown');
 }
 
+/**
+Entity-tag conditions present in the `If` header, for the conditional guard.
+*/
+function getIfHeaderEtags(request: Request): Array<{ etag: string; negated: boolean }> {
+  return parseIfHeader(request.headers.get('If'))
+    .filter((c): c is { kind: 'etag'; value: string; negated: boolean } => c.kind === 'etag')
+    .map((c) => ({ etag: c.value, negated: c.negated }));
+}
+
+/**
+Constant-time comparison for equal-length byte arrays.
+*/
 function timingSafeEqual(left: Uint8Array, right: Uint8Array): boolean {
   if (left.byteLength !== right.byteLength) return false;
   let mismatch = 0;
@@ -107,7 +180,6 @@ function timingSafeEqual(left: Uint8Array, right: Uint8Array): boolean {
 export {
   DEFAULT_LOCK_TIMEOUT,
   MAX_LOCK_TIMEOUT,
-  VALID_LOCK_DEPTHS,
   getSupportedLock,
   determineLockDepth,
   normalizeLockToken,
@@ -116,6 +188,8 @@ export {
   parseTimeout,
   getRequestLockTokens,
   hasAlwaysFalseIfCondition,
+  getIfHeaderEtags,
+  parseIfHeader,
   timingSafeEqual,
 };
-export type { LockDetails };
+export type { LockDetails, IfCondition };

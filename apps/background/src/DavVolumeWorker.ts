@@ -128,13 +128,20 @@ class DavVolumeWorker extends DurableObject<Env> {
         return handleProppatch(request, innerPath, base, repo, locks, sql);
       }
       case 'COPY': {
-        return handleCopy(request, innerPath, base, repo, locks, this.dofs, async (destInner) =>
-          this.removeDestination(destInner, repo),
-        );
+        // COPY reuses `handleDelete` for the overwrite step, exactly as MOVE
+        // does. The previous dedicated `removeDestination` reimplemented DELETE
+        // minus its descendant-lock scan, so `COPY` with `Overwrite: T` could
+        // `rmdir --recursive` a collection whose children were individually
+        // locked — a Class 2 violation that MOVE handled correctly. Sharing one
+        // implementation makes the question unaskable.
+        return handleCopy(request, innerPath, base, repo, locks, this.dofs, async (destInner, overwriteRequest) => {
+          const del = await handleDelete(overwriteRequest, destInner, repo, locks, this.dofs);
+          return del.ok || del.status === 204 ? null : del;
+        });
       }
       case 'MOVE': {
-        return handleMove(request, innerPath, base, repo, locks, this.dofs, async (destInner, req) => {
-          const del = await handleDelete(req, destInner, repo, locks, this.dofs);
+        return handleMove(request, innerPath, base, repo, locks, this.dofs, async (destInner, overwriteRequest) => {
+          const del = await handleDelete(overwriteRequest, destInner, repo, locks, this.dofs);
           return del.ok || del.status === 204 ? null : del;
         });
       }
@@ -148,7 +155,11 @@ class DavVolumeWorker extends DurableObject<Env> {
         });
       }
       case 'UNLOCK': {
-        return handleUnlock(request, innerPath, { repo, locks, sql, writeEmptyFile: async () => false, statIsDirectory: () => false });
+        return handleUnlock(request, innerPath, {
+          repo,
+          sql,
+          unlink: (p) => this.dofs.unlink(fsPathOf(p)),
+        });
       }
       default: {
         return new Response('Method Not Allowed', {
@@ -157,25 +168,6 @@ class DavVolumeWorker extends DurableObject<Env> {
         });
       }
     }
-  }
-
-  private async removeDestination(destInner: string, repo: DavRepository): Promise<Response | null> {
-    const destStat = repo.statInner(destInner);
-    if (destStat.isDirectory) {
-      try {
-        this.dofs.rmdir(fsPathOf(destInner), { recursive: true });
-      } catch {
-        return new Response('Internal Server Error', { status: 500 });
-      }
-    } else {
-      try {
-        this.dofs.unlink(fsPathOf(destInner));
-      } catch {
-        // Missing destination is fine; overwrite proceeds.
-      }
-    }
-    repo.deleteCascade(destInner);
-    return null;
   }
 
   private async writeEmptyFile(innerPath: string): Promise<boolean> {

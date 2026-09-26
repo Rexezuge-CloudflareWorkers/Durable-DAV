@@ -2,6 +2,7 @@
 import type { DofsFs } from '@durable-dav/dav-store';
 import { MAX_XML_BODY_BYTES, getParentPath, getRequestLockTokens, readCappedBody } from '@durable-dav/webdav';
 import { fsPathOf } from '../DavContext';
+import { DavConditionalGuard } from '../DavConditionalGuard';
 import type { DavLockGuard } from '../DavLockGuard';
 import type { DavRepository } from '../DavRepository';
 
@@ -23,6 +24,15 @@ async function handlePut(
   if (parent !== '' && !repo.statInner(parent).isDirectory) return new Response('Conflict', { status: 409 });
   const existing = repo.statInner(innerPath);
   if (existing.exists && existing.isDirectory) return new Response('Method Not Allowed', { status: 405 });
+  // RFC 7232 §6: without this, `If-Match: "stale"` overwrote anyway (lost
+  // update) and Finder/davfs2's create-only `If-None-Match: *` always
+  // succeeded instead of answering 412.
+  const previous = repo.readMeta(innerPath);
+  const conditional = new DavConditionalGuard().check(
+    request,
+    { etag: previous.etag ?? null, mtime: previous.mtime ?? null },
+  );
+  if (conditional) return conditional;
   // Streaming cap, not a post-hoc check: an oversize body is refused without
   // ever being fully buffered.
   const body = await readCappedBody(request, maxFileBytes);
@@ -35,8 +45,15 @@ async function handlePut(
   }
   const contentType = request.headers.get('Content-Type') ?? 'application/octet-stream';
   const now = Date.now();
-  const prev = repo.readMeta(innerPath);
-  repo.upsertFileNode(innerPath, contentType, `"${bytes.byteLength.toString(16)}-${now.toString(16)}"`, now, prev.crtime ?? now);
+  // `previous` was read before the write for the precondition check; reuse it
+  // so `crtime` is preserved across an overwrite without a second query.
+  repo.upsertFileNode(
+    innerPath,
+    contentType,
+    `"${bytes.byteLength.toString(16)}-${now.toString(16)}"`,
+    now,
+    previous.crtime ?? now,
+  );
   return existing.exists ? new Response(null, { status: 204 }) : new Response('', { status: 201 });
 }
 

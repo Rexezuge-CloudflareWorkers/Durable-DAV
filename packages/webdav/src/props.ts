@@ -46,7 +46,7 @@ function isProtectedProperty(propName: string | DeadProperty): boolean {
   );
 }
 
-function toLiveProperties(node: DavNodeInfo | null): DavLiveProperties {
+function toLiveProperties(node: DavNodeInfo | null, base = ''): DavLiveProperties {
   if (node === null) {
     return {
       creationdate: new Date().toUTCString(),
@@ -75,7 +75,7 @@ function toLiveProperties(node: DavNodeInfo | null): DavLiveProperties {
       node.locks.length === 0
         ? ''
         : getLockDiscovery(
-            node.locks.map((l) => ({ ...l, root: getResourceHref(node.key, node.isCollection) })),
+            node.locks.map((l) => ({ ...l, root: getResourceHref(node.key, node.isCollection, base) })),
           ),
   };
 }
@@ -95,9 +95,10 @@ function generatePropfindResponse(
   node: DavNodeInfo | null,
   mode: 'allprop' | 'propname' | 'prop',
   requested: DeadProperty[] = [],
+  base = '',
 ): string {
-  const href = node === null ? '/' : getResourceHref(node.key, node.isCollection);
-  const live = toLiveProperties(node);
+  const href = getResourceHref(node?.key ?? '', node?.isCollection ?? true, base);
+  const live = toLiveProperties(node, base);
   const liveEntries = Object.entries(live).flatMap(([key, value]) =>
     value === undefined ? [] : [renderDavProperty(key, value)],
   );

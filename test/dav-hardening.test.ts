@@ -17,7 +17,9 @@ describe('RangeParser hardening', () => {
   it('handles suffix larger than size and exact-boundary offsets', () => {
     expect(parseRangeHeader('bytes=-100', 10)).toMatchObject({ offset: 0, length: 10, status: 206 });
     expect(parseRangeHeader('bytes=9-9', 10)).toMatchObject({ offset: 9, length: 1, status: 206 });
-    expect(parseRangeHeader('bytes=10-', 10).status).toBe(200);
+    // An offset exactly at the size is past the last byte, so it is
+    // unsatisfiable (RFC 7233 §4.4) rather than a full-body 200.
+    expect(parseRangeHeader('bytes=10-', 10)).toMatchObject({ status: 416, contentRange: 'bytes */10' });
   });
 });
 

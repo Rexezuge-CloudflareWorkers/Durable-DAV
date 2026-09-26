@@ -2,23 +2,30 @@ import { AbstractEntrypointWorker } from '@durable-dav/backend-runtime/base';
 import { fromHono } from 'chanfana';
 import type { HonoOpenAPIRouterType } from 'chanfana';
 import { Hono } from 'hono';
+import type { Next } from 'hono';
 import { MiddlewareHandlers, registerRateLimits, securityHeaders } from '@/middleware';
+import type { ApiContext, ApiEnv } from '@/types/ApiContext';
 import { scopeMiddleware } from '@/middleware/scopeMiddleware';
-import { RESERVED_NAMESPACE_NAMES } from '@durable-dav/shared/constants';
+import { RESERVED_NAMESPACE_NAMES_LIST } from '@durable-dav/shared/constants';
 import { registerDavRoutes } from './routes/DavRoutes';
 import { registerVolumeRoutes } from './routes/VolumeRoutes';
 import { registerVolumeBrowserRoutes } from './routes/VolumeBrowserRoutes';
 import { registerCredentialRoutes } from './routes/CredentialRoutes';
 import { registerUserProfileRoutes } from './routes/UserRoutes';
 import { SPA_HTML } from '@/generated/spa-shell';
+import { acceptsHtml } from './acceptsHtml';
 
-type AppRouter = HonoOpenAPIRouterType<{
-  Bindings: Env;
-  Variables: { AuthenticatedUserEmailAddress: string };
-}>;
+type AppRouter = HonoOpenAPIRouterType<ApiEnv>;
 
-function acceptsHtml(request: Request): boolean {
-  return (request.headers.get('Accept') ?? '').includes('text/html');
+/**
+ * Serve the SPA shell to browser document navigations, else fall through.
+ * Registered for both `/:owner/:volume` and `/:owner/:volume/` because Hono's
+ * bare pattern does not match a trailing slash, which used to send a bookmarked
+ * `https://host/alice/demo/` to the DO's raw HTML listing instead.
+ */
+async function serveSpaForBrowser(c: ApiContext, next: Next): Promise<Response | void> {
+  if (c.req.method === 'GET' && acceptsHtml(c.req.raw)) return c.html(SPA_HTML);
+  await next();
 }
 
 class DurableDavWorker extends AbstractEntrypointWorker {
@@ -27,10 +34,7 @@ class DurableDavWorker extends AbstractEntrypointWorker {
   constructor() {
     super();
 
-    const app = new Hono<{
-      Bindings: Env;
-      Variables: { AuthenticatedUserEmailAddress: string };
-    }>();
+    const app = new Hono<ApiEnv>();
 
     app.use('*', securityHeaders());
     app.onError((error, c) => {
@@ -47,10 +51,23 @@ class DurableDavWorker extends AbstractEntrypointWorker {
     app.get('/settings', (c) => c.html(SPA_HTML));
     // Single-segment profile shell — never shadow reserved API/UI roots
     // (`/health`, `/docs`, `/user`, …). Reserved names fall through so the
-    // exact routes (including fromHono's `/docs`, registered later) win.
+    // exact routes win.
+    //
+    // The deny-list must be owned here, not borrowed from
+    // `RESERVED_NAMESPACE_NAMES`: that set is a *username* concern and only
+    // contained `docs`, so `fromHono`'s `/openapi.json`, `/openapi.yaml` and
+    // `/redocs` — registered after this handler, and therefore losing Hono's
+    // same-shape resolution order — were all shadowed by the SPA shell. The
+    // Swagger page at `/docs` fetched `/openapi.json` and rendered empty.
+    const NON_PROFILE_SEGMENTS: ReadonlySet<string> = new Set([
+      ...RESERVED_NAMESPACE_NAMES_LIST,
+      'openapi.json',
+      'openapi.yaml',
+      'redocs',
+    ]);
     app.get('/:username', async (c, next) => {
       const segment = (c.req.param('username') ?? '').toLowerCase();
-      if (RESERVED_NAMESPACE_NAMES.has(segment)) {
+      if (NON_PROFILE_SEGMENTS.has(segment)) {
         await next();
         return;
       }
@@ -71,15 +88,17 @@ class DurableDavWorker extends AbstractEntrypointWorker {
     registerCredentialRoutes(app);
     registerUserProfileRoutes(app);
 
-    // Volume-root content negotiation (recommended option): browser document
-    // navigations (`Accept: text/html`) get the SPA shell, whose VolumeView
-    // drives subpaths client-side via `?path=`; WebDAV and file clients
+    // Volume-root content negotiation: browser document navigations
+    // (`Accept: text/html`) get the SPA shell, whose VolumeView drives
+    // subpaths client-side via `?path=`; WebDAV and file clients
     // (`Accept: */*`, `Depth`, …) fall through to the DO forward below.
     // Registered after `/user/*` so API JSON responses always win.
-    app.use('/:owner/:volume', async (c, next) => {
-      if (c.req.method === 'GET' && acceptsHtml(c.req.raw)) return c.html(SPA_HTML);
-      await next();
-    });
+    //
+    // Both the bare and trailing-slash forms are registered: Hono's
+    // `/:owner/:volume` does not match `/alice/demo/`, so a browser with a
+    // bookmark ending in `/` got the DO's raw HTML listing instead of the SPA.
+    app.use('/:owner/:volume', serveSpaForBrowser);
+    app.use('/:owner/:volume/', serveSpaForBrowser);
     registerDavRoutes(app);
 
     const openapi: AppRouter = fromHono(app, { docs_url: '/docs' });

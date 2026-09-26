@@ -1,6 +1,6 @@
-import type { Hono } from 'hono';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
+import type { ApiApp, ApiContext } from '@/types/ApiContext';
 import { davAuthForVolume } from '@/middleware/DavAuth';
 import type { DavAuthResult } from '@/middleware/DavAuth';
 import { getVolumeStub } from '../doStubs';
@@ -20,17 +20,17 @@ import {
   putCachedPropfind,
 } from './DavReadCache';
 
-type App = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
-interface DavContext {
-  req: {
-    method: string;
-    url: string;
-    raw: Request;
-    param: (name: string) => string | undefined;
-    text: () => Promise<string>;
-  };
-  env: Env;
-}
+type App = ApiApp;
+
+/**
+ * The real Hono context, not a hand-rolled partial interface. The previous
+ * `DavContext` declared only `req.{method,url,raw,param,text}` and `env`, which
+ * meant `get`/`set` were invisible to the type system and every call into
+ * `BaseRoute.getScope` / `davAuthForVolume` needed an `as never` cast to bridge
+ * the gap. 25 of those casts existed across this package; the shared
+ * `ApiContext` type removes the need for them.
+ */
+type DavContext = ApiContext;
 
 function isDavMethod(method: string): boolean {
   return SUPPORT_METHODS.includes(method);
@@ -52,8 +52,84 @@ function davHeaders(c: DavContext, auth: DavAuthResult, base: string, inner: str
   const h = new Headers(c.req.raw.headers);
   h.set('X-Dav-Base', base);
   h.set('X-Dav-Path', inner);
-  if (auth.userEmail) h.set('X-Dav-User', auth.userEmail);
+  // Always overwrite. Setting it only when authenticated let a client-supplied
+  // `X-Dav-User: admin@…` through untouched on an anonymous read of a public
+  // volume. Nothing consumes it today, but it is a header-injection primitive
+  // one refactor away from mattering.
+  h.set('X-Dav-User', auth.userEmail ?? '');
+  // The DO never reads Authorization; do not hand credentials down.
+  h.delete('Authorization');
   return h;
+}
+
+/**
+ * 200/304 response builder for cached DAV reads.
+ *
+ * Single place for the header set, so the 200 and 304 arms cannot drift.
+ * Previously the 304 arm set only `ETag`, omitting the `Cache-Control` the
+ * 200 arm sent, and the 200 header block was written three separate times
+ * with subtly different field sets.
+ */
+function respondFromCache(
+  kind: 'file' | 'propfind',
+  entry: { etag: string; contentType?: string | null; body?: string; b64?: string },
+  request: Request,
+  headOnly: boolean,
+): Response {
+  if (isFresh(request, entry.etag)) {
+    // RFC 9110 §15.4.5: a 304 must carry the caching directives it would have
+    // sent on a 200, or the client falls back to heuristic freshness.
+    return new Response(null, { status: 304, headers: { ETag: entry.etag, 'Cache-Control': cacheControlFor(kind) } });
+  }
+  if (kind === 'propfind') {
+    return new Response(entry.body ?? '', {
+      status: 207,
+      headers: {
+        'Content-Type': 'application/xml; charset=utf-8',
+        ETag: entry.etag,
+        'Cache-Control': cacheControlFor('propfind'),
+      },
+    });
+  }
+  const bytes = base64ToBytes(entry.b64 ?? '');
+  return new Response(headOnly ? null : (bytes as BodyInit), {
+    status: 200,
+    headers: {
+      'Content-Type': entry.contentType ?? 'application/octet-stream',
+      'Content-Length': String(bytes.byteLength),
+      ETag: entry.etag,
+      'Accept-Ranges': 'bytes',
+      'Cache-Control': cacheControlFor('file'),
+    },
+  });
+}
+
+/**
+200/304 for a body already materialised from the DO.
+*/
+function respondFromBytes(
+  cacheKind: 'file' | 'propfind',
+  status: 200 | 207,
+  bytes: ArrayBuffer | string,
+  etag: string,
+  extra: Record<string, string>,
+  request: Request,
+  headOnly: boolean,
+): Response {
+  if (isFresh(request, etag)) {
+    return new Response(null, { status: 304, headers: { ETag: etag, 'Cache-Control': cacheControlFor(cacheKind) } });
+  }
+  const length = typeof bytes === 'string' ? new TextEncoder().encode(bytes).byteLength : bytes.byteLength;
+  return new Response(headOnly ? null : (bytes as BodyInit), {
+    status,
+    headers: {
+      'Content-Type': cacheKind === 'propfind' ? 'application/xml; charset=utf-8' : 'application/octet-stream',
+      'Content-Length': String(length),
+      ETag: etag,
+      'Cache-Control': cacheControlFor(cacheKind),
+      ...extra,
+    },
+  });
 }
 
 async function serveGet(
@@ -64,45 +140,14 @@ async function serveGet(
   inner: string,
   headOnly: boolean,
 ): Promise<Response> {
-  const cache = BaseRoute.getScope(c as never).get(Tokens.KvCache);
+  const cache = BaseRoute.getScope(c).get(Tokens.KvCache);
   const hasRange = c.req.raw.headers.has('Range');
   // Range slices bypass the cache (low frequency, per-request offsets).
   if (!hasRange) {
     try {
       const cached = await getCachedFile(cache, auth.owner, auth.volume, inner);
       if (cached) {
-        if (isFresh(c.req.raw, cached.etag)) {
-          return applyCors(new Response(null, { status: 304, headers: { ETag: cached.etag } }), c.req.raw);
-        }
-        if (headOnly) {
-          return applyCors(
-            new Response(null, {
-              status: 200,
-              headers: {
-                'Content-Type': cached.contentType,
-                'Content-Length': String(base64ToBytes(cached.b64).byteLength),
-                ETag: cached.etag,
-                'Accept-Ranges': 'bytes',
-                'Cache-Control': cacheControlFor('file'),
-              },
-            }),
-            c.req.raw,
-          );
-        }
-        const bytes = base64ToBytes(cached.b64);
-        return applyCors(
-          new Response(bytes as BodyInit, {
-            status: 200,
-            headers: {
-              'Content-Type': cached.contentType,
-              'Content-Length': String(bytes.byteLength),
-              ETag: cached.etag,
-              'Accept-Ranges': 'bytes',
-              'Cache-Control': cacheControlFor('file'),
-            },
-          }),
-          c.req.raw,
-        );
+        return applyCors(respondFromCache('file', cached, c.req.raw, headOnly), c.req.raw);
       }
     } catch {
       // Fail-soft: fall through to the DO loader.
@@ -118,19 +163,21 @@ async function serveGet(
     const contentType = response.headers.get('Content-Type') ?? 'application/octet-stream';
     const etag = response.headers.get('ETag');
     if (etag && !contentType.includes('text/html')) {
-      try {
-        const buf = await response.arrayBuffer();
+      // Consume defensively: a failure here must not leave us trying to re-use
+      // an already-locked body stream (which threw a TypeError and surfaced as
+      // a 500 via the catch's "fall through with the original response").
+      const buf = await response.arrayBuffer().catch(() => null);
+      if (buf) {
         if (buf.byteLength <= MAX_CACHED_FILE_BYTES) {
-          await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag);
+          await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag).catch(() => undefined);
         }
-        if (isFresh(c.req.raw, etag)) {
-          return applyCors(new Response(null, { status: 304, headers: { ETag: etag } }), c.req.raw);
-        }
-        const headers = new Headers(response.headers);
-        headers.set('Cache-Control', cacheControlFor('file'));
-        return applyCors(new Response(buf, { status: 200, headers }), c.req.raw);
-      } catch {
-        // Fall through with the original response below.
+        // Build an explicit header set: `buf` is the runtime-*decoded* body, so
+        // cloning the DO's headers verbatim could carry a now-wrong
+        // `Content-Length`, a stale `Content-Encoding`, or hop-by-hop headers.
+        return applyCors(
+          respondFromBytes('file', 200, buf, etag, { 'Content-Type': contentType, 'Accept-Ranges': 'bytes' }, c.req.raw, headOnly),
+          c.req.raw,
+        );
       }
     }
   }
@@ -144,34 +191,19 @@ async function servePropfind(
   base: string,
   inner: string,
 ): Promise<Response> {
-  const cache = BaseRoute.getScope(c as never).get(Tokens.KvCache);
+  const cache = BaseRoute.getScope(c).get(Tokens.KvCache);
   const depth = c.req.raw.headers.get('Depth') ?? 'infinity';
   // Only Depth 0/1 are cached; infinity walks can exceed KV limits.
   const cacheable = depth === '0' || depth === '1';
-  let bodyText = '';
-  try {
-    bodyText = await c.req.text();
-  } catch {
-    bodyText = '';
-  }
+  // Read once as bytes: `c.req.text()` decoded as UTF-8 and re-encoding it
+  // corrupted any non-UTF-8 XML body, and the same buffer feeds the cache key.
+  const bodyBytes = await c.req.arrayBuffer().catch(() => new ArrayBuffer(0));
+  const bodyText = new TextDecoder().decode(bodyBytes);
   if (cacheable) {
     try {
       const cached = await getCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText);
       if (cached) {
-        if (isFresh(c.req.raw, cached.etag)) {
-          return applyCors(new Response(null, { status: 304, headers: { ETag: cached.etag } }), c.req.raw);
-        }
-        return applyCors(
-          new Response(cached.body, {
-            status: 207,
-            headers: {
-              'Content-Type': 'application/xml; charset=utf-8',
-              ETag: cached.etag,
-              'Cache-Control': cacheControlFor('propfind'),
-            },
-          }),
-          c.req.raw,
-        );
+        return applyCors(respondFromCache('propfind', cached, c.req.raw, false), c.req.raw);
       }
     } catch {
       // Fail-soft: fall through to the DO loader.
@@ -180,37 +212,22 @@ async function servePropfind(
   const forward = new Request(c.req.url, {
     method: 'PROPFIND',
     headers: davHeaders(c, auth, base, inner),
-    body: bodyText,
+    body: bodyBytes.byteLength > 0 ? bodyBytes : undefined,
     duplex: 'half',
   } as RequestInit);
   const response = await stub.fetch(forward);
   if (cacheable && response.status === 207) {
-    try {
-      const text = await response.text();
+    const text = await response.text().catch(() => null);
+    if (text !== null) {
       const etag = response.headers.get('ETag') ?? etagForPropfind(`${auth.owner}/${auth.volume}`.toLowerCase(), inner, depth, hashBody(bodyText));
-      await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag });
-      if (isFresh(c.req.raw, etag)) {
-        return applyCors(new Response(null, { status: 304, headers: { ETag: etag } }), c.req.raw);
-      }
-      return applyCors(
-        new Response(text, {
-          status: 207,
-          headers: {
-            'Content-Type': 'application/xml; charset=utf-8',
-            ETag: etag,
-            'Cache-Control': cacheControlFor('propfind'),
-          },
-        }),
-        c.req.raw,
-      );
-    } catch {
-      // Fall through with the original response below.
+      await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag }).catch(() => undefined);
+      return applyCors(respondFromBytes('propfind', 207, text, etag, {}, c.req.raw, false), c.req.raw);
     }
   }
   return applyCors(response, c.req.raw);
 }
 
-async function handleDav(c: DavContext, owner: string, volume: string, inner: string, baseOverride?: string): Promise<Response> {
+async function handleDav(c: DavContext, owner: string, volume: string, inner: string): Promise<Response> {
   const method = c.req.method;
   if (!isDavMethod(method)) {
     return applyCors(
@@ -218,10 +235,28 @@ async function handleDav(c: DavContext, owner: string, volume: string, inner: st
       c.req.raw,
     );
   }
-  const auth = await davAuthForVolume(c as never, owner, volume, needsWrite(method));
+  // `OPTIONS` is a capability probe, not an access to resource content. Many
+  // DAV clients (and Windows/Office discovery) send it unauthenticated to learn
+  // the compliance class; answering 401 on a private volume broke discovery
+  // outright. Advertise capabilities without touching volume state.
+  if (method === 'OPTIONS') {
+    return applyCors(
+      new Response(null, {
+        status: 200,
+        headers: {
+          Allow: SUPPORT_METHODS.join(', '),
+          DAV: DAV_CLASS,
+          'MS-Author-Via': 'DAV',
+          'Content-Length': '0',
+        },
+      }),
+      c.req.raw,
+    );
+  }
+  const auth = await davAuthForVolume(c, owner, volume, needsWrite(method));
   if (auth instanceof Response) return applyCors(auth, c.req.raw);
   const stub = getVolumeStub(c.env, auth.owner, auth.volume);
-  const base = baseOverride ?? `/${auth.owner}/${auth.volume}`;
+  const base = `/${auth.owner}/${auth.volume}`;
   if (method === 'GET' || method === 'HEAD') {
     return serveGet(c, stub, auth, base, inner, method === 'HEAD');
   }
@@ -241,7 +276,7 @@ async function handleDav(c: DavContext, owner: string, volume: string, inner: st
   // method, which included OPTIONS/LOCK/UNLOCK.
   if (invalidatesReadCache(method)) {
     try {
-      const cache = BaseRoute.getScope(c as never).get(Tokens.KvCache);
+      const cache = BaseRoute.getScope(c).get(Tokens.KvCache);
       await invalidateVolumeCaches(cache, auth.owner, auth.volume);
     } catch {
       // Never break writes on cache errors.
@@ -272,6 +307,18 @@ function registerDavRoutes(app: App): void {
     const volume = c.req.param('volume') ?? '';
     return handleDav(c, owner, volume, '');
   });
+
+  // Terminal catch-all. Without it, a non-DAV method on a volume path matched
+  // no route and fell through to Hono's default 404, so the 405 the code
+  // already contained was unreachable and clients saw "not found" for a
+  // resource that plainly exists.
+  const methodNotAllowed = (c: DavContext): Response =>
+    applyCors(
+      new Response('Method Not Allowed', { status: 405, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } }),
+      c.req.raw,
+    );
+  app.all('/:owner/:volume', methodNotAllowed as never);
+  app.all('/:owner/:volume/*', methodNotAllowed as never);
 }
 
 export { registerDavRoutes };

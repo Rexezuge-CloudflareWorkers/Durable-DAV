@@ -69,19 +69,31 @@ function resolveInnerPath(request: Request, url: URL, base: string): string | nu
 
 /**
  * Map a full decoded destination path (incl. `/owner/volume` prefix) back to
- * a volume-relative path. Returns `null` for cross-volume destinations.
+ * a volume-relative path. Returns `null` when the destination does not name
+ * this volume.
+ *
  * Base matching is case-insensitive (why: volume keys are lowercased at the
  * front door, but `Destination` headers may preserve original casing).
+ *
+ * A path with no `/` at all is rejected rather than treated as volume-relative.
+ * The WHATWG URL parser resolves `Destination` against the request URL and
+ * *does* normalise `%2e%2e`, so
+ * `https://host/test/vol/%2e%2e/%2e%2e/etc` arrives here as the bare string
+ * `etc`. The old fallback returned it as a member of the current volume, so an
+ * attempt to escape upwards silently became a successful write to
+ * `vol/etc` and a `201`. A legitimately relative `Destination` cannot reach
+ * this branch: `new URL(dest, requestUrl)` already resolves it against the
+ * request URL, so it arrives with the base prefix intact.
  */
 function stripBase(full: string, base: string): string | null {
   const baseTrim = stripSlashes(base);
   const fullLower = full.toLowerCase();
   const baseLower = baseTrim.toLowerCase();
   if (fullLower === baseLower) return '';
-  if (baseTrim !== '' && fullLower.startsWith(`${baseLower}/`)) return full.slice(baseTrim.length + 1);
-  if (!full.includes('/')) return full;
+  if (baseTrim === '') return full;
+  if (fullLower.startsWith(`${baseLower}/`)) return full.slice(baseTrim.length + 1);
   const parts = full.split('/');
-  return parts.length >= 2 && `${parts[0]}/${parts[1]}`.toLowerCase() === baseTrim.toLowerCase() ? parts.slice(2).join('/') : null;
+  return parts.length >= 2 && `${parts[0]}/${parts[1]}`.toLowerCase() === baseLower ? parts.slice(2).join('/') : null;
 }
 
 export { MAX_PATH_DEPTH, fsPathOf, hrefOf, isValidInnerPath, resolveInnerPath, stripBase };

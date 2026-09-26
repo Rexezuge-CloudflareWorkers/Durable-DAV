@@ -23,6 +23,19 @@ import { hrefOf } from '../DavContext';
 import type { DavLockGuard } from '../DavLockGuard';
 import type { DavRepository } from '../DavRepository';
 
+/**
+ * Log a dead-property write failure instead of discarding it. A swallowed
+ * error here produced a `200 OK` the client could not distinguish from success.
+ */
+function logPropWriteFailure(innerPath: string, property: DeadProperty, error: unknown): void {
+  console.error('PROPPATCH write failed', {
+    path: innerPath,
+    namespaceURI: property.namespaceURI,
+    localName: property.localName,
+    error: error instanceof Error ? (error.stack ?? error.message) : error,
+  });
+}
+
 async function handlePropfind(request: Request, innerPath: string, base: string, repo: DavRepository): Promise<Response> {
   const xml = await readXmlBody(request);
   if (xml === null) return new Response('Payload Too Large', { status: 413 });
@@ -32,7 +45,7 @@ async function handlePropfind(request: Request, innerPath: string, base: string,
   if (innerPath !== '' && !node) return new Response('Not Found', { status: 404 });
   let page = `<?xml version="1.0" encoding="utf-8"?>\n<multistatus xmlns="DAV:">`;
   const props = parsed.mode === 'prop' ? parsed.properties : [];
-  page += generatePropfindResponse(node, parsed.mode, props);
+  page += generatePropfindResponse(node, parsed.mode, props, base);
   if (node?.isCollection ?? true) {
     const depth = request.headers.get('Depth') ?? 'infinity';
     if (depth !== '0' && depth !== '1' && depth !== 'infinity') return new Response('Bad Request', { status: 400 });
@@ -42,14 +55,14 @@ async function handlePropfind(request: Request, innerPath: string, base: string,
         const childInner = repo.childInner(innerPath, name);
         seen.add(childInner);
         const child = repo.nodeInfo(childInner, base);
-        if (child) page += generatePropfindResponse(child, parsed.mode, props);
+        if (child) page += generatePropfindResponse(child, parsed.mode, props, base);
       }
       if (depth === 'infinity') {
         for (const name of repo.listRecursive(innerPath)) {
           const childInner = repo.childInner(innerPath, name);
           if (seen.has(childInner)) continue;
           const child = repo.nodeInfo(childInner, base);
-          if (child) page += generatePropfindResponse(child, parsed.mode, props);
+          if (child) page += generatePropfindResponse(child, parsed.mode, props, base);
         }
       }
     }
@@ -87,8 +100,18 @@ async function handleProppatch(
     if (op.action === 'set') okSets.push(op.property);
     else okRemoves.push(op.property);
   }
-  const hasFailures = failedSets.length > 0 || failedRemoves.length > 0;
-  if (!hasFailures) {
+  const hasProtectedFailures = failedSets.length > 0 || failedRemoves.length > 0;
+  // RFC 4918 §9.2 requires each propstat to carry the *actual* outcome. The
+  // previous shape swallowed SQL errors in a bare `catch` and then derived the
+  // status only from protected-property rejections — so a write that threw was
+  // reported to the client as `200 OK`, the client believed the property was
+  // set, and the next PROPFIND did not show it. Outcomes are recorded per
+  // property instead.
+  const appliedSets: DeadProperty[] = [];
+  const appliedRemoves: DeadProperty[] = [];
+  const erroredSets: DeadProperty[] = [];
+  const erroredRemoves: DeadProperty[] = [];
+  if (!hasProtectedFailures) {
     for (const p of okSets) {
       try {
         sql.exec(
@@ -99,31 +122,37 @@ async function handleProppatch(
           p.prefix,
           p.valueXml,
         );
-      } catch {
-        // Best-effort; partial failure surfaces as 424 via propstat below
-        // on the next read. Kept atomic-by-convention (no partial commit
-        // marker) to match the previous ported behavior.
+        appliedSets.push(p);
+      } catch (error) {
+        erroredSets.push(p);
+        logPropWriteFailure(innerPath, p, error);
       }
     }
     for (const p of okRemoves) {
       try {
         sql.exec(`DELETE FROM dav_props WHERE path = ? AND namespace_uri = ? AND local_name = ?`, innerPath, p.namespaceURI, p.localName);
-      } catch {
-        // Same best-effort note as above.
+        appliedRemoves.push(p);
+      } catch (error) {
+        erroredRemoves.push(p);
+        logPropWriteFailure(innerPath, p, error);
       }
     }
   }
-  const successStatus = hasFailures ? 'HTTP/1.1 424 Failed Dependency' : 'HTTP/1.1 200 OK';
+  const successStatus = 'HTTP/1.1 200 OK';
+  const dependencyStatus = 'HTTP/1.1 424 Failed Dependency';
   const propstats = new Map<string, string[]>();
   const append = (p: DeadProperty, status: string) => {
     const list = propstats.get(status) ?? [];
     list.push(renderEmptyPropertyElement({ ...p, valueXml: '' }));
     propstats.set(status, list);
   };
-  for (const p of okSets) append(p, successStatus);
-  for (const p of okRemoves) append(p, successStatus);
+  for (const p of appliedSets) append(p, successStatus);
+  for (const p of appliedRemoves) append(p, successStatus);
+  // Protected live properties cannot be written via PROPPATCH (§9.2).
   for (const p of failedSets) append(p, 'HTTP/1.1 403 Forbidden');
   for (const p of failedRemoves) append(p, 'HTTP/1.1 403 Forbidden');
+  for (const p of erroredSets) append(p, dependencyStatus);
+  for (const p of erroredRemoves) append(p, dependencyStatus);
   let xml = `<?xml version="1.0" encoding="utf-8"?>\n<multistatus xmlns="DAV:">\n<response>\n<href>${escapeXml(hrefOf(base, innerPath, node?.isCollection ?? false))}</href>`;
   for (const [status, props] of propstats) {
     xml += `\n<propstat>\n<prop>\n${props.join('\n')}\n</prop>\n<status>${status}</status>\n</propstat>`;
