@@ -32,6 +32,9 @@ jobs:
       - name: Run Type Check and Lint
         run: pnpm -r typecheck && pnpm run lint
 
+      - name: Validate Locale Bundles
+        run: pnpm run validate:locales
+
       - name: Check God-Files
         run: node scripts/check-god-files.mjs
 

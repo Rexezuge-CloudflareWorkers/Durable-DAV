@@ -26,8 +26,7 @@ const JSON_HEADERS = { 'Content-Type': 'application/json' };
  */
 let OWNER = 'routeuser';
 
-const api = (path: string, init: RequestInit = {}): Promise<Response> =>
-  SELF.fetch(`https://example.com${path}`, init);
+const api = (path: string, init: RequestInit = {}): Promise<Response> => SELF.fetch(`https://example.com${path}`, init);
 
 beforeAll(async () => {
   const testEnv = env as unknown as TestEnv;

@@ -18,8 +18,8 @@ export default tseslint.config(
       'src/generated/**',
       'apps/api/src/generated/**',
       'coverage/**',
+      'coverage-integration/**',
       'node_modules/**',
-      'test/**',
     ],
   },
 
@@ -401,6 +401,28 @@ export default tseslint.config(
       'sonarjs/use-type-alias': 'off',
       // Alphabetical-sort rule fights deterministic fixture ordering in tests
       'sonarjs/no-alphabetical-sort': 'off',
+      // `void promise` is the idiomatic way to mark a deliberately unawaited
+      // promise in a test; `sonarjs/void-use` flags it as a no-op operator.
+      'sonarjs/void-use': 'off',
+      // Repeated string literals in fixtures/assertions are clearer inline.
+      'sonarjs/no-duplicate-string': 'off',
+      // Fixtures are naturally built with `sort()`/`for…of` over composed
+      // expressions.
+      'unicorn/no-array-sort': 'off',
+      'unicorn/require-array-sort-compare': 'off',
+      'unicorn/no-unreadable-for-of-expression': 'off',
+      'unicorn/no-useless-template-literals': 'off',
+      // Fake-D1 doubles await a DAO thunk and call straight onto the result.
+      'unicorn/no-await-expression-member': 'off',
+      // Fake-D1 doubles break out of a nested loop to model a statement miss.
+      'unicorn/no-break-in-nested-loop': 'off',
+      // Module-level `let` for values resolved in `beforeAll` is the normal
+      // integration-fixture shape.
+      'unicorn/no-top-level-assignment-in-function': 'off',
+      'unicorn/no-declarations-before-early-exit': 'off',
+      'unicorn/prefer-includes-over-repeated-comparisons': 'off',
+      'sonarjs/prefer-specific-assertions': 'off',
+      'sonarjs/no-inverted-boolean-check': 'off'
     },
   },
 );

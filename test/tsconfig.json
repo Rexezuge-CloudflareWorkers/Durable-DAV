@@ -2,9 +2,16 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "types": [
-      "vitest/globals"
+      "vitest/globals",
+      "node",
+      "@cloudflare/workers-types",
+      "vite/client"
     ],
+    "jsx": "react-jsx",
     "paths": {
+      "~/*": [
+        "../apps/web/src/*"
+      ],
       "@/*": [
         "../apps/api/src/*"
       ],
@@ -43,11 +50,19 @@
       ],
       "@durable-dav/shared/*": [
         "../packages/shared/src/*"
+      ],
+      "@durable-dav/webdav": [
+        "../packages/webdav/src"
+      ],
+      "@durable-dav/dav-store": [
+        "../packages/dav-store/src"
       ]
     }
   },
   "include": [
+    "../worker-configuration.d.ts",
+    "../packages/backend-runtime/src/env.d.ts",
     "**/*.ts",
-    "../src/**/*.ts"
+    "**/*.tsx"
   ]
 }

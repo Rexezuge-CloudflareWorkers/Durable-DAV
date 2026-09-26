@@ -70,7 +70,7 @@ describe('Tokens registry', () => {
   it('binds every token in a fresh request scope', () => {
     const scope = createRequestScope(makeEnv() as never);
     for (const key of EXPECTED_TOKENS) {
-      expect(scope.has(Tokens[key])).toBe(true);
+      expect(scope.has(Tokens[key] as Parameters<typeof scope.has>[0])).toBe(true);
     }
   });
 });
@@ -105,8 +105,11 @@ describe('createRequestScope', () => {
       [Tokens.DavCredentialDAO, daoMocks.DavCredentialDAO],
     ] as const;
     for (const [token, mock] of pairs) {
-      const first = await scope.get(token)();
-      const second = await scope.get(token)();
+      // Keep the method call: extracting `scope.get` as a bare function would
+      // lose the receiver and throw on `this.singletons`.
+      const resolve = () => (scope.get as (t: unknown) => () => Promise<unknown>)(token);
+      const first = await resolve()();
+      const second = await resolve()();
       expect(first).toBe(second);
       expect(mock).toHaveBeenCalledTimes(1);
     }

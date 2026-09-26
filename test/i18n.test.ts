@@ -36,8 +36,7 @@ describe('backend strings (en)', () => {
   });
 
   it('keeps {placeholder} parity across all locales', () => {
-    const varsOf = (value: string): string[] =>
-      [...new Set(value.match(/\{(\w+)\}/g) ?? [])].sort();
+    const varsOf = (value: string): string[] => [...new Set(value.match(/\{\w+\}/g))].sort();
     const collect = (node: object, out: Map<string, string[]>): void => {
       for (const [key, value] of Object.entries(node)) {
         if (value !== null && typeof value === 'object') collect(value as object, out);

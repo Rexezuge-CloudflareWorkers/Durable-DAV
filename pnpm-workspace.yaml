@@ -1,6 +1,12 @@
 packages:
   - 'apps/*'
   - 'packages/*'
+  # The test suite is a workspace project so `pnpm -r typecheck` and
+  # `pnpm run lint` actually reach it. It used to sit outside the workspace,
+  # which meant ~2 200 lines of test code were never type-checked and never
+  # linted — a type error in a test surfaced only when that test happened to
+  # run.
+  - 'test'
 allowBuilds:
   esbuild: true
   sharp: true

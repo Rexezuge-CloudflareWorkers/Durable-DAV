@@ -2,7 +2,7 @@ import { defineConfig } from 'vitest/config';
 import { cloudflareTest, cloudflarePool } from '@cloudflare/vitest-pool-workers';
 import { fileURLToPath } from 'node:url';
 import { readFileSync, readdirSync } from 'node:fs';
-import { resolve } from 'node:path';
+import path from 'node:path';
 
 const apiSrcPath = fileURLToPath(new URL('../../apps/api/src', import.meta.url));
 const backgroundSrcPath = fileURLToPath(new URL('../../apps/background/src', import.meta.url));
@@ -14,11 +14,13 @@ const davStoreSrcPath = fileURLToPath(new URL('../../packages/dav-store/src', im
 const sharedSrcPath = fileURLToPath(new URL('../../packages/shared/src', import.meta.url));
 const backendServicesSrcPath = fileURLToPath(new URL('../../packages/backend-services/src', import.meta.url));
 
-const migrationsDir = resolve(fileURLToPath(new URL('../../migrations', import.meta.url)));
+const migrationsDir = path.resolve(fileURLToPath(new URL('../../migrations', import.meta.url)));
+// Explicit numeric sort: `0001`, `0002`, … must apply in order, and a
+// default string sort is locale-dependent.
 const migrationFiles = readdirSync(migrationsDir)
   .filter((f) => f.endsWith('.sql'))
-  .sort();
-const migrationSql = migrationFiles.map((f) => readFileSync(resolve(migrationsDir, f), 'utf-8')).join('\n\n');
+  .sort((a, b) => a.localeCompare(b, 'en'));
+const migrationSql = migrationFiles.map((f) => readFileSync(path.resolve(migrationsDir, f), 'utf8')).join('\n\n');
 
 export default defineConfig({
   define: {
@@ -34,13 +36,10 @@ export default defineConfig({
   test: {
     globals: true,
     include: ['test/integration/**/*.int.test.ts'],
-    coverage: {
-      provider: 'v8',
-      reporter: ['text', 'lcov', 'html'],
-      reportsDirectory: './coverage-integration',
-      include: ['apps/api/src/**/*.ts', 'apps/background/src/**/*.ts', 'packages/**/src/**/*.ts'],
-      exclude: ['**/*.test.ts', '**/*.int.test.ts', '**/*.d.ts', '**/index.ts', '**/types.d.ts'],
-    },
+    // No coverage here on purpose. The v8 provider needs
+    // `node:inspector/promises`, which does not exist inside workerd, so
+    // `--coverage` fails with "No such module". The previous config block
+    // looked functional but had never been run.
     pool: cloudflarePool({
       wrangler: {
         configPath: './test/integration/wrangler.test.jsonc',

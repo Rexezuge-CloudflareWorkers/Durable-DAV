@@ -20,7 +20,9 @@ const VOLUME = 'negpath';
 // `/user/*` authenticates as, and `createVolume`'s owner check is against it.
 const EMAIL = 'test@example.com';
 
-/** Resolved in `beforeAll` from the `users` row. */
+/**
+Resolved in `beforeAll` from the `users` row.
+*/
 let OWNER = 'negowner';
 
 let auth: Record<string, string>;
@@ -281,7 +283,7 @@ describe('WebDAV negative paths (real D1 + DO)', () => {
     const secondToken = second.headers.get('Lock-Token') ?? '';
     const secondBody = await second.text();
 
-    const bare = (t: string): string => t.replace(/^<|>$/g, '').replace(/^urn:uuid:/, '');
+    const bare = (t: string): string => t.replaceAll(/^<|>$/g, '').replace(/^urn:uuid:/, '');
     // The second client must not receive the first client's write token.
     expect(secondBody).not.toContain(bare(firstToken));
     expect(secondBody).toContain(bare(secondToken));

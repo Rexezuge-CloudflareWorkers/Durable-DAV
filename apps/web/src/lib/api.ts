@@ -28,7 +28,16 @@ function extractErrorMessage(payloadText: string, status: number): { message: st
       error?: string;
       message?: string;
     };
-    const type = typeof data?.Exception?.Type === 'string' && data.Exception.Type.length > 0 ? data.Exception.Type : null;
+    const type =
+      typeof data?.Exception?.Type === 'string' && data.Exception.Type.length > 0
+        ? data.Exception.Type
+        : // Legacy `{error, message}` shape. The type used to be read only
+          // from `Exception.Type`, so a legacy error body produced a correct
+          // message but a `null` type — which sent it through the generic
+          // fallback and lost the specific localized wording.
+          typeof data?.error === 'string' && data.error.length > 0
+          ? data.error
+          : null;
     // AWS envelope first, then legacy `{error,message}`, then raw text.
     const exceptionMessage = data?.Exception?.Message;
     if (typeof exceptionMessage === 'string' && exceptionMessage.length > 0) return { message: truncate(exceptionMessage), type };

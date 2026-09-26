@@ -33,7 +33,7 @@ describe('base64 codec', () => {
     const bytes = new Uint8Array(4096);
     for (let i = 0; i < bytes.length; i += 1) bytes[i] = (i * 251) % 256;
     const viaTable = bytesToBase64(bytes);
-    const viaPlatform = btoa(String.fromCharCode(...Array.from(bytes)));
+    const viaPlatform = btoa(String.fromCodePoint(...Array.from(bytes)));
     expect(viaTable).toBe(viaPlatform);
     expect(Array.from(base64ToBytes(viaTable))).toEqual(Array.from(bytes));
   });

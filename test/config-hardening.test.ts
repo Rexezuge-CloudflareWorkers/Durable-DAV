@@ -2,10 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { AppConfiguration } from '../packages/backend-runtime/src/config/AppConfiguration';
 import { EnvParser } from '../packages/backend-runtime/src/config/EnvParser';
 import { checkVolumeQuota, validateVolumePatch } from '../packages/backend-services/src/dav/VolumeCreatePolicy';
-import {
-  deserializeErrorBody,
-  parseErrorPayload,
-} from '../packages/backend-services/src/errors/ErrorDeserializationUtil';
+import { deserializeErrorBody, parseErrorPayload } from '../packages/backend-services/src/errors/ErrorDeserializationUtil';
 import { mapServiceError, toServiceStatus } from '../packages/backend-services/src/errors/ErrorMapper';
 import { BadRequestError, DatabaseError } from '../packages/backend-errors';
 
@@ -19,9 +16,7 @@ describe('AppConfiguration hardening', () => {
 
   it('prefers DAV_CACHE_TTL_SECONDS over legacy GIT_CACHE_TTL_SECONDS', () => {
     expect(new AppConfiguration({ GIT_CACHE_TTL_SECONDS: '60' }).getDavCacheTtlSeconds()).toBe(60);
-    expect(new AppConfiguration({ DAV_CACHE_TTL_SECONDS: '120', GIT_CACHE_TTL_SECONDS: '60' }).getDavCacheTtlSeconds()).toBe(
-      120,
-    );
+    expect(new AppConfiguration({ DAV_CACHE_TTL_SECONDS: '120', GIT_CACHE_TTL_SECONDS: '60' }).getDavCacheTtlSeconds()).toBe(120);
   });
 
   it('EnvParser falls back on malformed numbers', () => {
@@ -41,12 +36,8 @@ describe('VolumeCreatePolicy hardening', () => {
 
 describe('Error handling hardening', () => {
   it('deserializes typed errors and degrades unknown types to 500', () => {
-    expect(deserializeErrorBody({ Exception: { Type: 'NotFound', Message: 'missing' } }, 'fb').getErrorType()).toBe(
-      'NotFound',
-    );
-    expect(deserializeErrorBody({ Exception: { Type: 'Nope', Message: 'x' } }, 'fb').getErrorType()).toBe(
-      'InternalServerError',
-    );
+    expect(deserializeErrorBody({ Exception: { Type: 'NotFound', Message: 'missing' } }, 'fb').getErrorType()).toBe('NotFound');
+    expect(deserializeErrorBody({ Exception: { Type: 'Nope', Message: 'x' } }, 'fb').getErrorType()).toBe('InternalServerError');
     expect(parseErrorPayload('plain boom', 502).message).toBe('plain boom');
     expect(parseErrorPayload({ error: 'BadRequest', message: 'bad' }, 400).getErrorType()).toBe('BadRequest');
   });
@@ -55,6 +46,6 @@ describe('Error handling hardening', () => {
     expect(toServiceStatus(new BadRequestError('bad'))).toBe(400);
     const mapped = mapServiceError(new DatabaseError('db down'));
     expect(mapped.status).toBe(500);
-    expect(mapped.body.Exception.Type).toBe('DatabaseError');
+    expect(mapped.body.Exception?.Type).toBe('DatabaseError');
   });
 });

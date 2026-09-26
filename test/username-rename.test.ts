@@ -23,22 +23,22 @@ function makeD1(db: Db) {
           if (query.includes('FROM users WHERE lower(username)')) {
             return (db.users.find((u) => (u.username ?? '').toLowerCase() === String(bindings[0]).toLowerCase()) ?? null) as never;
           }
-          if (query.includes('FROM namespaces WHERE username_ci')) {
-            return (db.namespaces.find((n) => n.username_ci === String(bindings[0])) ?? null) as never;
-          }
-          return null as never;
+          return query.includes('FROM namespaces WHERE username_ci')
+            ? ((db.namespaces.find((n) => n.username_ci === String(bindings[0])) ?? null) as never)
+            : (null as never);
         },
         all: async () => ({ results: [] }) as never,
         run: async () => {
           if (query.startsWith('INSERT INTO namespaces ')) {
             const [usernameCi, kind, userEmail, createdAt] = bindings as [string, string, string | null, number];
-            if (db.namespaces.some((n) => n.username_ci === usernameCi)) throw new Error('UNIQUE constraint failed: namespaces.username_ci');
+            if (db.namespaces.some((n) => n.username_ci === usernameCi))
+              throw new Error('UNIQUE constraint failed: namespaces.username_ci');
             db.namespaces.push({ username_ci: usernameCi, kind, user_email: userEmail, created_at: createdAt });
             return { success: true } as never;
           }
           if (query.startsWith('INSERT OR IGNORE INTO namespaces')) {
             const [usernameCi, kind, userEmail, createdAt] = bindings as [string, string, string | null, number];
-            if (!db.namespaces.some((n) => n.username_ci === usernameCi)) {
+            if (db.namespaces.every((n) => n.username_ci !== usernameCi)) {
               db.namespaces.push({ username_ci: usernameCi, kind, user_email: userEmail, created_at: createdAt });
             }
             return { success: true } as never;
@@ -55,11 +55,13 @@ function makeD1(db: Db) {
           if (query.startsWith('UPDATE dav_volumes SET owner = ?')) {
             const [newOwner, newOwnerCi, now, oldOwnerCi] = bindings as [string, string, number, string];
             for (const volume of db.volumes) {
-              if (volume.owner_ci === String(oldOwnerCi).toLowerCase()) {
-                volume.owner = newOwner;
-                volume.owner_ci = String(newOwnerCi).toLowerCase();
-                void now;
+              if (volume.owner_ci !== oldOwnerCi.toLowerCase()) {
+                continue;
               }
+
+              volume.owner = newOwner;
+              volume.owner_ci = newOwnerCi.toLowerCase();
+              void now;
             }
             return { success: true } as never;
           }

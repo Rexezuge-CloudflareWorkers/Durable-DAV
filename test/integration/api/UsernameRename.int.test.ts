@@ -13,7 +13,7 @@ function api(path: string, init?: RequestInit): Promise<Response> {
 }
 
 function json(init?: RequestInit): RequestInit {
-  return { ...init, headers: { 'Content-Type': 'application/json', ...(init?.headers ?? {}) } };
+  return { ...init, headers: { 'Content-Type': 'application/json', ...init?.headers } };
 }
 
 describe('username rename on real D1+DO', () => {

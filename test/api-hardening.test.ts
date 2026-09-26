@@ -14,7 +14,9 @@ import { MAX_XML_BODY_BYTES, readCappedBody, readCappedText, exceedsDeclaredLeng
 
 const env = {} as Env;
 
-/** A concrete request path that each registry pattern is meant to cover. */
+/**
+A concrete request path that each registry pattern is meant to cover.
+*/
 function sampleUrlFor(pattern: string): string {
   if (pattern === '/user/volumes/*') return 'https://x/user/volumes';
   if (pattern === '/user/me/username') return 'https://x/user/me/username';
@@ -128,7 +130,7 @@ describe('rate limiting is actually wired', () => {
     // A substring test for `text/html` served the SPA shell to DAV clients
     // that merely list it among many accepted types, and ignored `q=0`.
     const withAccept = (accept?: string): boolean => {
-      const headers = accept === undefined ? {} : { Accept: accept };
+      const headers: Record<string, string> = accept === undefined ? {} : { Accept: accept };
       return acceptsHtmlForTest(new Request('https://x/alice/photos', { headers }));
     };
     expect(withAccept('text/html')).toBe(true);
