@@ -117,24 +117,40 @@ function upsertNode(
   );
 }
 
+/**
+ * SQL fragment + bindings selecting `path` itself plus every descendant.
+ *
+ * Why `SUBSTR` and not `LIKE '${path}/%'`: SQL `LIKE` treats `_` as "any one
+ * character" unless an `ESCAPE` clause is supplied, and `_` is legal in bucket
+ * and file names. Deleting `report_2024` therefore also matched
+ * `reportX2024/...` — the filesystem subtree was removed but rows for *live*
+ * files were deleted too, while rows for already-deleted files survived. A
+ * prefix-length comparison has no metacharacters and stays index-friendly
+ * (the existing `path` indexes still cover it).
+ */
+function subtreePredicate(path: string): { clause: string; bindings: unknown[] } {
+  return { clause: '(path = ? OR SUBSTR(path, 1, ?) = ?)', bindings: [path, path.length + 1, `${path}/`] };
+}
+
+const CASCADE_TABLES = ['dav_nodes', 'dav_props', 'dav_locks'] as const;
+
 function deleteNodeCascade(sql: DurableSqlStorage, path: string): void {
   if (path === '') {
-    sql.exec(`DELETE FROM dav_nodes`);
-    sql.exec(`DELETE FROM dav_props`);
-    sql.exec(`DELETE FROM dav_locks`);
+    for (const table of CASCADE_TABLES) sql.exec(`DELETE FROM ${table}`);
     return;
   }
-  const prefix = `${path}/`;
-  sql.exec(`DELETE FROM dav_nodes WHERE path = ? OR path LIKE ?`, path, `${prefix}%`);
-  sql.exec(`DELETE FROM dav_props WHERE path = ? OR path LIKE ?`, path, `${prefix}%`);
-  sql.exec(`DELETE FROM dav_locks WHERE path = ? OR path LIKE ?`, path, `${prefix}%`);
+  const { clause, bindings } = subtreePredicate(path);
+  for (const table of CASCADE_TABLES) sql.exec(`DELETE FROM ${table} WHERE ${clause}`, ...bindings);
 }
 
 function renameNodeCascade(sql: DurableSqlStorage, from: string, to: string): void {
-  const fromPrefix = `${from}/`;
-  sql.exec(`UPDATE dav_nodes SET path = ? || SUBSTR(path, ?) WHERE path = ? OR path LIKE ?`, to, from.length + 1, from, `${fromPrefix}%`);
-  sql.exec(`UPDATE dav_props SET path = ? || SUBSTR(path, ?) WHERE path = ? OR path LIKE ?`, to, from.length + 1, from, `${fromPrefix}%`);
-  sql.exec(`UPDATE dav_locks SET path = ? || SUBSTR(path, ?) WHERE path = ? OR path LIKE ?`, to, from.length + 1, from, `${fromPrefix}%`);
+  const { clause, bindings } = subtreePredicate(from);
+  for (const table of CASCADE_TABLES) {
+    // The leading `from` segment is replaced by the `to` binding; `SUBSTR`
+    // re-anchors the untouched suffix. Only the table name is interpolated and
+    // it comes from the closed `CASCADE_TABLES` set, never from input.
+    sql.exec(`UPDATE ${table} SET path = ? || SUBSTR(path, ?) WHERE ${clause}`, to, from.length + 1, ...bindings);
+  }
 }
 
 function getDeadProperties(sql: DurableSqlStorage, path: string): DeadProperty[] {

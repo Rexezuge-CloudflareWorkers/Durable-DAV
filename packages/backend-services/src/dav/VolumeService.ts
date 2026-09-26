@@ -77,15 +77,19 @@ class VolumeService {
     return volume;
   }
 
-  private async resolveCallerUsername(creatorEmail: string): Promise<string | null> {
-    try {
-      const userDao = await this.deps.userDAO();
-      const row = await userDao.getByEmail(creatorEmail).catch(() => null);
-      const username = (row as { username?: string | null } | null)?.username;
-      return typeof username === 'string' && username.length > 0 ? username.toLowerCase() : null;
-    } catch {
-      return null;
+  private async requireCallerUsername(creatorEmail: string): Promise<string> {
+    // Fails CLOSED. This used to return `null` on any error and the caller
+    // skipped the ownership check when it was null — so a D1 blip, or a `users`
+    // row whose username bootstrap had not completed yet, let an authenticated
+    // caller create buckets in *any* user's namespace. A missing handle is now
+    // an error, not a bypass.
+    const userDao = await this.deps.userDAO();
+    const row = await userDao.getByEmail(creatorEmail);
+    const username = (row as { username?: string | null } | null)?.username;
+    if (typeof username !== 'string' || username.length === 0) {
+      throw new NotFoundError('No username is provisioned for this account; set one via PATCH /user/me/username');
     }
+    return username.toLowerCase();
   }
 
   public async createVolume(input: {
@@ -99,11 +103,12 @@ class VolumeService {
     VolumeService.assertValidOwner(owner);
     const name = VolumeService.normalizeName(input.name);
     VolumeService.assertValidName(name);
-    // User-only buckets: no org volumes. Owner must be the caller's username
-    // (case-insensitive) when the username is known; legacy rows without a
-    // users entry fall through to the quota + uniqueness checks below.
-    const callerUsername = await this.resolveCallerUsername(input.creatorEmail);
-    if (callerUsername && owner.toLowerCase() !== callerUsername) {
+    // User-only buckets: no org volumes. The owner must be the caller's own
+    // username (case-insensitive); there is no grandfathering path, because a
+    // silent fallback is indistinguishable from a transient D1 failure and
+    // read as "allow".
+    const callerUsername = await this.requireCallerUsername(input.creatorEmail);
+    if (owner.toLowerCase() !== callerUsername) {
       throw new ForbiddenError('Only the bucket owner can create buckets for this user');
     }
     const dao = await this.deps.volumeDAO();

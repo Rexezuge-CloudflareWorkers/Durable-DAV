@@ -2,7 +2,7 @@ import { AbstractEntrypointWorker } from '@durable-dav/backend-runtime/base';
 import { fromHono } from 'chanfana';
 import type { HonoOpenAPIRouterType } from 'chanfana';
 import { Hono } from 'hono';
-import { MiddlewareHandlers, securityHeaders } from '@/middleware';
+import { MiddlewareHandlers, registerRateLimits, securityHeaders } from '@/middleware';
 import { scopeMiddleware } from '@/middleware/scopeMiddleware';
 import { RESERVED_NAMESPACE_NAMES } from '@durable-dav/shared/constants';
 import { registerDavRoutes } from './routes/DavRoutes';
@@ -58,6 +58,11 @@ class DurableDavWorker extends AbstractEntrypointWorker {
     });
 
     app.use('*', scopeMiddleware);
+
+    // Abuse control. Must sit after `scopeMiddleware` so the limiter can read
+    // the authenticated identity, and before every route so no endpoint can
+    // be added without inheriting a limit.
+    registerRateLimits(app);
 
     app.use('/user/*', MiddlewareHandlers.userAuthentication());
 

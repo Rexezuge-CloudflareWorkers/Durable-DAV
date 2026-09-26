@@ -165,18 +165,34 @@ function registerVolumeRoutes(app: App): void {
     if (row.owner_email.toLowerCase() !== email.toLowerCase()) {
       return c.json({ Exception: { Type: 'Forbidden', Message: 'Forbidden' } }, 403);
     }
-    await scope.get(Tokens.VolumeService).deleteVolume(owner, volume).catch(() => undefined);
+    // The D1 delete is the authoritative step. It must NOT be swallowed:
+    // swallowing it let the route destroy the DO filesystem and answer
+    // `{ok:true}` while the D1 row (and therefore the whole WebDAV surface)
+    // survived — a "deleted" bucket that was still live.
     try {
-      const stub = getVolumeStub(c.env, row.owner, row.name);
-      await stub.deleteVolume().catch(() => undefined);
-    } catch {
-      // ignore DO cleanup failure; D1 row is already gone
+      await scope.get(Tokens.VolumeService).deleteVolume(owner, volume);
+    } catch (error) {
+      return BaseRoute.toErrorResponse(c as never, error);
+    }
+    // DO cleanup is now pure garbage collection — the bucket is already gone
+    // from D1, so a failure is safe to absorb, but the caller is told so it
+    // can be retried/GC'd rather than silently leaving orphaned bytes.
+    let doCleanupFailed = false;
+    try {
+      await getVolumeStub(c.env, row.owner, row.name).deleteVolume();
+    } catch (error) {
+      doCleanupFailed = true;
+      console.error('Volume DO cleanup failed after D1 delete', {
+        owner: row.owner,
+        volume: row.name,
+        error: error instanceof Error ? (error.stack ?? error.message) : error,
+      });
     }
     const cache = scope.get(Tokens.KvCache);
     await invalidateVolumeListCache(cache, email);
     await invalidateVolumeDetailCache(cache, row.owner, row.name);
     await invalidateVolumeCaches(cache, row.owner, row.name);
-    return c.json({ ok: true });
+    return c.json({ ok: true, doCleanupFailed });
   });
 }
 

@@ -78,34 +78,44 @@ function rateLimit(opts: {
     throw new Error('Invalid rateLimit keyPrefix: must be a non-empty string');
   }
   return async (c: RateLimitContext, next: Next): Promise<Response | void> => {
-    try {
-      const now = Date.now();
-      cleanup(now);
-      let identity = 'anon';
+    // Only the *bookkeeping* is guarded. `await next()` sits outside the try
+    // on purpose: a downstream throw must not reach the catch, or a
+    // rate-limited request would call `next()` a second time and Hono's
+    // compose throws "next() called multiple times".
+    const limited = (() => {
       try {
-        identity = c.get('AuthenticatedUserEmailAddress') ?? `ip:${clientIp(c)}`;
+        const now = Date.now();
+        cleanup(now);
+        const identity = readIdentity(c);
+        const key = `${opts.keyPrefix}:${identity}`;
+        const existing = buckets.get(key);
+        if (!existing || existing.resetAt <= now) {
+          buckets.set(key, { count: 1, resetAt: now + opts.windowMs });
+          return null;
+        }
+        if (existing.count >= opts.max) {
+          return c.json({ Exception: { Type: 'RateLimited', Message: 'Rate limit exceeded; try again later.' } }, 429, {
+            'Retry-After': String(Math.max(1, Math.ceil((existing.resetAt - now) / 1000))),
+          });
+        }
+        existing.count += 1;
+        return null;
       } catch {
-        identity = `ip:${clientIp(c)}`;
+        // Limiting must never 500 a legitimate request: fail open.
+        return null;
       }
-      const key = `${opts.keyPrefix}:${identity}`;
-      const existing = buckets.get(key);
-      if (!existing || existing.resetAt <= now) {
-        buckets.set(key, { count: 1, resetAt: now + opts.windowMs });
-        await next();
-        return;
-      }
-      if (existing.count >= opts.max) {
-        const retryAfter = Math.max(1, Math.ceil((existing.resetAt - now) / 1000));
-        return c.json({ Exception: { Type: 'RateLimited', Message: 'Rate limit exceeded; try again later.' } }, 429, {
-          'Retry-After': String(retryAfter),
-        });
-      }
-      existing.count += 1;
-      await next();
-    } catch {
-      await next();
-    }
+    })();
+    if (limited) return limited;
+    await next();
   };
+}
+
+function readIdentity(c: RateLimitContext): string {
+  try {
+    return c.get('AuthenticatedUserEmailAddress') ?? `ip:${clientIp(c)}`;
+  } catch {
+    return `ip:${clientIp(c)}`;
+  }
 }
 
 function resetRateLimitForTests(): void {

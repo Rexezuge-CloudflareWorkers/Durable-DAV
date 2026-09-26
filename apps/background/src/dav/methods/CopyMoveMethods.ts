@@ -1,6 +1,6 @@
 import type { DofsFs } from '@durable-dav/dav-store';
 import { createdResponse, getParentPath, isSameOrDescendantPath, parseDestinationPath } from '@durable-dav/webdav';
-import { fsPathOf, hrefOf, stripBase } from '../DavContext';
+import { MAX_PATH_DEPTH, fsPathOf, hrefOf, isValidInnerPath, stripBase } from '../DavContext';
 import type { DavLockGuard } from '../DavLockGuard';
 import type { DavRepository } from '../DavRepository';
 
@@ -19,6 +19,45 @@ function isOverwriteAllowed(request: Request): boolean {
   return raw === null || raw.trim().toUpperCase() !== 'F';
 }
 
+type DestinationResolution = { ok: true; destInner: string } | { ok: false; response: Response };
+
+/**
+ * Resolve and validate the `Destination` header for COPY/MOVE.
+ *
+ * Single source of truth — the preamble was duplicated verbatim in both
+ * handlers, which is how the two drifted apart on the checks below.
+ *
+ * Three things are enforced here that neither handler did on its own:
+ *
+ * 1. `isValidInnerPath(destInner)`. `Destination` is fully client-controlled
+ *    and the front door forwards it verbatim. `parseDestinationPath` does not
+ *    normalise `%2e%2e`, so a destination of `.../photos/%2e%2e/%2e%2e/etc`
+ *    decoded to `../../etc` and reached `dofs` as a traversal, while
+ *    `isSameOrDescendantPath` compared it as an unrelated string and passed.
+ * 2. Self/descendant rejection, split from "are they equal". The old single
+ *    call used `isSameOrDescendantPath` for both questions, and because that
+ *    helper answers "is dest inside src?" with `true` for the volume root, it
+ *    also rejected `COPY /alice/photos -> /alice/photos/backup` — a legal and
+ *    common "snapshot the bucket" operation (RFC 4918 §9.8.3 only forbids
+ *    copying a collection into itself or a descendant).
+ * 3. A depth cap, so a pathological destination cannot drive an unbounded
+ *    path walk downstream.
+ */
+function resolveDestination(request: Request, base: string, srcInner: string): DestinationResolution {
+  const bad = { ok: false, response: new Response('Bad Request', { status: 400 }) } as const;
+
+  const destHeader = request.headers.get('Destination');
+  if (!destHeader) return bad;
+  const destFull = parseDestinationPath(destHeader, request.url);
+  if (destFull === null) return bad;
+  const destInner = stripBase(destFull, base);
+  if (destInner === null) return bad;
+  if (!isValidInnerPath(destInner)) return bad;
+  if (destInner.split('/').length > MAX_PATH_DEPTH) return bad;
+  if (destInner === srcInner) return bad;
+  return srcInner !== '' && isSameOrDescendantPath(srcInner, destInner) ? bad : { ok: true, destInner };
+}
+
 async function handleCopy(
   request: Request,
   innerPath: string,
@@ -28,13 +67,9 @@ async function handleCopy(
   dofs: DofsFs,
   removeDestination: (destInner: string) => Promise<Response | null>,
 ): Promise<Response> {
-  const destHeader = request.headers.get('Destination');
-  if (!destHeader) return new Response('Bad Request', { status: 400 });
-  const destFull = parseDestinationPath(destHeader, request.url);
-  if (destFull === null) return new Response('Bad Request', { status: 400 });
-  const destInner = stripBase(destFull, base);
-  if (destInner === null) return new Response('Bad Request', { status: 400 });
-  if (isSameOrDescendantPath(innerPath, destInner)) return new Response('Bad Request', { status: 400 });
+  const destination = resolveDestination(request, base, innerPath);
+  if (!destination.ok) return destination.response;
+  const { destInner } = destination;
   const locked = locks.assertLock(request, destInner);
   if (locked) return locked;
   const srcStat = repo.statInner(innerPath);
@@ -101,13 +136,9 @@ async function handleMove(
   dofs: DofsFs,
   deleteForMove: (destInner: string, req: Request) => Promise<Response | null>,
 ): Promise<Response> {
-  const destHeader = request.headers.get('Destination');
-  if (!destHeader) return new Response('Bad Request', { status: 400 });
-  const destFull = parseDestinationPath(destHeader, request.url);
-  if (destFull === null) return new Response('Bad Request', { status: 400 });
-  const destInner = stripBase(destFull, base);
-  if (destInner === null) return new Response('Bad Request', { status: 400 });
-  if (isSameOrDescendantPath(innerPath, destInner)) return new Response('Bad Request', { status: 400 });
+  const destination = resolveDestination(request, base, innerPath);
+  if (!destination.ok) return destination.response;
+  const { destInner } = destination;
   const srcLock = locks.assertLock(request, innerPath);
   if (srcLock) return srcLock;
   const dstLock = locks.assertLock(request, destInner);

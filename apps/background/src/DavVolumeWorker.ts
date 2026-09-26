@@ -57,10 +57,34 @@ class DavVolumeWorker extends DurableObject<Env> {
   }
 
   public override async fetch(request: Request): Promise<Response> {
-    this.ensureSize();
+    // Error boundary. Individual handlers have ad-hoc catch blocks with
+    // inconsistent policies, and several body reads (`arrayBuffer`, `text`,
+    // `clone`) reject on a truncated or aborted client stream — the front
+    // forwards raw bodies with `duplex: 'half'`. Without this, one such
+    // rejection escaped as a bare runtime 500 carrying no `DAV`/`Allow`
+    // headers. Lock-lookup failures also surface here now that
+    // `DavLockGuard` propagates instead of reporting "unlocked".
+    try {
+      this.ensureSize();
+      return await this.dispatch(request);
+    } catch (error) {
+      console.error('DavVolumeWorker request failed', {
+        method: request.method,
+        url: request.url,
+        error: error instanceof Error ? (error.stack ?? error.message) : error,
+      });
+      return new Response('Internal Server Error', {
+        status: 500,
+        headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS, 'Content-Type': 'text/plain; charset=utf-8' },
+      });
+    }
+  }
+
+  private async dispatch(request: Request): Promise<Response> {
     const url = new URL(request.url);
     const base = this.baseOf(request);
     const innerPath = resolveInnerPath(request, url, base);
+    if (innerPath === null) return new Response('Bad Request', { status: 400 });
     if (!isValidInnerPath(innerPath)) return new Response('Bad Request', { status: 400 });
 
     const sql = this.sql();
@@ -69,7 +93,18 @@ class DavVolumeWorker extends DurableObject<Env> {
 
     switch (request.method) {
       case 'OPTIONS': {
-        return new Response(null, { status: 200, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } });
+        // RFC 4918 §9.1 + RFC 7231 §4.3.7: `OPTIONS *` is a server-wide
+        // capability probe. `Content-Length: 0` and `MS-Author-Via` are
+        // expected by Windows/Office Explorer's DAV discovery.
+        return new Response(null, {
+          status: 200,
+          headers: {
+            Allow: SUPPORT_METHODS.join(', '),
+            DAV: DAV_CLASS,
+            'MS-Author-Via': 'DAV',
+            'Content-Length': '0',
+          },
+        });
       }
       case 'HEAD': {
         return handleGet(request, innerPath, base, true, repo, this.dofs);
@@ -241,7 +276,13 @@ class DavVolumeWorker extends DurableObject<Env> {
     props?: DeadProperty[];
   }): Promise<void> {
     this.ensureSize();
-    if (!isValidInnerPath(entry.path) || entry.path === '') return;
+    // Must throw, not return: `VolumeMove.moveOneVolume` purges the source DO
+    // once every entry is written, so a silently skipped entry turned a
+    // username rename into unrecoverable data loss. Throwing here engages the
+    // caller's existing rollback + rethrow.
+    if (!isValidInnerPath(entry.path) || entry.path === '') {
+      throw new Error(`writeVolumeEntry: invalid volume entry path ${JSON.stringify(entry.path)}`);
+    }
     const sql = this.sql();
     const repo = new DavRepository(this.dofs, sql);
     const parent = entry.path.split('/').slice(0, -1).join('/');
