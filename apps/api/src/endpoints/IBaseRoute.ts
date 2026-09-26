@@ -1,12 +1,13 @@
 import type { Context } from 'hono';
 import { ServiceError, DatabaseError, DefaultInternalServerError } from '@durable-dav/backend-errors';
+import type { ApiContext } from '@/types/ApiContext';
 import { getBackendStrings } from '@durable-dav/shared/i18n';
 import { ErrorSanitizationUtil, canonicalizeLanguageTag } from '@durable-dav/shared/utils';
 import { createRequestScope } from '@durable-dav/backend-services/composition';
 import { getRequestScope, asScopedContext } from '@durable-dav/backend-runtime/di';
 import { toServiceStatus as toMappedStatus } from '@durable-dav/backend-services/errors';
 
-type HonoContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
+type HonoContext = ApiContext;
 
 /**
  * Template Method base for Hono route handlers (Otter `IBaseRoute` pattern).

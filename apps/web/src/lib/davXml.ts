@@ -76,16 +76,21 @@ function splitResponses(xml: string): string[] {
 /**
  * Parses an RFC 4918 `207 multistatus` body into directory entries.
  * Namespace-prefix agnostic (`D:`, `d:`, or none) so it stays robust across
- * server renderers. The `basePath` is the inner path that was listed (used
- * to drop the self-response and to derive child names).
+ * server renderers.
+ *
+ * `volumePrefix` is the volume's public base (`/<owner>/<volume>`). Server hrefs
+ * include it, as RFC 4918 §8.3 requires — every `DAV:href` must resolve
+ * against the request URL — so it is stripped to recover the volume-relative
+ * path the UI works in. The parser still tolerates hrefs *without* the prefix
+ * so it keeps working against a non-conforming server.
  */
-export function parseMultistatus(xml: string, basePath: string): DavEntry[] {
+export function parseMultistatus(xml: string, basePath: string, volumePrefix = ''): DavEntry[] {
   const normalizedBase = stripSlashes(basePath);
+  const prefix = stripSlashes(volumePrefix);
   const entries: DavEntry[] = [];
   for (const block of splitResponses(xml)) {
     const rawHref = pickTag(block, 'href');
     if (!rawHref) continue;
-    // Server hrefs are root-relative inner paths (`/`, `/child`, `/dir/`).
     let hrefPath = decodeHref(rawHref);
     const queryAt = hrefPath.indexOf('?');
     if (queryAt !== -1) hrefPath = hrefPath.slice(0, queryAt);
@@ -98,6 +103,12 @@ export function parseMultistatus(xml: string, basePath: string): DavEntry[] {
       // keep raw
     }
     hrefPath = stripSlashes(hrefPath);
+    // Drop the volume prefix so `path` stays volume-relative.
+    if (prefix !== '' && hrefPath.toLowerCase().startsWith(`${prefix.toLowerCase()}/`)) {
+      hrefPath = hrefPath.slice(prefix.length + 1);
+    } else if (hrefPath.toLowerCase() === prefix.toLowerCase()) {
+      hrefPath = '';
+    }
     // Skip the self response (the listed collection itself).
     if (hrefPath === normalizedBase) continue;
 

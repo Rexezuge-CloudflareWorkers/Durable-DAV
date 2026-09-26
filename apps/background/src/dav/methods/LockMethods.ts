@@ -6,12 +6,23 @@ import { hrefOf } from '../DavContext';
 import type { DavLockGuard } from '../DavLockGuard';
 import type { DavRepository } from '../DavRepository';
 
-interface LockMethodDeps {
+interface LockDeps {
   repo: DavRepository;
   locks: DavLockGuard;
   sql: DurableSqlStorage;
   writeEmptyFile: (innerPath: string) => Promise<boolean>;
   statIsDirectory: (innerPath: string) => boolean;
+}
+
+/**
+ * UNLOCK needs strictly less than LOCK. The old shared interface forced the
+ * caller to supply `writeEmptyFile: async () => false` and
+ * `statIsDirectory: () => false` stubs that the function never read.
+ */
+interface UnlockDeps {
+  repo: DavRepository;
+  sql: DurableSqlStorage;
+  unlink: (innerPath: string) => void;
 }
 
 function readLocks(sql: DurableSqlStorage, innerPath: string): LockDetails[] {
@@ -34,7 +45,7 @@ function readLocks(sql: DurableSqlStorage, innerPath: string): LockDetails[] {
   }
 }
 
-async function handleLock(request: Request, innerPath: string, base: string, deps: LockMethodDeps): Promise<Response> {
+async function handleLock(request: Request, innerPath: string, base: string, deps: LockDeps): Promise<Response> {
   const { repo, locks, sql } = deps;
   const depthHeader = request.headers.get('Depth');
   if (depthHeader !== null && depthHeader !== '0' && depthHeader !== 'infinity') {
@@ -83,14 +94,11 @@ async function handleLock(request: Request, innerPath: string, base: string, dep
       if (cur === '') break;
     }
     if (!existing && resourceExists) {
-      try {
-        const rows = sql.exec(`SELECT token FROM dav_locks WHERE path = ? AND expires_at > ?`, innerPath, Date.now()).toArray();
-        if (rows.length > 0 && rows.every((r) => !tokens.includes(String(r['token'] ?? '')))) {
-          return new Response('Locked', { status: 423 });
-        }
-      } catch {
-        // Best-effort; `assertLock` above already enforced the precondition.
-      }
+      // No extra pre-check here: `locks.assertLock` above already ran the
+      // canonical query with proper token normalization. The removed block
+      // compared normalized request tokens against *raw* stored tokens — the
+      // exact mismatch `DavLockGuard` documents as having once made every
+      // locked write 423.
     }
   }
 
@@ -111,8 +119,19 @@ async function handleLock(request: Request, innerPath: string, base: string, dep
     if (requestedScope === 'shared' && current.some((l) => l.scope === 'exclusive')) return new Response('Locked', { status: 423 });
   }
 
-  const depth: '0' | 'infinity' =
-    existing && depthHeader === null && body === '' ? existing.depth : determineLockDepth(deps.statIsDirectory(activePath), depthHeader);
+  // RFC 4918 §9.10.3: `Depth: infinity` MUST NOT be submitted on a
+  // non-collection. Accepting it created an infinity-depth row on a file,
+  // which the ancestor walk then treated as covering nonexistent children.
+  const targetIsCollection = deps.statIsDirectory(activePath);
+  if (!targetIsCollection && depthHeader === 'infinity') {
+    return new Response('Bad Request', { status: 400 });
+  }
+
+  // RFC 4918 §9.10.2: a refresh "MUST NOT" change the lock's depth or scope.
+  // The old guard only preserved depth when `Depth` was absent *and* the body
+  // empty, so a refresh carrying an explicit `Depth: 0` silently downgraded an
+  // existing `Depth: infinity` collection lock and released every descendant.
+  const depth: '0' | 'infinity' = existing ? existing.depth : determineLockDepth(targetIsCollection, depthHeader);
 
   const details: LockDetails = {
     token: existing?.token ?? crypto.randomUUID(),
@@ -132,9 +151,14 @@ async function handleLock(request: Request, innerPath: string, base: string, dep
   } catch {
     return new Response('Internal Server Error', { status: 500 });
   }
-  const updated = readLocks(sql, activePath);
   return new Response(
-    `<?xml version="1.0" encoding="utf-8"?>\n<prop xmlns="DAV:"><lockdiscovery>${getLockDiscovery(updated.length > 0 ? updated : [details])}</lockdiscovery></prop>`,
+    // Report only the lock this request created or refreshed. The old shape
+    // echoed *every* active lock on the path, so on a shared collection a
+    // client that had just taken one lock received the write tokens of every
+    // other client — a direct capability leak, since those tokens authorise
+    // DELETE/COPY/MOVE/PROPPATCH on resources those clients believe protected.
+    // The full set belongs in a `prop/lockdiscovery` PROPFIND (§15.8).
+    `<?xml version="1.0" encoding="utf-8"?>\n<prop xmlns="DAV:"><lockdiscovery>${getLockDiscovery([details])}</lockdiscovery></prop>`,
     {
       status: existing ? 200 : 201,
       headers: {
@@ -145,33 +169,50 @@ async function handleLock(request: Request, innerPath: string, base: string, dep
   );
 }
 
-async function handleUnlock(request: Request, innerPath: string, deps: LockMethodDeps): Promise<Response> {
-  const { repo, locks, sql } = deps;
+async function handleUnlock(request: Request, innerPath: string, deps: UnlockDeps): Promise<Response> {
+  const { repo, sql, unlink } = deps;
   const st = repo.statInner(innerPath);
   if (innerPath !== '' && !st.exists) return new Response('Not Found', { status: 404 });
   const lockToken = request.headers.get('Lock-Token');
   if (!lockToken) return new Response('Bad Request', { status: 400 });
-  const locked = locks.assertLock(request, innerPath);
-  if (locked) return locked;
   const normalized = normalizeLockToken(lockToken);
+
   try {
-    const rows = sql.exec(`SELECT token FROM dav_locks WHERE path = ? AND token = ?`, innerPath, normalized).toArray();
-    if (rows.length === 0) {
-      const all = sql.exec(`SELECT token FROM dav_locks WHERE path = ?`, innerPath).toArray();
-      const matched = all.some((r) => normalizeLockToken(String(r['token'] ?? '')) === normalized || String(r['token']) === normalized);
-      if (!matched) return new Response('Conflict', { status: 409 });
-    }
-    sql.exec(`DELETE FROM dav_locks WHERE path = ? AND (token = ? OR token LIKE ?)`, innerPath, normalized, `%${normalized}%`);
-    try {
-      sql.exec(`DELETE FROM dav_locks WHERE token = ?`, normalized);
-    } catch {
-      // Fallback delete is best-effort; path-scoped delete above is authoritative.
-    }
+    // Resolve the exact stored token first, then delete by primary key. The
+    // previous form used `token LIKE '%<normalized>%'` as a "compat" escape
+    // hatch: `%` and `_` are LIKE metacharacters, so a `Lock-Token` of
+    // `<urn:uuid: %>` built the pattern `%%%` and deleted *every* lock on the
+    // path. The follow-up `DELETE FROM dav_locks WHERE token = ?` was also
+    // dead in the normal case and wrong in the only case it could fire (a lock
+    // legitimately held on an ancestor, which an UNLOCK scoped to a child must
+    // not remove).
+    const candidates = sql.exec(`SELECT token FROM dav_locks WHERE path = ?`, innerPath).toArray();
+    const target = candidates
+      .map((row) => String(row['token'] ?? ''))
+      .find((token) => token !== '' && (token === normalized || normalizeLockToken(token) === normalized));
+    if (target === undefined) return new Response('Conflict', { status: 409 });
+    sql.exec(`DELETE FROM dav_locks WHERE token = ?`, target);
   } catch {
     return new Response('Conflict', { status: 409 });
   }
+
+  // RFC 4918 §9.11.2: a lock-null resource (the empty file created to hold a
+  // lock on a not-yet-existing path) SHOULD be removed when the lock goes
+  // away. Otherwise every abandoned LOCK leaves a phantom zero-byte file.
+  if (innerPath !== '' && !st.isDirectory && st.size === 0) {
+    const remaining = readLocks(sql, innerPath);
+    if (remaining.length === 0) {
+      try {
+        unlink(innerPath);
+        repo.deleteCascade(innerPath);
+      } catch {
+        // Best-effort cleanup; the UNLOCK itself already succeeded.
+      }
+    }
+  }
+
   return new Response(null, { status: 204 });
 }
 
 export { handleLock, handleUnlock };
-export type { LockMethodDeps };
+export type { LockDeps, UnlockDeps };

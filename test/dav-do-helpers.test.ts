@@ -42,9 +42,27 @@ describe('parseRangeHeader', () => {
     expect(parseRangeHeader('bytes=-10', 100)).toMatchObject({ offset: 90, length: 10, status: 206 });
   });
 
-  it('falls back to 200 on malformed or unsatisfiable ranges', () => {
+  it('ignores a malformed Range header but reports 416 for an unsatisfiable one', () => {
+    // Malformed → ignore the header entirely (RFC 7233 §4.2), serve 200.
     expect(parseRangeHeader('bytes=banana', 100).status).toBe(200);
-    expect(parseRangeHeader('bytes=200-300', 100).status).toBe(200);
-    expect(parseRangeHeader('bytes=-0', 100).status).toBe(200);
+    // Syntactically valid but past the end → 416 with `bytes */size`
+    // (RFC 7233 §4.4), not a silent full-body 200.
+    expect(parseRangeHeader('bytes=200-300', 100)).toMatchObject({ status: 416, contentRange: 'bytes */100' });
+    expect(parseRangeHeader('bytes=-0', 100).status).toBe(416);
+    // Inverted range.
+    expect(parseRangeHeader('bytes=50-10', 100).status).toBe(416);
+  });
+
+  it('ignores multi-range and does not mis-serve the first range only', () => {
+    // Serving only `0-1` for `bytes=0-1,5-6` would be silent data loss.
+    expect(parseRangeHeader('bytes=0-1,5-6', 100)).toMatchObject({ status: 200, length: undefined });
+  });
+
+  it('anchors the range syntax', () => {
+    // The old unanchored regex matched inside `notbytes=0-5` and tolerated junk.
+    expect(parseRangeHeader('notbytes=0-5', 100).status).toBe(200);
+    expect(parseRangeHeader('bytes=0-5junk', 100).status).toBe(200);
+    expect(parseRangeHeader('  bytes=0-5  ', 100)).toMatchObject({ status: 206, offset: 0, length: 6 });
+    expect(parseRangeHeader('BYTES=0-5', 100)).toMatchObject({ status: 206, offset: 0, length: 6 });
   });
 });

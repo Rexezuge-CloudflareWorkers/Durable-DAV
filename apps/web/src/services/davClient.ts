@@ -2,6 +2,13 @@ import type { DavEntry } from '../types';
 import { BackendError, readDav } from '../lib/api';
 import { parseMultistatus, stripSlashes } from '../lib/davXml';
 
+/**
+Public volume base, as it appears in `DAV:href` values (RFC 4918 §8.3).
+*/
+function davBase(owner: string, volume: string): string {
+  return `/${owner}/${volume}`;
+}
+
 function volumeBase(owner: string, volume: string): string {
   // Session-authenticated browser plane (Git read-model pattern):
   // same DO content as the WebDAV plane but authed via the Access session,
@@ -46,7 +53,7 @@ export async function listDirectory(owner: string, volume: string, innerPath: st
     body,
   });
   const xml = await readDav(response);
-  return parseMultistatus(xml, innerPath);
+  return parseMultistatus(xml, innerPath, davBase(owner, volume));
 }
 
 export async function createDirectory(owner: string, volume: string, innerPath: string): Promise<void> {

@@ -29,17 +29,18 @@ type DestinationResolution = { ok: true; destInner: string } | { ok: false; resp
  *
  * Three things are enforced here that neither handler did on its own:
  *
- * 1. `isValidInnerPath(destInner)`. `Destination` is fully client-controlled
- *    and the front door forwards it verbatim. `parseDestinationPath` does not
- *    normalise `%2e%2e`, so a destination of `.../photos/%2e%2e/%2e%2e/etc`
- *    decoded to `../../etc` and reached `dofs` as a traversal, while
- *    `isSameOrDescendantPath` compared it as an unrelated string and passed.
- * 2. Self/descendant rejection, split from "are they equal". The old single
- *    call used `isSameOrDescendantPath` for both questions, and because that
- *    helper answers "is dest inside src?" with `true` for the volume root, it
- *    also rejected `COPY /alice/photos -> /alice/photos/backup` — a legal and
- *    common "snapshot the bucket" operation (RFC 4918 §9.8.3 only forbids
- *    copying a collection into itself or a descendant).
+ * 1. `isValidInnerPath(destInner)` plus the `stripBase` contract. `Destination`
+ *    is fully client-controlled and the front door forwards it verbatim. The
+ *    WHATWG URL parser resolves the header against the request URL and *does*
+ *    normalise `%2e%2e`, so `.../photos/%2e%2e/%2e%2e/etc` arrives as the bare
+ *    string `etc`; `stripBase` used to accept any single-segment path as
+ *    volume-relative, so an escape attempt silently became a successful write
+ *    to `<volume>/etc`.
+ * 2. Self/descendant rejection. `isSameOrDescendantPath` covers equality, so
+ *    the question is asked once. The volume root is deliberately *not* a
+ *    special case: its descendants are every path in the bucket, and RFC 4918
+ *    §9.8.3 forbids copying a collection into itself or a descendant — so a
+ *    volume root genuinely has no legal in-volume COPY destination.
  * 3. A depth cap, so a pathological destination cannot drive an unbounded
  *    path walk downstream.
  */
@@ -54,8 +55,7 @@ function resolveDestination(request: Request, base: string, srcInner: string): D
   if (destInner === null) return bad;
   if (!isValidInnerPath(destInner)) return bad;
   if (destInner.split('/').length > MAX_PATH_DEPTH) return bad;
-  if (destInner === srcInner) return bad;
-  return srcInner !== '' && isSameOrDescendantPath(srcInner, destInner) ? bad : { ok: true, destInner };
+  return isSameOrDescendantPath(srcInner, destInner) ? bad : { ok: true, destInner };
 }
 
 async function handleCopy(
@@ -65,7 +65,7 @@ async function handleCopy(
   repo: DavRepository,
   locks: DavLockGuard,
   dofs: DofsFs,
-  removeDestination: (destInner: string) => Promise<Response | null>,
+  removeDestination: (destInner: string, overwriteRequest: Request) => Promise<Response | null>,
 ): Promise<Response> {
   const destination = resolveDestination(request, base, innerPath);
   if (!destination.ok) return destination.response;
@@ -80,7 +80,7 @@ async function handleCopy(
   const destExists = repo.statInner(destInner).exists;
   if (!overwrite && destExists) return new Response('Precondition Failed', { status: 412 });
   if (destExists) {
-    const removed = await removeDestination(destInner);
+    const removed = await removeDestination(destInner, new Request(request.url, { method: 'DELETE', headers: forwardLockHeaders(request) }));
     if (removed) return removed;
   }
   if (srcStat.isDirectory) {

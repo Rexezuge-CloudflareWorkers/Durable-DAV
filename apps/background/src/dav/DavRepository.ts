@@ -54,6 +54,49 @@ class DavRepository {
     }
   }
 
+  /**
+   * Locks that apply to `innerPath`: those held on it directly, plus any
+   * `Depth: infinity` lock on an ancestor.
+   *
+   * The old query matched `path = ?` exactly, so a child of an
+   * infinity-locked collection reported no lock — while `DavLockGuard` *did*
+   * enforce it for writes. A client therefore saw an unlocked resource and got
+   * `423` on write, which is precisely the confusion `lockdiscovery` exists to
+   * prevent. Uses the same ancestor set as the guard.
+   */
+  private applicableLocks(innerPath: string, base: string): LockDetails[] {
+    const ancestors: string[] = [];
+    let cur = innerPath;
+    for (;;) {
+      ancestors.push(cur);
+      if (cur === '' || ancestors.length >= 256) break;
+      const slash = cur.lastIndexOf('/');
+      cur = slash === -1 ? '' : cur.slice(0, slash);
+    }
+    const placeholders = ancestors.map(() => '?').join(', ');
+    const rows = this.sql
+      .exec(`SELECT path, token, scope, depth, owner, timeout, expires_at as expiresAt FROM dav_locks WHERE path IN (${placeholders}) AND expires_at > ?`, ...ancestors, Date.now())
+      .toArray();
+    return rows.flatMap((row) => {
+      const token = String(row['token'] ?? '');
+      if (!token) return [];
+      const lockPath = String(row['path'] ?? '');
+      const depth = row['depth'] === 'infinity' ? 'infinity' : '0';
+      // A depth-0 ancestor lock does not reach this resource.
+      if (depth !== 'infinity' && lockPath !== innerPath) return [];
+      const normalized = normalizeLockDetails({
+        token,
+        owner: row['owner'] == null ? undefined : String(row['owner']),
+        scope: row['scope'] === 'shared' ? 'shared' : 'exclusive',
+        depth,
+        timeout: String(row['timeout'] ?? ''),
+        expiresAt: Number(row['expiresAt'] ?? 0),
+        root: hrefOf(base, lockPath, true),
+      });
+      return normalized ? [normalized] : [];
+    });
+  }
+
   public nodeInfo(innerPath: string, base: string): DavNodeInfo | null {
     const st = this.statInner(innerPath);
     if (!st.exists) return null;
@@ -62,27 +105,15 @@ class DavRepository {
     const crtime = new Date(meta.crtime ?? mtime.getTime());
     let locks: LockDetails[] = [];
     try {
-      const now = Date.now();
-      this.sql.exec(`DELETE FROM dav_locks WHERE expires_at <= ?`, now);
-      const rows = this.sql
-        .exec(`SELECT token, scope, depth, owner, timeout, expires_at as expiresAt, root FROM dav_locks WHERE path = ?`, innerPath)
-        .toArray();
-      locks = rows.flatMap((row) => {
-        const token = String(row['token'] ?? '');
-        if (!token) return [];
-        const normalized = normalizeLockDetails({
-          token,
-          owner: row['owner'] == null ? undefined : String(row['owner']),
-          scope: row['scope'] === 'shared' ? 'shared' : 'exclusive',
-          depth: row['depth'] === 'infinity' ? 'infinity' : '0',
-          timeout: String(row['timeout'] ?? ''),
-          expiresAt: Number(row['expiresAt'] ?? 0),
-          root: hrefOf(base, innerPath, st.isDirectory),
-        });
-        return normalized ? [normalized] : [];
+      locks = this.applicableLocks(innerPath, base);
+    } catch (error) {
+      // Surfaced, not swallowed: a client that cannot see the real lock state
+      // will attempt a write and be refused, which is worse than a 500.
+      console.error('nodeInfo lock lookup failed', {
+        path: innerPath,
+        error: error instanceof Error ? (error.stack ?? error.message) : error,
       });
-    } catch {
-      locks = [];
+      throw error;
     }
     return {
       key: innerPath,

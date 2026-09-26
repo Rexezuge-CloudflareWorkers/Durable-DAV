@@ -14,9 +14,22 @@ function encodeHrefPath(href: string): string {
     .join('/');
 }
 
-function getResourceHref(key: string, isCollection: boolean): string {
-  if (key === '') return '/';
-  return encodeHrefPath(`/${key + (isCollection ? '/' : '')}`);
+/**
+ * Build the `DAV:href` for a volume-relative resource key.
+ *
+ * `base` is the volume's public prefix (`/owner/volume`) as supplied by the
+ * front door. RFC 4918 §8.3 requires every `DAV:href` to be a URI reference
+ * that resolves against the *request* URL, so it must include that prefix.
+ * Omitting it produces `/dir/file.txt` for a request to
+ * `https://host/alice/photos/dir/`; third-party clients (Finder, Explorer,
+ * Cyberduck, rclone) resolve that against the request URL and land outside the
+ * volume, i.e. 404 for every entry.
+ */
+function getResourceHref(key: string, isCollection: boolean, base = ''): string {
+  const prefix = stripSlashes(base);
+  if (key === '') return prefix === '' ? '/' : `/${prefix}/`;
+  const suffix = key + (isCollection ? '/' : '');
+  return encodeHrefPath(prefix === '' ? `/${suffix}` : `/${prefix}/${suffix}`);
 }
 
 function decodeResourcePath(pathname: string): string {

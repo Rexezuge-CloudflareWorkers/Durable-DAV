@@ -2,6 +2,7 @@
 import type { DofsFs } from '@durable-dav/dav-store';
 import { escapeXml } from '@durable-dav/webdav';
 import { fsPathOf, hrefOf } from '../DavContext';
+import { DavConditionalGuard } from '../DavConditionalGuard';
 import { parseRangeHeader } from '../RangeParser';
 import type { DavRepository } from '../DavRepository';
 
@@ -41,7 +42,20 @@ async function handleGet(
   }
   if (!st.exists) return new Response('Not Found', { status: 404 });
   const meta = repo.readMeta(innerPath);
+  // RFC 7232 revalidation. Runs before the Range maths so a 304/412 answers
+  // without reading any bytes.
+  const conditional = new DavConditionalGuard().check(request, { etag: meta.etag ?? null, mtime: meta.mtime ?? st.mtime }, { forRead: true });
+  if (conditional) return conditional;
   const { offset, length, contentRange, status } = parseRangeHeader(request.headers.get('Range'), st.size);
+
+  // 416 carries no body and must not read the representation at all.
+  if (status === 416) {
+    return new Response(null, {
+      status: 416,
+      headers: { 'Content-Range': contentRange ?? `bytes */${st.size}`, 'Accept-Ranges': 'bytes' },
+    });
+  }
+
   let body: ReadableStream | ArrayBuffer;
   let contentLength = st.size;
   try {
@@ -55,24 +69,19 @@ async function handleGet(
   } catch {
     return new Response('Not Found', { status: 404 });
   }
-  const contentType = meta.contentType ?? 'application/octet-stream';
-  if (headOnly) {
-    const headers: Record<string, string> = {
-      'Content-Type': contentType,
-      'Content-Length': String(contentLength),
-      'Accept-Ranges': 'bytes',
-    };
-    if (meta.etag) headers['ETag'] = meta.etag;
-    return new Response(null, { status: 200, headers });
-  }
+
   const headers: Record<string, string> = {
-    'Content-Type': contentType,
+    'Content-Type': meta.contentType ?? 'application/octet-stream',
     'Content-Length': String(contentLength),
     'Accept-Ranges': 'bytes',
   };
   if (meta.etag) headers['ETag'] = meta.etag;
+  if (meta.mtime) headers['Last-Modified'] = new Date(meta.mtime).toUTCString();
   if (contentRange) headers['Content-Range'] = contentRange;
-  return new Response(body as BodyInit, { status, headers });
+
+  // RFC 7233 §4.3: HEAD must mirror GET, including `206` + `Content-Range`.
+  // The old shape always answered 200 and dropped the Content-Range.
+  return new Response(headOnly ? null : body as BodyInit, { status, headers });
 }
 
 export { handleGet, renderCollectionHtml };
