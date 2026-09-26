@@ -1,27 +1,39 @@
 /* eslint-disable @typescript-eslint/require-await -- Facade keeps async for DO RPC uniformity. */
 import { DurableObject } from 'cloudflare:workers';
-import { createDofsFs, setDofsDeviceSize, ensureDavSchema, getDeadProperties, upsertNode } from '@durable-dav/dav-store';
+import { createDofsFs, setDofsDeviceSize, ensureDavSchema } from '@durable-dav/dav-store';
 import type { DofsFs, DurableSqlStorage } from '@durable-dav/dav-store';
 import { DAV_CLASS, SUPPORT_METHODS } from '@durable-dav/webdav';
-import type { DeadProperty } from '@durable-dav/webdav';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { DavRepository } from './dav/DavRepository';
 import { DavLockGuard } from './dav/DavLockGuard';
 import { fsPathOf, isValidInnerPath, resolveInnerPath } from './dav/DavContext';
+import { VolumeTransfer } from './dav/VolumeTransfer';
+import type { VolumeEntry } from './dav/VolumeTransfer';
 import { handleGet } from './dav/methods/ReadMethods';
 import { handleDelete, handleMkcol, handlePut } from './dav/methods/WriteMethods';
 import { handlePropfind, handleProppatch } from './dav/methods/PropMethods';
 import { handleCopy, handleMove } from './dav/methods/CopyMoveMethods';
 import { handleLock, handleUnlock } from './dav/methods/LockMethods';
 
-// Facade over the WebDAV volume (why: the previous 1000-line god-file mixed
-// routing, SQL, and every RFC 4918 method; method logic now lives in
-// `dav/methods/*` Commands + `DavRepository`/`DavLockGuard`, so this class
-// only owns lifecycle, dispatch, and per-request wiring — mirroring the Git
-// `RepoWorker` facade pattern).
+/**
+ * Facade over one WebDAV volume.
+ *
+ * This class owns exactly three things: the error boundary, method dispatch,
+ * and the wiring that connects `dav/methods/*` to `DavRepository` /
+ * `DavLockGuard`. Everything else lives in a collaborator with one reason to
+ * change:
+ *
+ * - `dav/methods/*` — one Command per RFC 4918 method family
+ * - `DavRepository` — dofs + SQL reads
+ * - `DavLockGuard` — lock preconditions
+ * - `DavConditionalGuard` — RFC 7232 preconditions
+ * - `VolumeTransfer` — the username-rename copy RPCs, which are not reachable
+ *   from any `DAV:` method and used to sit inline here
+ */
 class DavVolumeWorker extends DurableObject<Env> {
   private readonly dofs: DofsFs;
   private readonly config: AppConfiguration;
+  private sizeEnsured = false;
 
   constructor(ctx: DurableObjectState, env: Env) {
     super(ctx, env);
@@ -34,11 +46,23 @@ class DavVolumeWorker extends DurableObject<Env> {
     }
   }
 
+  /**
+   * Apply the per-volume device quota, once per isolate.
+   *
+   * This used to run on every request — a SQL write on the hot path — and
+   * swallowed every failure with a comment claiming the only error is ENOSPC.
+   * `dofs.setDeviceSize` has no "already set" error, so any other failure left
+   * the quota unenforced and invisible. Narrowed to the real error and logged.
+   */
   private ensureSize(): void {
+    if (this.sizeEnsured) return;
     try {
       setDofsDeviceSize(this.dofs, this.config.getDoDeviceBytes());
-    } catch {
-      // Device size is best-effort; writes surface real quota errors.
+      this.sizeEnsured = true;
+    } catch (error) {
+      console.error('dofs device size could not be applied; volume quota may be unenforced', {
+        error: error instanceof Error ? (error.stack ?? error.message) : error,
+      });
     }
   }
 
@@ -52,8 +76,8 @@ class DavVolumeWorker extends DurableObject<Env> {
     return sql;
   }
 
-  private baseOf(request: Request): string {
-    return request.headers.get('X-Dav-Base') ?? '';
+  private transfer(): VolumeTransfer {
+    return new VolumeTransfer(this.dofs, this.sql());
   }
 
   public override async fetch(request: Request): Promise<Response> {
@@ -82,7 +106,7 @@ class DavVolumeWorker extends DurableObject<Env> {
 
   private async dispatch(request: Request): Promise<Response> {
     const url = new URL(request.url);
-    const base = this.baseOf(request);
+    const base = request.headers.get('X-Dav-Base') ?? '';
     const innerPath = resolveInnerPath(request, url, base);
     if (innerPath === null) return new Response('Bad Request', { status: 400 });
     if (!isValidInnerPath(innerPath)) return new Response('Bad Request', { status: 400 });
@@ -90,6 +114,15 @@ class DavVolumeWorker extends DurableObject<Env> {
     const sql = this.sql();
     const repo = new DavRepository(this.dofs, sql);
     const locks = new DavLockGuard(sql);
+
+    // COPY and MOVE share the overwrite path: both delete an existing
+    // destination through `handleDelete`, so COPY inherits its descendant-lock
+    // scan. A dedicated COPY-only delete had reimplemented DELETE minus that
+    // scan and could `rmdir --recursive` a collection with locked children.
+    const deleteDestination = async (destInner: string, overwriteRequest: Request): Promise<Response | null> => {
+      const res = await handleDelete(overwriteRequest, destInner, repo, locks, this.dofs);
+      return res.ok || res.status === 204 ? null : res;
+    };
 
     switch (request.method) {
       case 'OPTIONS': {
@@ -128,38 +161,22 @@ class DavVolumeWorker extends DurableObject<Env> {
         return handleProppatch(request, innerPath, base, repo, locks, sql);
       }
       case 'COPY': {
-        // COPY reuses `handleDelete` for the overwrite step, exactly as MOVE
-        // does. The previous dedicated `removeDestination` reimplemented DELETE
-        // minus its descendant-lock scan, so `COPY` with `Overwrite: T` could
-        // `rmdir --recursive` a collection whose children were individually
-        // locked — a Class 2 violation that MOVE handled correctly. Sharing one
-        // implementation makes the question unaskable.
-        return handleCopy(request, innerPath, base, repo, locks, this.dofs, async (destInner, overwriteRequest) => {
-          const del = await handleDelete(overwriteRequest, destInner, repo, locks, this.dofs);
-          return del.ok || del.status === 204 ? null : del;
-        });
+        return handleCopy(request, innerPath, base, repo, locks, this.dofs, deleteDestination);
       }
       case 'MOVE': {
-        return handleMove(request, innerPath, base, repo, locks, this.dofs, async (destInner, overwriteRequest) => {
-          const del = await handleDelete(overwriteRequest, destInner, repo, locks, this.dofs);
-          return del.ok || del.status === 204 ? null : del;
-        });
+        return handleMove(request, innerPath, base, repo, locks, this.dofs, deleteDestination);
       }
       case 'LOCK': {
         return handleLock(request, innerPath, base, {
           repo,
           locks,
           sql,
-          writeEmptyFile: async (p) => this.writeEmptyFile(p),
+          writeEmptyFile: (p) => this.transfer().writeEmptyFile(p),
           statIsDirectory: (p) => repo.statInner(p).isDirectory,
         });
       }
       case 'UNLOCK': {
-        return handleUnlock(request, innerPath, {
-          repo,
-          sql,
-          unlink: (p) => this.dofs.unlink(fsPathOf(p)),
-        });
+        return handleUnlock(request, innerPath, { repo, sql, unlink: (p) => this.dofs.unlink(fsPathOf(p)) });
       }
       default: {
         return new Response('Method Not Allowed', {
@@ -170,86 +187,16 @@ class DavVolumeWorker extends DurableObject<Env> {
     }
   }
 
-  private async writeEmptyFile(innerPath: string): Promise<boolean> {
-    try {
-      await this.dofs.writeFile(fsPathOf(innerPath), new Uint8Array().buffer, {});
-    } catch {
-      return false;
-    }
-    try {
-      const now = Date.now();
-      upsertNode(this.sql(), innerPath, { isCollection: false, mtime: now, crtime: now });
-    } catch {
-      // Metadata is best-effort; zero-byte file already exists.
-    }
-    return true;
-  }
+  // --- Username-rename transfer RPCs (see `VolumeTransfer`) -----------------
 
-
-  // Username-rename transfer primitives (Git `RepoWorker` copy pattern).
-  // Locks are never copied (RFC 4918 §9.8); dead props follow file bytes.
-  public async listVolumeEntries(): Promise<
-    Array<{
-      path: string;
-      isCollection: boolean;
-      contentType: string | null;
-      etag: string | null;
-      props: DeadProperty[];
-    }>
-  > {
+  public async listVolumeEntries(): Promise<VolumeEntry[]> {
     this.ensureSize();
-    const sql = this.sql();
-    const repo = new DavRepository(this.dofs, sql);
-    let names: string[] = [];
-    try {
-      names = repo.listRecursive('');
-    } catch {
-      return [];
-    }
-    const entries: Array<{
-      path: string;
-      isCollection: boolean;
-      contentType: string | null;
-      etag: string | null;
-      props: DeadProperty[];
-    }> = [];
-    for (const name of names) {
-      const innerPath = repo.childInner('', name);
-      if (!isValidInnerPath(innerPath)) continue;
-      const st = repo.statInner(innerPath);
-      if (!st.exists) continue;
-      const meta = repo.readMeta(innerPath);
-      let props: DeadProperty[] = [];
-      try {
-        props = getDeadProperties(sql, innerPath);
-      } catch {
-        props = [];
-      }
-      entries.push({
-        path: innerPath,
-        isCollection: st.isDirectory,
-        contentType: meta.contentType ?? null,
-        etag: meta.etag ?? null,
-        props,
-      });
-    }
-    return entries;
+    return this.transfer().listEntries();
   }
 
   public async readVolumeFile(path: string): Promise<{ dataBase64: string; contentType: string | null } | null> {
     this.ensureSize();
-    if (path === '' || !isValidInnerPath(path)) return null;
-    const sql = this.sql();
-    const repo = new DavRepository(this.dofs, sql);
-    const st = repo.statInner(path);
-    if (!st.exists || st.isDirectory) return null;
-    try {
-      const buf = this.dofs.read(fsPathOf(path), {});
-      const bytes = new Uint8Array(buf.slice(0));
-      return { dataBase64: bytesToBase64(bytes), contentType: repo.readMeta(path).contentType ?? null };
-    } catch {
-      return null;
-    }
+    return this.transfer().readFile(path);
   }
 
   public async writeVolumeEntry(entry: {
@@ -258,62 +205,15 @@ class DavVolumeWorker extends DurableObject<Env> {
     contentType?: string | null;
     etag?: string | null;
     dataBase64?: string | null;
-    props?: DeadProperty[];
+    props?: import('@durable-dav/webdav').DeadProperty[];
   }): Promise<void> {
     this.ensureSize();
-    // Must throw, not return: `VolumeMove.moveOneVolume` purges the source DO
-    // once every entry is written, so a silently skipped entry turned a
-    // username rename into unrecoverable data loss. Throwing here engages the
-    // caller's existing rollback + rethrow.
-    if (!isValidInnerPath(entry.path) || entry.path === '') {
-      throw new Error(`writeVolumeEntry: invalid volume entry path ${JSON.stringify(entry.path)}`);
-    }
-    const sql = this.sql();
-    const repo = new DavRepository(this.dofs, sql);
-    const parent = entry.path.split('/').slice(0, -1).join('/');
-    if (parent !== '') {
-      try {
-        this.dofs.mkdir(fsPathOf(parent), { recursive: true });
-      } catch {
-        // Parent may already exist; file/collection op surfaces real errors.
-      }
-      const segments = parent.split('/');
-      for (let i = 1; i <= segments.length; i += 1) {
-        repo.upsertCollectionNode(segments.slice(0, i).join('/'), Date.now());
-      }
-    }
-    if (entry.isCollection) {
-      try {
-        this.dofs.mkdir(fsPathOf(entry.path), { recursive: false });
-      } catch {
-        // Existing collection is fine; metadata upsert below still applies.
-      }
-      repo.upsertCollectionNode(entry.path, Date.now());
-    } else {
-      const bytes = entry.dataBase64 ? base64ToBytes(entry.dataBase64) : new Uint8Array();
-      const copy = new Uint8Array(bytes.byteLength);
-      copy.set(bytes);
-      await this.dofs.writeFile(fsPathOf(entry.path), copy.buffer, {});
-      const now = Date.now();
-      repo.upsertFileNode(entry.path, entry.contentType ?? 'application/octet-stream', entry.etag ?? `"${bytes.byteLength.toString(16)}-${now.toString(16)}"`, now);
-    }
-    const props = entry.props ?? [];
-    for (const prop of props) {
-      try {
-        sql.exec(
-          `INSERT INTO dav_props (path, namespace_uri, local_name, prefix, value_xml) VALUES (?, ?, ?, ?, ?) ON CONFLICT(path, namespace_uri, local_name) DO UPDATE SET prefix=excluded.prefix, value_xml=excluded.value_xml`,
-          entry.path,
-          prop.namespaceURI ?? '',
-          prop.localName ?? '',
-          prop.prefix ?? null,
-          prop.valueXml ?? '',
-        );
-      } catch {
-        // Dead-prop copy is best-effort; file bytes already persisted.
-      }
-    }
+    await this.transfer().writeEntry(entry);
   }
 
+  /**
+  Destroy all volume content. Idempotent.
+  */
   public async deleteVolume(): Promise<void> {
     try {
       this.dofs.rmdir('/', { recursive: true });
@@ -329,22 +229,6 @@ class DavVolumeWorker extends DurableObject<Env> {
       // Filesystem delete already succeeded; metadata GC retries on next op.
     }
   }
-}
-
-function bytesToBase64(bytes: Uint8Array): string {
-  let binary = '';
-  const chunk = 8192;
-  for (let i = 0; i < bytes.length; i += chunk) {
-    binary += String.fromCodePoint(...bytes.subarray(i, i + chunk));
-  }
-  return btoa(binary);
-}
-
-function base64ToBytes(b64: string): Uint8Array {
-  const binary = atob(b64);
-  const out = new Uint8Array(binary.length);
-  for (let i = 0; i < binary.length; i += 1) out[i] = (binary.codePointAt(i) ?? 0) & 0xff;
-  return out;
 }
 
 export { DavVolumeWorker };

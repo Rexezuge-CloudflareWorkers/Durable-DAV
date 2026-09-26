@@ -1,21 +1,28 @@
-import type { Hono } from 'hono';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
+import type { ApiApp, ApiContext } from '@/types/ApiContext';
 import { getVolumeStub } from '../doStubs';
 import {
-  cacheControlFor,
-  getCachedVolumeDetail,
   getCachedVolumeList,
   invalidateVolumeCaches,
-  invalidateVolumeDetailCache,
   invalidateVolumeListCache,
-  putCachedVolumeDetail,
   putCachedVolumeList,
 } from './DavReadCache';
+import { VolumeScopedRoute, requireUser, withErrorMapping } from './VolumeScopedRoute';
+import type { VolumeRequestContext } from './VolumeScopedRoute';
 
-type App = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
+type App = ApiApp;
 
-function toVolumeJson(r: { owner: string; name: string; description: string | null; is_private: number }) {
+type VolumeJson = {
+  owner: string;
+  name: string;
+  fullName: string;
+  description: string | null;
+  isPrivate: boolean;
+  href: string;
+};
+
+function toVolumeJson(r: { owner: string; name: string; description: string | null; is_private: number }): VolumeJson {
   return {
     owner: r.owner,
     name: r.name,
@@ -26,155 +33,76 @@ function toVolumeJson(r: { owner: string; name: string; description: string | nu
   };
 }
 
-function registerVolumeRoutes(app: App): void {
-  // List buckets owned by the authenticated user (KV-cached per email, 60s).
-  app.get('/user/volumes', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    let email: string;
-    try {
-      email = await scope.get(Tokens.AccessAuthService).getAuthenticatedUserEmail(c.req.raw, c.executionCtx as never);
-      await scope.get(Tokens.UserService).upsertUser(email).catch(() => undefined);
-    } catch {
-      return c.json({ Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } }, 401);
-    }
-    const cache = scope.get(Tokens.KvCache);
-    try {
-      const cached = await getCachedVolumeList<Array<ReturnType<typeof toVolumeJson>>>(cache, email);
-      if (cached) {
-        return c.json({ volumes: cached }, 200, { 'Cache-Control': cacheControlFor('meta') });
-      }
-    } catch {
-      // Fail-soft: fall through to D1.
-    }
-    const dao = await scope.get(Tokens.DavVolumeDAO)();
-    const rows = await dao.listByOwnerEmail(email, 100).catch(() => []);
-    const volumes = rows.map(toVolumeJson);
-    await putCachedVolumeList(cache, email, volumes);
-    return c.json({ volumes }, 200, { 'Cache-Control': cacheControlFor('meta') });
-  });
+/**
+ * `GET /user/volumes` — KV-cached per owner email (60s).
+ *
+ * No `Cache-Control` argument is passed on purpose: `securityHeaders` applies
+ * `Cache-Control: no-store` to every `/user/*` response *after* the handler
+ * runs, overriding whatever the handler set. The four previous
+ * `cacheControlFor('meta')` arguments were unreachable intent.
+ */
+async function handleListVolumes(c: ApiContext): Promise<Response> {
+  const email = requireUser(c);
+  if (email instanceof Response) return email;
+  const scope = BaseRoute.getScope(c);
+  await scope.get(Tokens.UserService).upsertUser(email).catch(() => undefined);
 
-  app.post('/user/volumes', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    let email: string;
-    try {
-      email = await scope.get(Tokens.AccessAuthService).getAuthenticatedUserEmail(c.req.raw, c.executionCtx as never);
-      await scope.get(Tokens.UserService).upsertUser(email).catch(() => undefined);
-    } catch {
-      return c.json({ Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } }, 401);
-    }
-    const body = (await c.req.json().catch(() => ({}))) as {
-      owner?: string;
-      name?: string;
-      isPrivate?: boolean;
-      description?: string | null;
-    };
-    if (!body.owner || !body.name) {
-      return c.json({ Exception: { Type: 'BadRequest', Message: 'owner and name are required' } }, 400);
-    }
-    try {
-      const created = await scope.get(Tokens.VolumeService).createVolume({
-        owner: body.owner,
-        name: body.name,
-        description: body.description ?? null,
-        isPrivate: body.isPrivate ?? true,
-        creatorEmail: email,
-      });
-      const cache = scope.get(Tokens.KvCache);
-      await invalidateVolumeListCache(cache, email);
-      await putCachedVolumeDetail(cache, created.owner, created.name, created);
-      return c.json(toVolumeJson(created), 201);
-    } catch (error) {
-      return BaseRoute.toErrorResponse(c as never, error);
-    }
-  });
+  const cache = scope.get(Tokens.KvCache);
+  try {
+    const cached = await getCachedVolumeList<VolumeJson[]>(cache, email);
+    if (cached) return c.json({ volumes: cached });
+  } catch {
+    // Fail-soft: fall through to D1.
+  }
+  // No `.catch(() => [])`: a D1 failure was indistinguishable from "you own
+  // nothing", and the empty result was then written to KV for 60s — so a
+  // one-second blip made a user's volume list look empty for a minute.
+  const dao = await scope.get(Tokens.DavVolumeDAO)();
+  const rows = await dao.listByOwnerEmail(email, 100);
+  const volumes = rows.map(toVolumeJson);
+  await putCachedVolumeList(cache, email, volumes);
+  return c.json({ volumes });
+}
 
-  // Per-bucket detail for the settings tab (owner-only, KV-cached 60s).
-  app.get('/user/volumes/:owner/:volume', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    let email: string;
-    try {
-      email = await scope.get(Tokens.AccessAuthService).getAuthenticatedUserEmail(c.req.raw, c.executionCtx as never);
-    } catch {
-      return c.json({ Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } }, 401);
-    }
-    const cache = scope.get(Tokens.KvCache);
-    try {
-      const cached = await getCachedVolumeDetail<{
-        owner: string;
-        name: string;
-        description: string | null;
-        is_private: number;
-        owner_email: string;
-        id: string;
-      }>(cache, c.req.param('owner') ?? '', c.req.param('volume') ?? '');
-      if (cached && cached.owner_email.toLowerCase() === email.toLowerCase()) {
-        return c.json(toVolumeJson(cached), 200, { 'Cache-Control': cacheControlFor('meta') });
-      }
-    } catch {
-      // Fail-soft: fall through to the service.
-    }
-    const row = await scope.get(Tokens.VolumeService).getVolume(c.req.param('owner') ?? '', c.req.param('volume') ?? '').catch(() => null);
-    if (!row) return c.json({ Exception: { Type: 'NotFound', Message: 'Volume not found' } }, 404);
-    if (row.owner_email.toLowerCase() !== email.toLowerCase()) {
-      return c.json({ Exception: { Type: 'Forbidden', Message: 'Forbidden' } }, 403);
-    }
-    await putCachedVolumeDetail(cache, row.owner, row.name, row);
-    return c.json(toVolumeJson(row), 200, { 'Cache-Control': cacheControlFor('meta') });
-  });
+class VolumeDetail extends VolumeScopedRoute {
+  // Declared `async` to satisfy the abstract signature; the body is a
+  // synchronous `c.json` on the row the guard already read.
+  protected run(c: ApiContext, { row }: VolumeRequestContext): Promise<Response> {
+    // Served straight from the row the guard already read.
+    //
+    // This endpoint used to keep a KV read-through cache, but the ownership
+    // guard has to load the volume from D1 anyway — so the cache could never
+    // avoid the query it existed to skip, while still costing a KV write on
+    // every volume mutation and an invalidation path on rename. The list
+    // endpoint is the one that benefits, since it has no per-row guard.
+    return Promise.resolve(c.json(toVolumeJson(row)));
+  }
+}
 
-  // Per-bucket settings patch (description + isPrivate) — Git-style general card.
-  app.patch('/user/volumes/:owner/:volume', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    let email: string;
-    try {
-      email = await scope.get(Tokens.AccessAuthService).getAuthenticatedUserEmail(c.req.raw, c.executionCtx as never);
-    } catch {
-      return c.json({ Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } }, 401);
-    }
-    const body = (await c.req.json().catch(() => ({}))) as { description?: string | null; isPrivate?: boolean };
+class UpdateVolume extends VolumeScopedRoute {
+  protected async run(c: ApiContext, { scope, email, row }: VolumeRequestContext): Promise<Response> {
+    const { malformed, oversized, body } = await BaseRoute.readJson<{ description?: string | null; isPrivate?: boolean }>(c);
+    if (oversized) return c.json({ Exception: { Type: 'PayloadTooLarge', Message: 'Payload too large' } }, 413);
+    if (malformed) return c.json({ Exception: { Type: 'BadRequest', Message: 'Invalid JSON body' } }, 400);
     const patch: { description?: string | null; isPrivate?: boolean } = {};
     if ('description' in body) patch.description = body.description ?? null;
     if ('isPrivate' in body) patch.isPrivate = body.isPrivate;
-    try {
-      const updated = await scope
-        .get(Tokens.VolumeService)
-        .updateVolume(c.req.param('owner') ?? '', c.req.param('volume') ?? '', email, patch);
-      const cache = scope.get(Tokens.KvCache);
-      await invalidateVolumeListCache(cache, email);
-      await putCachedVolumeDetail(cache, updated.owner, updated.name, updated);
-      return c.json(toVolumeJson(updated));
-    } catch (error) {
-      return BaseRoute.toErrorResponse(c as never, error);
-    }
-  });
+    const updated = await scope.get(Tokens.VolumeService).updateVolume(row.owner, row.name, email, patch);
+    await invalidateVolumeListCache(scope.get(Tokens.KvCache), email);
+    return c.json(toVolumeJson(updated));
+  }
+}
 
-  app.delete('/user/volumes/:owner/:volume', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    let email: string;
-    try {
-      email = await scope.get(Tokens.AccessAuthService).getAuthenticatedUserEmail(c.req.raw, c.executionCtx as never);
-    } catch {
-      return c.json({ Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } }, 401);
-    }
-    const owner = c.req.param('owner') ?? '';
-    const volume = c.req.param('volume') ?? '';
-    const row = await scope.get(Tokens.VolumeService).getVolume(owner, volume).catch(() => null);
-    if (!row) return c.json({ Exception: { Type: 'NotFound', Message: 'Volume not found' } }, 404);
-    if (row.owner_email.toLowerCase() !== email.toLowerCase()) {
-      return c.json({ Exception: { Type: 'Forbidden', Message: 'Forbidden' } }, 403);
-    }
+class DeleteVolume extends VolumeScopedRoute {
+  protected async run(c: ApiContext, { scope, email, row }: VolumeRequestContext): Promise<Response> {
     // The D1 delete is the authoritative step. It must NOT be swallowed:
     // swallowing it let the route destroy the DO filesystem and answer
-    // `{ok:true}` while the D1 row (and therefore the whole WebDAV surface)
+    // `{"ok":true}` while the D1 row (and therefore the whole WebDAV surface)
     // survived — a "deleted" bucket that was still live.
-    try {
-      await scope.get(Tokens.VolumeService).deleteVolume(owner, volume);
-    } catch (error) {
-      return BaseRoute.toErrorResponse(c as never, error);
-    }
+    await scope.get(Tokens.VolumeService).deleteVolume(row.owner, row.name);
     // DO cleanup is now pure garbage collection — the bucket is already gone
-    // from D1, so a failure is safe to absorb, but the caller is told so it
-    // can be retried/GC'd rather than silently leaving orphaned bytes.
+    // from D1, so a failure is safe to absorb, but the caller is told so it can
+    // be retried rather than silently leaving orphaned bytes.
     let doCleanupFailed = false;
     try {
       await getVolumeStub(c.env, row.owner, row.name).deleteVolume();
@@ -188,10 +116,50 @@ function registerVolumeRoutes(app: App): void {
     }
     const cache = scope.get(Tokens.KvCache);
     await invalidateVolumeListCache(cache, email);
-    await invalidateVolumeDetailCache(cache, row.owner, row.name);
     await invalidateVolumeCaches(cache, row.owner, row.name);
     return c.json({ ok: true, doCleanupFailed });
+  }
+}
+
+async function handleCreateVolume(c: ApiContext): Promise<Response> {
+  const email = requireUser(c);
+  if (email instanceof Response) return email;
+  const scope = BaseRoute.getScope(c);
+  await scope.get(Tokens.UserService).upsertUser(email).catch(() => undefined);
+  const { malformed, oversized, body } = await BaseRoute.readJson<{
+    owner?: string;
+    name?: string;
+    isPrivate?: boolean;
+    description?: string | null;
+  }>(c);
+  if (oversized) return c.json({ Exception: { Type: 'PayloadTooLarge', Message: 'Payload too large' } }, 413);
+  if (malformed) return c.json({ Exception: { Type: 'BadRequest', Message: 'Invalid JSON body' } }, 400);
+  if (!body.owner || !body.name) {
+    return c.json({ Exception: { Type: 'BadRequest', Message: 'owner and name are required' } }, 400);
+  }
+  // `VolumeService` enforces owner == caller's username and fails closed, so
+  // the route does not duplicate that check.
+  const created = await scope.get(Tokens.VolumeService).createVolume({
+    owner: body.owner,
+    name: body.name,
+    description: body.description ?? null,
+    isPrivate: body.isPrivate ?? true,
+    creatorEmail: email,
   });
+  await invalidateVolumeListCache(scope.get(Tokens.KvCache), email);
+  return c.json(toVolumeJson(created), 201);
+}
+
+function registerVolumeRoutes(app: App): void {
+  app.get('/user/volumes', (c) => withErrorMapping(c, () => handleListVolumes(c)));
+  app.post('/user/volumes', (c) => withErrorMapping(c, () => handleCreateVolume(c)));
+  const detail = new VolumeDetail();
+  const update = new UpdateVolume();
+  const remove = new DeleteVolume();
+  app.get('/user/volumes/:owner/:volume', (c) => detail.handle(c));
+  app.patch('/user/volumes/:owner/:volume', (c) => update.handle(c));
+  app.delete('/user/volumes/:owner/:volume', (c) => remove.handle(c));
 }
 
 export { registerVolumeRoutes };
+export type { VolumeJson };

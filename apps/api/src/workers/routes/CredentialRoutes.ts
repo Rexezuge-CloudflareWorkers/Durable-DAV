@@ -1,22 +1,14 @@
-import type { Hono } from 'hono';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
+import type { ApiApp, ApiContext } from '@/types/ApiContext';
+import { VolumeScopedRoute } from './VolumeScopedRoute';
+import type { VolumeRequestContext } from './VolumeScopedRoute';
 
-type CredentialApp = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
+type App = ApiApp;
 
-function registerCredentialRoutes(app: CredentialApp): void {
-  app.get('/user/volumes/:owner/:volume/credentials', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    const email = c.get('AuthenticatedUserEmailAddress');
-    const owner = (c.req.param('owner') ?? '').trim();
-    const volume = (c.req.param('volume') ?? '').trim();
-    const row = await scope.get(Tokens.VolumeService).getVolume(owner, volume).catch(() => null);
-    if (!row) return c.json({ Exception: { Type: 'NotFound', Message: 'Volume not found' } }, 404);
-    if (row.owner_email.toLowerCase() !== email.toLowerCase()) {
-      return c.json({ Exception: { Type: 'Forbidden', Message: 'Forbidden' } }, 403);
-    }
-    const svc = scope.get(Tokens.VolumeCredentialService);
-    const credentials = await svc.listCredentials(row.id);
+class ListCredentials extends VolumeScopedRoute {
+  protected async run(c: ApiContext, { scope, row }: VolumeRequestContext): Promise<Response> {
+    const credentials = await scope.get(Tokens.VolumeCredentialService).listCredentials(row.id);
     return c.json({
       credentials: credentials.map((cred) => ({
         credentialId: cred.credentialId,
@@ -29,59 +21,51 @@ function registerCredentialRoutes(app: CredentialApp): void {
         lastUsedAt: cred.lastUsedAt,
       })),
     });
-  });
+  }
+}
 
-  app.post('/user/volumes/:owner/:volume/credentials', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    const email = c.get('AuthenticatedUserEmailAddress');
-    const owner = (c.req.param('owner') ?? '').trim();
-    const volume = (c.req.param('volume') ?? '').trim();
-    const row = await scope.get(Tokens.VolumeService).getVolume(owner, volume).catch(() => null);
-    if (!row) return c.json({ Exception: { Type: 'NotFound', Message: 'Volume not found' } }, 404);
-    if (row.owner_email.toLowerCase() !== email.toLowerCase()) {
-      return c.json({ Exception: { Type: 'Forbidden', Message: 'Forbidden' } }, 403);
+class CreateCredential extends VolumeScopedRoute {
+  protected async run(c: ApiContext, { scope, row }: VolumeRequestContext): Promise<Response> {
+    // Routed through `BaseRoute.readJson` so malformed JSON and an oversize
+    // body are distinguished, and so the body is size-capped like every other
+    // JSON endpoint.
+    const { malformed, oversized, body } = await BaseRoute.readJson<{ name?: string; expiresInDays?: unknown }>(c);
+    if (oversized) return c.json({ Exception: { Type: 'PayloadTooLarge', Message: 'Payload too large' } }, 413);
+    if (malformed || !body.name) {
+      return c.json({ Exception: { Type: 'BadRequest', Message: malformed ? 'Invalid JSON body' : 'name is required' } }, 400);
     }
-    const body = (await c.req.json().catch(() => null)) as { name?: string; expiresInDays?: unknown } | null;
-    if (!body) return c.json({ Exception: { Type: 'BadRequest', Message: 'Invalid JSON body' } }, 400);
-    if (!body.name) return c.json({ Exception: { Type: 'BadRequest', Message: 'name is required' } }, 400);
-    try {
-      const svc = scope.get(Tokens.VolumeCredentialService);
-      const created = await svc.createCredential(row.id, row.name, body.name, body.expiresInDays);
-      return c.json(
-        {
-          credentialId: created.metadata.credentialId,
-          username: created.metadata.username,
-          password: created.password,
-          name: created.metadata.name,
-          expiresAt: created.metadata.expiresAt,
-          passwordPrefix: created.metadata.passwordPrefix,
-          passwordLastFour: created.metadata.passwordLastFour,
-        },
-        201,
-      );
-    } catch (error) {
-      return BaseRoute.toErrorResponse(c as never, error);
-    }
-  });
+    const created = await scope.get(Tokens.VolumeCredentialService).createCredential(row.id, row.name, body.name, body.expiresInDays);
+    return c.json(
+      {
+        credentialId: created.metadata.credentialId,
+        username: created.metadata.username,
+        // Shown exactly once — the client is expected to copy it now.
+        password: created.password,
+        name: created.metadata.name,
+        expiresAt: created.metadata.expiresAt,
+        passwordPrefix: created.metadata.passwordPrefix,
+        passwordLastFour: created.metadata.passwordLastFour,
+      },
+      201,
+    );
+  }
+}
 
-  app.delete('/user/volumes/:owner/:volume/credentials/:id', async (c) => {
-    const scope = BaseRoute.getScope(c);
-    const email = c.get('AuthenticatedUserEmailAddress');
-    const owner = (c.req.param('owner') ?? '').trim();
-    const volume = (c.req.param('volume') ?? '').trim();
-    const row = await scope.get(Tokens.VolumeService).getVolume(owner, volume).catch(() => null);
-    if (!row) return c.json({ Exception: { Type: 'NotFound', Message: 'Volume not found' } }, 404);
-    if (row.owner_email.toLowerCase() !== email.toLowerCase()) {
-      return c.json({ Exception: { Type: 'Forbidden', Message: 'Forbidden' } }, 403);
-    }
-    try {
-      const svc = scope.get(Tokens.VolumeCredentialService);
-      await svc.deleteCredential(row.id, c.req.param('id') ?? '');
-      return c.json({ ok: true });
-    } catch (error) {
-      return BaseRoute.toErrorResponse(c as never, error);
-    }
-  });
+class DeleteCredential extends VolumeScopedRoute {
+  protected async run(c: ApiContext, { scope, row }: VolumeRequestContext): Promise<Response> {
+    await scope.get(Tokens.VolumeCredentialService).deleteCredential(row.id, c.req.param('id') ?? '');
+    return c.json({ ok: true });
+  }
+}
+
+function registerCredentialRoutes(app: App): void {
+  const base = '/user/volumes/:owner/:volume/credentials';
+  const list = new ListCredentials();
+  const create = new CreateCredential();
+  const remove = new DeleteCredential();
+  app.get(base, (c) => list.handle(c));
+  app.post(base, (c) => create.handle(c));
+  app.delete(`${base}/:id`, (c) => remove.handle(c));
 }
 
 export { registerCredentialRoutes };

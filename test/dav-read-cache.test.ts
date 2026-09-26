@@ -12,16 +12,13 @@ import {
   etagForPropfind,
   getCachedFile,
   getCachedPropfind,
-  getCachedVolumeDetail,
   getCachedVolumeList,
   hashBody,
   invalidateVolumeCaches,
-  invalidateVolumeDetailCache,
   invalidateVolumeListCache,
   isFresh,
   putCachedFile,
   putCachedPropfind,
-  putCachedVolumeDetail,
   putCachedVolumeList,
 } from '../apps/api/src/workers/routes/DavReadCache';
 
@@ -265,34 +262,27 @@ describe('DavReadCache helpers', () => {
     expect(kv.seen.length).toBe(before);
   });
 
-  it('invalidates volume prop+file caches and detail entry', async () => {
+  it('invalidates the volume prop+file caches', async () => {
     const cache = new KvCache(makeFakeKv());
     await putCachedPropfind(cache, 'alice', 'demo', 'docs', '1', '<a/>', { body: '<xml/>', etag: 'W/"1"' });
     await putCachedFile(cache, 'alice', 'demo', 'a.txt', new Uint8Array([1]), 'text/plain', '"e"');
-    await putCachedVolumeDetail(cache, 'alice', 'demo', { id: 'v1' });
     // Sibling volume untouched.
     await putCachedPropfind(cache, 'alice', 'other', 'docs', '1', '<a/>', { body: '<xml/>', etag: 'W/"1"' });
     await invalidateVolumeCaches(cache, 'Alice', 'Demo');
     await expect(getCachedPropfind(cache, 'alice', 'demo', 'docs', '1', '<a/>')).resolves.toBeNull();
     await expect(getCachedFile(cache, 'alice', 'demo', 'a.txt')).resolves.toBeNull();
-    await expect(getCachedVolumeDetail(cache, 'alice', 'demo')).resolves.toBeNull();
     await expect(getCachedPropfind(cache, 'alice', 'other', 'docs', '1', '<a/>')).resolves.toEqual({
       body: '<xml/>',
       etag: 'W/"1"',
     });
   });
 
-  it('round-trips volume list/detail meta with case-insensitive email keys', async () => {
+  it('round-trips the volume list with case-insensitive email keys', async () => {
     const cache = new KvCache(makeFakeKv());
     await putCachedVolumeList(cache, 'Alice@Example.com', [{ fullName: 'alice/demo' }]);
     await expect(getCachedVolumeList(cache, 'alice@example.com')).resolves.toEqual([{ fullName: 'alice/demo' }]);
     await invalidateVolumeListCache(cache, 'ALICE@example.com');
     await expect(getCachedVolumeList(cache, 'alice@example.com')).resolves.toBeNull();
-
-    await putCachedVolumeDetail(cache, 'Alice', 'Demo', { id: 'v1' });
-    await expect(getCachedVolumeDetail(cache, 'alice', 'demo')).resolves.toEqual({ id: 'v1' });
-    await invalidateVolumeDetailCache(cache, 'ALICE', 'DEMO');
-    await expect(getCachedVolumeDetail(cache, 'alice', 'demo')).resolves.toBeNull();
   });
 
   it('stays fail-soft when the KV backend throws', async () => {
