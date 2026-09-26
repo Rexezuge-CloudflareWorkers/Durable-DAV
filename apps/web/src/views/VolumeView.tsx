@@ -16,18 +16,31 @@ import { useVolumeMutations } from './volume/useVolumeMutations';
 import { VolumeFileList } from './volume/VolumeFileList';
 import { VolumeFileModals } from './volume/VolumeFileModals';
 
+/**
+ * Normalise a `?path=` query value into a safe volume-relative path.
+ *
+ * `?path=` is user-supplied (share links, hand-edited URLs) and is fed
+ * straight into `davClient.entryUrl`, so it must be validated here rather than
+ * trusted. `stripSlashes` alone was not enough:
+ *
+ * - `encodeURIComponent` does not encode `.`, so `..` segments survived into
+ *   the request URL and the browser normalised them out of the volume base —
+ *   `?path=../../admin` issued a `PROPFIND /user/volumes/o/admin`.
+ * - Empty segments (`a//b`) produced a guaranteed 400 from the server's
+ *   `isValidInnerPath`.
+ *
+ * Anything that is not a plain non-empty, non-dot segment is dropped, so the
+ * worst case is that the path silently becomes the volume root.
+ */
 function cleanPath(raw: string | null): string {
-  return stripSlashes(raw ?? '');
+  const segments = stripSlashes(raw ?? '')
+    .split('/')
+    .filter((segment) => segment !== '' && segment !== '.' && segment !== '..');
+  return segments.every((segment) => !/[/\\]/.test(segment)) ? segments.join('/') : '';
 }
 
 // Thin composition root: routing + hook slices + presentational children.
-function VolumeView({
-  authorized,
-  showNotice,
-}: {
-  authorized: boolean | null;
-  showNotice: (type: 'success' | 'error', text: string) => void;
-}) {
+function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', text: string) => void }) {
   const { owner = '', volume = '' } = useParams<{ owner: string; volume: string }>();
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -37,7 +50,7 @@ function VolumeView({
   const [volumeDetail, setVolumeDetail] = useState<VolumeDetail | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  const { entries, status, refresh, crumbs, notice, consumeNotice } = useVolumeFiles(owner, volume, path, authorized);
+  const { entries, status, refresh, crumbs, notice, consumeNotice } = useVolumeFiles(owner, volume, path);
   const mutations = useVolumeMutations(owner, volume, path, showNotice, refresh);
 
   useEffect(() => {

@@ -79,8 +79,6 @@ function registerVolumeRoutes(app: App): void {
         isPrivate: body.isPrivate ?? true,
         creatorEmail: email,
       });
-      const stub = getVolumeStub(c.env, created.owner, created.name);
-      await stub.setVolumeKey(`${created.owner}/${created.name}`).catch(() => undefined);
       const cache = scope.get(Tokens.KvCache);
       await invalidateVolumeListCache(cache, email);
       await putCachedVolumeDetail(cache, created.owner, created.name, created);

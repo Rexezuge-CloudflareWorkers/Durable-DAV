@@ -1,5 +1,4 @@
 export * from './ConfigurationDefaults';
-export * from './ConfigurationManager';
 export { AppConfiguration } from './AppConfiguration';
 export { EnvParser } from './EnvParser';
 export { AuthConfig } from './sections/AuthConfig';

@@ -12,15 +12,10 @@
     "./model": "./src/model/index.ts",
     "./model/*": "./src/model/*.ts",
     "./utils": "./src/utils/index.ts",
-    "./utils/*": "./src/utils/*.ts",
-    "./validation": "./src/validation/index.ts",
-    "./validation/*": "./src/validation/*.ts"
+    "./utils/*": "./src/utils/*.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"
-  },
-  "dependencies": {
-    "zod": "4.6.5"
   },
   "devDependencies": {
     "@types/node": "26.6.2",

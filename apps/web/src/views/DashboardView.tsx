@@ -23,16 +23,30 @@ export function DashboardView({ showNotice }: { showNotice: (type: 'success' | '
   const [reloadKey, setReloadKey] = useState(0);
 
   useEffect(() => {
+    let cancelled = false;
+    // Monotonic request id: `refresh()` can start a second request while the
+    // first is in flight, and without sequencing the slower first response
+    // would land last and overwrite the fresher list with stale data. Also
+    // guards the setState-after-unmount that the `cancelled` flag prevents.
+    let requestId = 0;
     const run = async () => {
+      requestId += 1;
+      const current = requestId;
       try {
-        setVolumes(await listMyVolumes());
+        const rows = await listMyVolumes();
+        if (cancelled || current !== requestId) return;
+        setVolumes(rows);
       } catch (error) {
+        if (cancelled || current !== requestId) return;
         showNotice('error', toLocalizedErrorMessage(t, error, 'errors.failedToLoadVolumes', 'Failed To Load Volumes.'));
       } finally {
-        setLoading(false);
+        if (!cancelled && current === requestId) setLoading(false);
       }
     };
     void run();
+    return () => {
+      cancelled = true;
+    };
   }, [showNotice, reloadKey, t]);
 
   const refresh = () => {

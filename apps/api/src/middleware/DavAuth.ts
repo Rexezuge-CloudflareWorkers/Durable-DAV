@@ -10,17 +10,37 @@ function getScope(c: RequestContext): ReturnType<typeof BaseRoute.getScope> {
   return BaseRoute.getScope(c);
 }
 
+/**
+ * Outcome of a successful WebDAV authorization.
+ *
+ * Only the fields the forward path actually reads are modelled. `role`,
+ * `volumeId`, `isPrivate`, `credentialId` and `credentialName` were populated
+ * here and consumed nowhere — the entire authorization model reduces to "is
+ * this a valid credential bound to this volume id" plus the `is_private` bit
+ * that produced the decision.
+ */
 export interface DavAuthResult {
+  /**
+  Authenticated owner email, or `null` for an anonymous read of a public bucket.
+  */
   userEmail: string | null;
+  /**
+  Canonical (DB-resolved) owner handle, for the `X-Dav-Base` prefix.
+  */
   owner: string;
+  /**
+  Canonical volume name.
+  */
   volume: string;
-  role: 'admin' | 'write' | 'read';
-  volumeId: string;
-  isPrivate: boolean;
-  credentialId: string;
-  credentialName: string;
 }
 
+/**
+ * Parse a `Basic` Authorization header.
+ *
+ * Note the password is not trimmed: the credential is `ddav_` + base64url, and
+ * trimming would silently accept a mistyped credential with surrounding
+ * whitespace.
+ */
 function getBasicCredentials(header: string | null): { username: string; password: string } | null {
   if (!header || !header.startsWith('Basic ')) return null;
   try {
@@ -75,39 +95,25 @@ async function davAuthForVolumeInner(
     // to this volume id (CalDAV-style). No Bearer, no user-level PAT.
     const passwordHash = await DavCredentialUtil.hashPassword(basic.password);
     const credentialDAO = await scope.get(Tokens.DavCredentialDAO)();
-    const credential = await credentialDAO.getByUsernameAndHash(basic.username, passwordHash, true).catch(() => undefined);
+    // No `.catch` on the lookup: swallowing it here turned a D1 outage into a
+    // 401 (and a native Basic re-prompt loop) instead of the 503 the wrapper
+    // above maps `DatabaseError` to.
+    const credential = await credentialDAO.getByUsernameAndHash(basic.username, passwordHash, true);
     if (!credential || credential.volumeId !== volume.id) return unauthorizedDav();
+    // `last_used_at` is genuinely best-effort telemetry; a failure here must
+    // not fail an otherwise-valid request.
     await credentialDAO.updateLastUsed(credential.credentialId).catch(() => undefined);
-    return {
-      userEmail: volume.owner_email,
-      owner: volume.owner,
-      volume: volume.name,
-      role: 'admin',
-      volumeId: volume.id,
-      isPrivate,
-      credentialId: credential.credentialId,
-      credentialName: credential.name,
-    };
+    return { userEmail: volume.owner_email, owner: volume.owner, volume: volume.name };
   }
 
   // No credential: public buckets allow anonymous reads only; all writes
   // and all private access require a bucket credential.
   if (!needWrite && !isPrivate) {
     const role = await scope.get(Tokens.DavPermissionService).getRole(null, volume);
-    if (!role) return unauthorizedDav();
-    return {
-      userEmail: null,
-      owner: volume.owner,
-      volume: volume.name,
-      role,
-      volumeId: volume.id,
-      isPrivate,
-      credentialId: '',
-      credentialName: '',
-    };
+    return role ? { userEmail: null, owner: volume.owner, volume: volume.name } : unauthorizedDav();
   }
   return unauthorizedDav();
 }
 
-export { davAuthForVolume, unauthorizedDav, getBasicCredentials };
+export { davAuthForVolume, unauthorizedDav };
 export type { RequestContext };

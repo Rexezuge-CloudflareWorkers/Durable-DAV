@@ -19,9 +19,21 @@ function volumeBase(owner: string, volume: string): string {
 }
 
 function entryUrl(owner: string, volume: string, innerPath: string): string {
-  const clean = stripSlashes(innerPath);
+  // Defence in depth: even if a caller skips `cleanPath`, a `..` segment must
+  // never escape the volume base. `encodeURIComponent` leaves `.` alone, so
+  // the browser would resolve `..` out of `/user/volumes/<o>/<v>/files`.
+  const clean = stripSlashes(innerPath)
+    .split('/')
+    .filter((segment) => segment !== '' && segment !== '.' && segment !== '..')
+    .join('/');
   const suffix = clean === '' ? '/' : `/${clean.split('/').map(encodeURIComponent).join('/')}`;
-  return `${volumeBase(owner, volume)}${suffix}`;
+  const url = `${volumeBase(owner, volume)}${suffix}`;
+  // Fail closed rather than emit a request outside the volume.
+  const base = volumeBase(owner, volume);
+  if (!new URL(url, globalThis.location?.origin ?? 'https://localhost').pathname.startsWith(`${base}/`)) {
+    throw new Error('Refusing to build a DAV URL outside the volume base.');
+  }
+  return url;
 }
 
 async function davFetch(url: string, init: RequestInit): Promise<Response> {
@@ -41,6 +53,10 @@ async function davFetch(url: string, init: RequestInit): Promise<Response> {
     }
     throw new BackendError(message, type, response.status);
   }
+  // Callers of the mutating helpers discard the response entirely. An unread
+  // body holds the connection open, so a multi-file upload plus MKCOL/DELETE/
+  // MOVE could exhaust the per-origin connection pool. Drain it.
+  void response.body?.cancel().catch(() => undefined);
   return response;
 }
 

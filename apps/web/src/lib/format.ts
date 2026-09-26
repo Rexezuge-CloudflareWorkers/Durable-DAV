@@ -1,22 +1,9 @@
 import { normalizeLanguage } from '../i18n';
 
-export function resolveLocale(lng?: string | null): string {
+function resolveLocale(lng?: string | null): string {
   return normalizeLanguage(lng ?? undefined);
 }
 
-export function formatTimestamp(timestampSeconds: number | null | undefined, lng?: string | null): string {
-  if (timestampSeconds === null || timestampSeconds === undefined) return 'Never';
-  const date = new Date(timestampSeconds * 1000);
-  const now = new Date();
-  const diffMs = now.getTime() - date.getTime();
-  const diffMins = Math.floor(diffMs / 60_000);
-  if (diffMins < 1) return 'Just now';
-  if (diffMins < 60) return `${diffMins}m ago`;
-  const diffHours = Math.floor(diffMins / 60);
-  if (diffHours < 24) return `${diffHours}h ago`;
-  const diffDays = Math.floor(diffHours / 24);
-  return diffDays < 7 ? `${diffDays}d ago` : date.toLocaleDateString(resolveLocale(lng));
-}
 
 export function formatExpiryTimestamp(timestampSeconds: number | null | undefined, lng?: string | null): string {
   if (timestampSeconds === null || timestampSeconds === undefined) return 'Never';

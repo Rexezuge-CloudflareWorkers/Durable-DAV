@@ -7,9 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./DavVolumeWorker": "./src/DavVolumeWorker.ts",
-    "./CronTasksWorker": "./src/CronTasksWorker.ts",
-    "./scheduled": "./src/scheduled/index.ts",
-    "./scheduled/*": "./src/scheduled/*.ts"
+    "./CronTasksWorker": "./src/CronTasksWorker.ts"
   },
   "scripts": {
     "typecheck": "tsc --noEmit"

@@ -1,6 +1,13 @@
-import type { DavVolumeRow, DavRole } from '@durable-dav/backend-data/dao';
+import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 
-type DavPermission = DavRole;
+/**
+ * The role a viewer holds on a volume.
+ *
+ * Declared here rather than in `backend-data`: the collaborator/grant model
+ * that `DavRole` came from was dropped by migration `0002`, and the permission
+ * vocabulary now belongs to the layer that enforces it.
+ */
+type DavPermission = 'admin' | 'read';
 
 interface DavPermissionServiceEnv {
   DB?: unknown;

@@ -18,6 +18,9 @@ export function ProfileView({ showNotice }: { showNotice: (type: 'success' | 'er
   useEffect(() => {
     let cancelled = false;
     const run = async () => {
+      // Reset per fetch: navigating to another profile re-ran this effect while
+      // `status` was still `ready`, leaving the previous user's card on screen.
+      setStatus('loading');
       try {
         const data = await loadProfile(username);
         if (cancelled) return;

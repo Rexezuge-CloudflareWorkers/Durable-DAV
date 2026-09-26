@@ -8,13 +8,10 @@ interface MappedError {
 }
 
 // Central error mapper (DIP): routes and DO handlers convert domain errors
-// here instead of duplicating `instanceof ServiceError` switches or
-// `.catch(()=>null)` existence-hiding. Private-resource hiding stays explicit
-// via `hideExistence` / `failClosed`.
+// here instead of duplicating `instanceof ServiceError` switches.
 //
 // Wire shape follows AWS `../AWS`: `{ "Exception": { "Type", "Message" } }`.
-// Git smart-http pkt-line paths never serialize this envelope — they keep
-// plain-text / `ERR` packets; only JSON APIs use it.
+// Only JSON APIs use it; WebDAV responses stay plain-text per RFC 4918.
 function buildBody(error: ServiceError): ErrorResponse {
   return { Exception: { Type: error.getErrorType(), Message: error.getErrorMessage() } };
 }
@@ -43,21 +40,5 @@ function toServiceStatus(error: unknown): 400 | 401 | 403 | 404 | 409 | 413 | 42
   return KNOWN_STATUSES.has(mapped.status) ? (mapped.status as 400 | 401 | 403 | 404 | 409 | 413 | 429) : 500;
 }
 
-// Existence-hiding policy: private/missing resources map to null (caller → 404/401).
-async function hideExistence<T>(fn: () => Promise<T | null>): Promise<T | null> {
-  try {
-    return await fn();
-  } catch {
-    return null;
-  }
-}
-
-// Fail-closed policy: auth/permission reads must never degrade to allow.
-// Use for credential lookups, `DavPermissionService` role checks, and
-// push-protection resolution — errors propagate instead of becoming null.
-async function failClosed<T>(fn: () => Promise<T>): Promise<T> {
-  return fn();
-}
-
-export { mapServiceError, toServiceStatus, hideExistence, failClosed, buildBody };
+export { mapServiceError, toServiceStatus };
 export type { MappedError };

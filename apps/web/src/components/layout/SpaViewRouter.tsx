@@ -11,6 +11,17 @@ import { VolumeView } from '../../views/VolumeView';
 import { ProfileView } from '../../views/ProfileView';
 import { SettingsView } from '../../views/SettingsView';
 
+/**
+Shown while `/user/me` is still in flight.
+*/
+function AuthPending() {
+  return (
+    <div className="min-h-screen bg-[var(--color-surface-base)] flex items-center justify-center">
+      <div className="h-10 w-10 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" />
+    </div>
+  );
+}
+
 interface SpaViewRouterProps {
   user: CurrentUser | null;
   setUser: (user: CurrentUser) => void;
@@ -43,16 +54,17 @@ function SpaViewRouter({
   if (authorized === null) {
     return (
       <Routes>
-        <Route path="/:owner/:volume" element={<VolumeView authorized={authorized} showNotice={showNotice} />} />
+        <Route path="/:owner/:volume" element={<VolumeView showNotice={showNotice} />} />
         <Route path="/:username" element={<ProfileView showNotice={showNotice} />} />
-        <Route
-          path="*"
-          element={
-            <div className="min-h-screen bg-[var(--color-surface-base)] flex items-center justify-center">
-              <div className="h-10 w-10 rounded-full border-2 border-[var(--color-accent)] border-t-transparent animate-spin" />
-            </div>
-          }
-        />
+        {/*
+          `/new` and `/settings` are single-segment paths, so they do not match
+          `/:owner/:volume` and used to fall through to `/:username` — which
+          fired `GET /users/new` and rendered "Profile Not Found" for a moment
+          on every cold load before flipping to the real view.
+        */}
+        <Route path="/new" element={<AuthPending />} />
+        <Route path="/settings" element={<AuthPending />} />
+        <Route path="*" element={<AuthPending />} />
       </Routes>
     );
   }
@@ -71,7 +83,7 @@ function SpaViewRouter({
           )
         }
       />
-      <Route path="/:owner/:volume" element={<VolumeView authorized={authorized} showNotice={showNotice} />} />
+      <Route path="/:owner/:volume" element={<VolumeView showNotice={showNotice} />} />
       <Route path="/:username" element={<ProfileView showNotice={showNotice} />} />
       <Route
         path="/settings"
