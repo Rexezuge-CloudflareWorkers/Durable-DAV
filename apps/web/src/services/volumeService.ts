@@ -2,9 +2,7 @@ import type { Volume, VolumeDetail } from '../types';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../lib/api';
 
 export async function listMyVolumes(): Promise<Volume[]> {
-  const data = await apiGet<{ volumes?: Array<{ owner: string; name: string; isPrivate: boolean; href: string }> }>(
-    '/user/volumes',
-  );
+  const data = await apiGet<{ volumes?: Array<{ owner: string; name: string; isPrivate: boolean; href: string }> }>('/user/volumes');
   return (data.volumes ?? []).map((v) => ({
     owner: v.owner,
     name: v.name,

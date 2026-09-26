@@ -12,49 +12,49 @@
       "enabled": true,
       "head_sampling_rate": 1,
       "invocation_logs": true,
-      "persist": true
-    }
+      "persist": true,
+    },
   },
   "routes": [],
   "placement": {
-    "mode": "off"
+    "mode": "off",
   },
   "assets": {
-    "directory": "./apps/web/dist/"
+    "directory": "./apps/web/dist/",
   },
   "durable_objects": {
     "bindings": [
       {
         "name": "DAV_VOLUME",
-        "class_name": "DavVolumeWorker"
+        "class_name": "DavVolumeWorker",
       },
       {
         "name": "CRON_TASKS",
-        "class_name": "CronTasksWorker"
-      }
-    ]
+        "class_name": "CronTasksWorker",
+      },
+    ],
   },
   "migrations": [
     {
       "tag": "v1000000000",
-      "new_sqlite_classes": ["DavVolumeWorker", "CronTasksWorker"]
-    }
+      "new_sqlite_classes": ["DavVolumeWorker", "CronTasksWorker"],
+    },
   ],
   "d1_databases": [
     {
       "binding": "DB",
       "database_id": "00000000-0000-0000-0000-000000000000",
-      "database_name": "durable-dav-db"
-    }
+      "database_name": "durable-dav-db",
+    },
   ],
   "kv_namespaces": [
     {
       "binding": "CACHE",
-      "id": "00000000000000000000000000000000"
-    }
+      "id": "00000000000000000000000000000000",
+    },
   ],
   "triggers": {
-    "crons": ["*/10 * * * *"]
+    "crons": ["*/10 * * * *"],
   },
   // No DEV_AUTH_EMAIL / DEMO_MODE here on purpose. Those are authentication
   // bypasses: with either set, every unauthenticated request authenticates as
@@ -75,6 +75,6 @@
     "MAX_CREDENTIAL_EXPIRY_DAYS": "365",
     "MAX_FILE_BYTES": "52428800",
     "DO_DEVICE_BYTES": "5368709120",
-    "DAV_CACHE_TTL_SECONDS": "300"
-  }
+    "DAV_CACHE_TTL_SECONDS": "300",
+  },
 }

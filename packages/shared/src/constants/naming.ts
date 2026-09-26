@@ -33,11 +33,4 @@ function isValidVolumeName(value: string): boolean {
   return value.length <= VOLUME_NAME_MAX_LENGTH && VOLUME_NAME_PATTERN.test(value);
 }
 
-export {
-  USERNAME_PATTERN,
-  USERNAME_MAX_LENGTH,
-  VOLUME_NAME_PATTERN,
-  VOLUME_NAME_MAX_LENGTH,
-  isValidUsername,
-  isValidVolumeName,
-};
+export { USERNAME_PATTERN, USERNAME_MAX_LENGTH, VOLUME_NAME_PATTERN, VOLUME_NAME_MAX_LENGTH, isValidUsername, isValidVolumeName };

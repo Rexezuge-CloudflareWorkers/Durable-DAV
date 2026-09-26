@@ -100,10 +100,7 @@ export function VolumeCredentialsCard({
         <RefreshButton onRefresh={refresh} loading={loading} />
       </CardHeader>
       <p className="text-sm text-[var(--color-text-secondary)] mb-3">
-        {t(
-          'credentials.hint',
-          'Each Credential Unlocks Only This Bucket. Use The Generated Username And Password As WebDAV Basic Auth.',
-        )}
+        {t('credentials.hint', 'Each Credential Unlocks Only This Bucket. Use The Generated Username And Password As WebDAV Basic Auth.')}
       </p>
       <form onSubmit={submit} className="space-y-3">
         <div className="flex gap-3 flex-wrap">

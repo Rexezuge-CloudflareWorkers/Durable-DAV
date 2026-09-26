@@ -74,11 +74,19 @@ export function DashboardView({ showNotice }: { showNotice: (type: 'success' | '
           <CardTitle>{t('dashboard.connect', 'Connect')}</CardTitle>
         </CardHeader>
         <div className="space-y-3">
-          <ReadOnlyField label={t('dashboard.mountAnyVolume', 'Mount Any Volume')} value={`${globalThis.location?.origin ?? ''}/<owner>/<volume>/`} showCopy />
+          <ReadOnlyField
+            label={t('dashboard.mountAnyVolume', 'Mount Any Volume')}
+            value={`${globalThis.location?.origin ?? ''}/<owner>/<volume>/`}
+            showCopy
+          />
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {t('dashboard.connectHelp', 'Each Bucket Has Its Own Credentials. Open A Bucket, Go To Settings, Create A Credential, Then Connect With: {{example}}.', {
-              example: 'https://<username>:<password>@host/owner/volume/',
-            })}
+            {t(
+              'dashboard.connectHelp',
+              'Each Bucket Has Its Own Credentials. Open A Bucket, Go To Settings, Create A Credential, Then Connect With: {{example}}.',
+              {
+                example: 'https://<username>:<password>@host/owner/volume/',
+              },
+            )}
           </p>
         </div>
       </Card>

@@ -1,17 +1,14 @@
 function escapeXml(value: string): string {
-  return value
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&apos;');
+  return value.replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;').replaceAll("'", '&apos;');
 }
 
 function encodeHrefPath(href: string): string {
-  return href === '/' ? '/' : href
-    .split('/')
-    .map((segment, index) => (index === 0 ? segment : encodeURIComponent(segment)))
-    .join('/');
+  return href === '/'
+    ? '/'
+    : href
+        .split('/')
+        .map((segment, index) => (index === 0 ? segment : encodeURIComponent(segment)))
+        .join('/');
 }
 
 /**

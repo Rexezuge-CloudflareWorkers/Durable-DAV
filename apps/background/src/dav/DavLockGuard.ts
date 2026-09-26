@@ -34,11 +34,7 @@ class DavLockGuard {
     const ancestors = DavLockGuard.ancestorsOf(innerPath);
     const placeholders = ancestors.map(() => '?').join(', ');
     const rows = this.sql
-      .exec(
-        `SELECT path, token, scope, depth FROM dav_locks WHERE path IN (${placeholders}) AND expires_at > ?`,
-        ...ancestors,
-        Date.now(),
-      )
+      .exec(`SELECT path, token, scope, depth FROM dav_locks WHERE path IN (${placeholders}) AND expires_at > ?`, ...ancestors, Date.now())
       .toArray();
     return rows.map((row) => ({
       path: String(row['path'] ?? ''),

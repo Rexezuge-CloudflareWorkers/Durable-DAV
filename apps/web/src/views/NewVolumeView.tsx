@@ -44,7 +44,9 @@ export function NewVolumeView({
   return (
     <div>
       <ContextBar
-        crumb={<span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">{t('volumes.newVolume', 'New Volume')}</span>}
+        crumb={
+          <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">{t('volumes.newVolume', 'New Volume')}</span>
+        }
       />
       <AppPage variant="narrow">
         <Card>

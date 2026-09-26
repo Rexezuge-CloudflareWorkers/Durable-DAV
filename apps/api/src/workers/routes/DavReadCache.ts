@@ -27,9 +27,7 @@ const DAV_META_TTL_SECONDS = 60;
  */
 function contentTtls(configuredSeconds: number | null | undefined): { prop: number; file: number } {
   const base =
-    configuredSeconds !== null && configuredSeconds !== undefined && configuredSeconds > 0
-      ? configuredSeconds
-      : DEFAULT_FILE_TTL_SECONDS;
+    configuredSeconds !== null && configuredSeconds !== undefined && configuredSeconds > 0 ? configuredSeconds : DEFAULT_FILE_TTL_SECONDS;
   // PROPFIND snapshots are cheaper to rebuild than file bodies are to re-read,
   // so they never outlive half the file TTL.
   return { prop: Math.max(1, Math.floor(base / 2.5)), file: Math.floor(base) };
@@ -66,14 +64,7 @@ function isCacheablePath(inner: string): boolean {
  * deletes per domain), which effectively disabled the cache for real clients
  * while still paying full price. New methods are read-only until added here.
  */
-const CONTENT_INVALIDATING_METHODS: ReadonlySet<string> = new Set([
-  'PUT',
-  'DELETE',
-  'MKCOL',
-  'COPY',
-  'MOVE',
-  'PROPPATCH',
-]);
+const CONTENT_INVALIDATING_METHODS: ReadonlySet<string> = new Set(['PUT', 'DELETE', 'MKCOL', 'COPY', 'MOVE', 'PROPPATCH']);
 
 function invalidatesReadCache(method: string): boolean {
   return CONTENT_INVALIDATING_METHODS.has(method);

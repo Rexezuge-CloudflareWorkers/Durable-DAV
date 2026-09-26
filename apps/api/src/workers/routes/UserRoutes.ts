@@ -43,7 +43,11 @@ async function snapshotOwnedVolumes(c: ApiContext, email: string): Promise<Array
 /**
 Drop every cached read for the volumes a rename moved.
 */
-async function invalidateRenamedCaches(c: ApiContext, email: string, moves: ReadonlyArray<{ oldFull: string; newFull: string }>): Promise<void> {
+async function invalidateRenamedCaches(
+  c: ApiContext,
+  email: string,
+  moves: ReadonlyArray<{ oldFull: string; newFull: string }>,
+): Promise<void> {
   try {
     const cache = BaseRoute.getScope(c).get(Tokens.KvCache);
     await invalidateVolumeListCache(cache, email);
@@ -74,7 +78,10 @@ async function handleRenameUsername(c: ApiContext): Promise<Response> {
   if (!body.username || typeof body.username !== 'string') return BaseRoute.jsonError(c, 'username is required', 400);
 
   const scope = BaseRoute.getScope(c);
-  const before = await scope.get(Tokens.UserService).getProfileByEmail(email).catch(() => null);
+  const before = await scope
+    .get(Tokens.UserService)
+    .getProfileByEmail(email)
+    .catch(() => null);
   // Snapshot BEFORE the D1 rename: afterwards `owner_ci` already reads the new
   // handle, so a post-rename filter by the old name matches nothing and the DO
   // move would silently never run.
@@ -120,7 +127,9 @@ async function handleUserProfile(c: ApiContext): Promise<Response> {
   const username = (c.req.param('username') ?? '').trim();
   try {
     const user = await BaseRoute.getScope(c).get(Tokens.UserService).getByUsername(username);
-    return user ? c.json({ username: (user as { username?: string }).username ?? username }) : c.json({ Exception: { Type: 'NotFound', Message: 'User not found' } }, 404);
+    return user
+      ? c.json({ username: (user as { username?: string }).username ?? username })
+      : c.json({ Exception: { Type: 'NotFound', Message: 'User not found' } }, 404);
   } catch (error) {
     return BaseRoute.toErrorResponse(c, error);
   }

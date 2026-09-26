@@ -61,12 +61,7 @@ class DurableDavWorker extends AbstractEntrypointWorker {
     // `/redocs` — registered after this handler, and therefore losing Hono's
     // same-shape resolution order — were all shadowed by the SPA shell. The
     // Swagger page at `/docs` fetched `/openapi.json` and rendered empty.
-    const NON_PROFILE_SEGMENTS: ReadonlySet<string> = new Set([
-      ...RESERVED_NAMESPACE_NAMES_LIST,
-      'openapi.json',
-      'openapi.yaml',
-      'redocs',
-    ]);
+    const NON_PROFILE_SEGMENTS: ReadonlySet<string> = new Set([...RESERVED_NAMESPACE_NAMES_LIST, 'openapi.json', 'openapi.yaml', 'redocs']);
     app.get('/:username', async (c, next) => {
       const segment = (c.req.param('username') ?? '').toLowerCase();
       if (NON_PROFILE_SEGMENTS.has(segment)) {

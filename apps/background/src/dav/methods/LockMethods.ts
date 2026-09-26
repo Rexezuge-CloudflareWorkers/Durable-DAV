@@ -1,7 +1,19 @@
 /* eslint-disable @typescript-eslint/no-base-to-string -- DO SQLite rows are primitives (TEXT/INTEGER); Record<string, unknown> trips the object-stringification guard. */
 /* eslint-disable @typescript-eslint/require-await -- WebDAV LOCK handlers keep async for uniform dispatch. */
 import type { DurableSqlStorage } from '@durable-dav/dav-store';
-import { MAX_XML_BODY_BYTES, determineLockDepth, extractLockOwner, getLockDiscovery, getParentPath, getRequestLockTokens, normalizeLockDetails, normalizeLockToken, parseTimeout, readCappedText, type LockDetails } from '@durable-dav/webdav';
+import {
+  MAX_XML_BODY_BYTES,
+  determineLockDepth,
+  extractLockOwner,
+  getLockDiscovery,
+  getParentPath,
+  getRequestLockTokens,
+  normalizeLockDetails,
+  normalizeLockToken,
+  parseTimeout,
+  readCappedText,
+  type LockDetails,
+} from '@durable-dav/webdav';
 import { hrefOf } from '../DavContext';
 import type { DavLockGuard } from '../DavLockGuard';
 import type { DavRepository } from '../DavRepository';
@@ -27,7 +39,13 @@ interface UnlockDeps {
 
 function readLocks(sql: DurableSqlStorage, innerPath: string): LockDetails[] {
   try {
-    const rows = sql.exec(`SELECT token, scope, depth, owner, timeout, expires_at as expiresAt, root FROM dav_locks WHERE path = ? AND expires_at > ?`, innerPath, Date.now()).toArray();
+    const rows = sql
+      .exec(
+        `SELECT token, scope, depth, owner, timeout, expires_at as expiresAt, root FROM dav_locks WHERE path = ? AND expires_at > ?`,
+        innerPath,
+        Date.now(),
+      )
+      .toArray();
     return rows.flatMap((r) => {
       const normalized = normalizeLockDetails({
         token: String(r['token'] ?? ''),
@@ -70,8 +88,16 @@ async function handleLock(request: Request, innerPath: string, base: string, dep
     const tokens = getRequestLockTokens(request);
     for (let cur = innerPath; ; cur = getParentPath(cur)) {
       try {
-        const rows = sql.exec(`SELECT token, scope, depth, owner, timeout, expires_at as expiresAt, root FROM dav_locks WHERE path = ? AND expires_at > ?`, cur, Date.now()).toArray();
-        const found = rows.find((r) => tokens.includes(String(r['token'] ?? '')) && (cur === innerPath || String(r['depth']) === 'infinity'));
+        const rows = sql
+          .exec(
+            `SELECT token, scope, depth, owner, timeout, expires_at as expiresAt, root FROM dav_locks WHERE path = ? AND expires_at > ?`,
+            cur,
+            Date.now(),
+          )
+          .toArray();
+        const found = rows.find(
+          (r) => tokens.includes(String(r['token'] ?? '')) && (cur === innerPath || String(r['depth']) === 'infinity'),
+        );
         if (found) {
           const normalized = normalizeLockDetails({
             token: String(found['token']),
@@ -144,9 +170,28 @@ async function handleLock(request: Request, innerPath: string, base: string, dep
   };
   try {
     if (existing) {
-      sql.exec(`UPDATE dav_locks SET scope=?, depth=?, owner=?, timeout=?, expires_at=?, root=? WHERE token=?`, details.scope, details.depth, details.owner ?? null, details.timeout, details.expiresAt, details.root, details.token);
+      sql.exec(
+        `UPDATE dav_locks SET scope=?, depth=?, owner=?, timeout=?, expires_at=?, root=? WHERE token=?`,
+        details.scope,
+        details.depth,
+        details.owner ?? null,
+        details.timeout,
+        details.expiresAt,
+        details.root,
+        details.token,
+      );
     } else {
-      sql.exec(`INSERT INTO dav_locks (token, path, scope, depth, owner, timeout, expires_at, root) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`, details.token, activePath, details.scope, details.depth, details.owner ?? null, details.timeout, details.expiresAt, details.root);
+      sql.exec(
+        `INSERT INTO dav_locks (token, path, scope, depth, owner, timeout, expires_at, root) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        details.token,
+        activePath,
+        details.scope,
+        details.depth,
+        details.owner ?? null,
+        details.timeout,
+        details.expiresAt,
+        details.root,
+      );
     }
   } catch {
     return new Response('Internal Server Error', { status: 500 });

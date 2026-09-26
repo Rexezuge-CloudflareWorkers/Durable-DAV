@@ -116,6 +116,4 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return apiPost<T>(path, body, 'PATCH');
 }
 
-
-
 export { BackendError, getBackendErrorStatus, getBackendErrorType };

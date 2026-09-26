@@ -4,8 +4,7 @@ import { toLocalizedErrorMessage } from '~/lib/backendErrors';
 import { formatBytes, formatExpiryTimestamp } from '~/lib/format';
 
 describe('backend error extraction', () => {
-  const json = (body: unknown, status = 400): Response =>
-    Response.json(body, { status, headers: { 'Content-Type': 'application/json' } });
+  const json = (body: unknown, status = 400): Response => Response.json(body, { status, headers: { 'Content-Type': 'application/json' } });
 
   it('reads the AWS envelope', async () => {
     const error = await readJson(json({ Exception: { Type: 'NotFound', Message: 'gone' } }, 404)).catch((e: unknown) => e);

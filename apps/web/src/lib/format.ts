@@ -4,7 +4,6 @@ function resolveLocale(lng?: string | null): string {
   return normalizeLanguage(lng ?? undefined);
 }
 
-
 export function formatExpiryTimestamp(timestampSeconds: number | null | undefined, lng?: string | null): string {
   if (timestampSeconds === null || timestampSeconds === undefined) return 'Never';
   const date = new Date(timestampSeconds * 1000);

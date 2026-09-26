@@ -114,12 +114,17 @@ class DavCredentialDAO extends BaseDAO {
    */
   public async updatePasswordHash(credentialId: string, passwordHash: string): Promise<void> {
     await this.withRetry(
-      () => this.database.prepare('UPDATE dav_credentials SET password_hash = ? WHERE credential_id = ?').bind(passwordHash, credentialId).run(),
+      () =>
+        this.database
+          .prepare('UPDATE dav_credentials SET password_hash = ? WHERE credential_id = ?')
+          .bind(passwordHash, credentialId)
+          .run(),
       'update dav credential password hash',
     );
   }
 
-  public async updateLastUsed(credentialId: string): Promise<void> {    await this.withRetry(
+  public async updateLastUsed(credentialId: string): Promise<void> {
+    await this.withRetry(
       () =>
         this.database
           .prepare('UPDATE dav_credentials SET last_used_at = ? WHERE credential_id = ?')
@@ -131,7 +136,8 @@ class DavCredentialDAO extends BaseDAO {
 
   public async deleteForVolume(credentialId: string, volumeId: string): Promise<void> {
     await this.withRetry(
-      () => this.database.prepare('DELETE FROM dav_credentials WHERE credential_id = ? AND volume_id = ?').bind(credentialId, volumeId).run(),
+      () =>
+        this.database.prepare('DELETE FROM dav_credentials WHERE credential_id = ? AND volume_id = ?').bind(credentialId, volumeId).run(),
       'delete dav credential',
     );
   }

@@ -8,7 +8,11 @@ import type { DavRepository } from '../DavRepository';
 
 // Collection HTML browser + file byte serving (Command: one handler per
 // WebDAV method family so `DavVolumeWorker` stays a thin Facade).
-function renderCollectionHtml(base: string, innerPath: string, children: Array<{ name: string; childInner: string; isDirectory: boolean }>): string {
+function renderCollectionHtml(
+  base: string,
+  innerPath: string,
+  children: Array<{ name: string; childInner: string; isDirectory: boolean }>,
+): string {
   let items = '';
   if (innerPath !== '') items += `<a href="../">..</a><br>`;
   for (const child of children) {
@@ -44,7 +48,11 @@ async function handleGet(
   const meta = repo.readMeta(innerPath);
   // RFC 7232 revalidation. Runs before the Range maths so a 304/412 answers
   // without reading any bytes.
-  const conditional = new DavConditionalGuard().check(request, { etag: meta.etag ?? null, mtime: meta.mtime ?? st.mtime }, { forRead: true });
+  const conditional = new DavConditionalGuard().check(
+    request,
+    { etag: meta.etag ?? null, mtime: meta.mtime ?? st.mtime },
+    { forRead: true },
+  );
   if (conditional) return conditional;
   const { offset, length, contentRange, status } = parseRangeHeader(request.headers.get('Range'), st.size);
 
@@ -81,7 +89,7 @@ async function handleGet(
 
   // RFC 7233 §4.3: HEAD must mirror GET, including `206` + `Content-Range`.
   // The old shape always answered 200 and dropped the Content-Range.
-  return new Response(headOnly ? null : body as BodyInit, { status, headers });
+  return new Response(headOnly ? null : (body as BodyInit), { status, headers });
 }
 
 export { handleGet, renderCollectionHtml };

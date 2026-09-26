@@ -24,11 +24,7 @@ class DavConditionalGuard {
    * echo back the strong ETag the server sent, so `W/` prefixes are tolerated
    * on both sides rather than causing spurious 412s.
    */
-  public check(
-    request: Request,
-    state: { etag: string | null; mtime: number | null },
-    opts: { forRead?: boolean } = {},
-  ): Response | null {
+  public check(request: Request, state: { etag: string | null; mtime: number | null }, opts: { forRead?: boolean } = {}): Response | null {
     const { etag, mtime } = state;
 
     const ifMatch = request.headers.get('If-Match');

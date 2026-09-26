@@ -48,7 +48,12 @@ function VolumeFileModals({
           <ModalHeader title={t('files.newFolder', 'New Folder')} onClose={onCloseMkdir} />
           <ModalBody>
             <form onSubmit={onMkdirSubmit} className="space-y-3">
-              <Input placeholder={t('files.folderNamePlaceholder', 'photos')} value={mkdirName} onChange={(e) => onMkdirName(e.target.value)} autoFocus />
+              <Input
+                placeholder={t('files.folderNamePlaceholder', 'photos')}
+                value={mkdirName}
+                onChange={(e) => onMkdirName(e.target.value)}
+                autoFocus
+              />
               <Button type="submit" variant="primary" loading={busy} className="w-full">
                 {t('common.create', 'Create')}
               </Button>
@@ -70,7 +75,12 @@ function VolumeFileModals({
         </ModalShell>
       )}
       {deleting && (
-        <ConfirmDeleteModal title={t('files.deleteEntry', 'Delete Entry')} displayName={deleting.name} onConfirm={onConfirmDelete} onCancel={onCancelDelete} />
+        <ConfirmDeleteModal
+          title={t('files.deleteEntry', 'Delete Entry')}
+          displayName={deleting.name}
+          onConfirm={onConfirmDelete}
+          onCancel={onCancelDelete}
+        />
       )}
       {preview && (
         <ModalShell onClose={onClosePreview} widthClass="w-full max-w-2xl max-h-[82vh] overflow-hidden mx-4" ariaLabel={preview.entry.name}>

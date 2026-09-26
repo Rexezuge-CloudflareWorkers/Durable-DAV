@@ -226,7 +226,10 @@ export default tseslint.config(
               message: 'backend-runtime must not import from backend-services (higher layer)',
             },
             { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'backend-runtime must not import from apps/api' },
-            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'backend-runtime must not import from apps/background' },
+            {
+              group: ['@durable-dav/background', '@durable-dav/background/*'],
+              message: 'backend-runtime must not import from apps/background',
+            },
           ],
         },
       ],
@@ -254,7 +257,10 @@ export default tseslint.config(
               message: 'backend-data must not import services (higher layer)',
             },
             { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'backend-data must not import from apps/api' },
-            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'backend-data must not import from apps/background' },
+            {
+              group: ['@durable-dav/background', '@durable-dav/background/*'],
+              message: 'backend-data must not import from apps/background',
+            },
           ],
         },
       ],
@@ -319,7 +325,10 @@ export default tseslint.config(
         {
           patterns: [
             { group: ['@durable-dav/api', '@durable-dav/api/*'], message: 'backend-services must not import from apps/api' },
-            { group: ['@durable-dav/background', '@durable-dav/background/*'], message: 'backend-services must not import from apps/background' },
+            {
+              group: ['@durable-dav/background', '@durable-dav/background/*'],
+              message: 'backend-services must not import from apps/background',
+            },
           ],
         },
       ],
@@ -338,8 +347,7 @@ export default tseslint.config(
           patterns: [
             {
               group: ['@durable-dav/dav-store', '@durable-dav/dav-store/*'],
-              message:
-                'apps/api must not import dav-store directly; use @durable-dav/webdav + DO RPC via @durable-dav/background instead',
+              message: 'apps/api must not import dav-store directly; use @durable-dav/webdav + DO RPC via @durable-dav/background instead',
             },
             {
               group: ['@durable-dav/backend-data/dao', '@durable-dav/backend-data/dao/*'],
@@ -422,7 +430,7 @@ export default tseslint.config(
       'unicorn/no-declarations-before-early-exit': 'off',
       'unicorn/prefer-includes-over-repeated-comparisons': 'off',
       'sonarjs/prefer-specific-assertions': 'off',
-      'sonarjs/no-inverted-boolean-check': 'off'
+      'sonarjs/no-inverted-boolean-check': 'off',
     },
   },
 );

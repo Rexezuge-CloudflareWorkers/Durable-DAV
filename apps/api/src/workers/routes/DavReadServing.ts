@@ -136,9 +136,7 @@ async function serveGet(args: ServeReadArgs): Promise<Response> {
   const buf = await response.arrayBuffer().catch(() => null);
   if (!buf) return response;
   if (buf.byteLength <= MAX_CACHED_FILE_BYTES) {
-    await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag, ttls.file).catch(
-    () => undefined,
-  );
+    await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag, ttls.file).catch(() => undefined);
   }
   // Build an explicit header set: `buf` is the runtime-*decoded* body, so
   // cloning the DO's headers verbatim could carry a now-wrong `Content-Length`,
@@ -177,10 +175,9 @@ async function servePropfind(args: Omit<ServeReadArgs, 'headOnly'>): Promise<Res
   if (!cacheable || response.status !== 207) return response;
   const text = await response.text().catch(() => null);
   if (text === null) return response;
-  const etag = response.headers.get('ETag') ?? etagForPropfind(`${auth.owner}/${auth.volume}`.toLowerCase(), inner, depth, hashBody(bodyText));
-  await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag }, ttls.prop).catch(
-    () => undefined,
-  );
+  const etag =
+    response.headers.get('ETag') ?? etagForPropfind(`${auth.owner}/${auth.volume}`.toLowerCase(), inner, depth, hashBody(bodyText));
+  await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag }, ttls.prop).catch(() => undefined);
   return respondFromBytes('propfind', 207, text, etag, {}, c.req.raw, false);
 }
 

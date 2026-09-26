@@ -75,7 +75,11 @@ class DavRepository {
     }
     const placeholders = ancestors.map(() => '?').join(', ');
     const rows = this.sql
-      .exec(`SELECT path, token, scope, depth, owner, timeout, expires_at as expiresAt FROM dav_locks WHERE path IN (${placeholders}) AND expires_at > ?`, ...ancestors, Date.now())
+      .exec(
+        `SELECT path, token, scope, depth, owner, timeout, expires_at as expiresAt FROM dav_locks WHERE path IN (${placeholders}) AND expires_at > ?`,
+        ...ancestors,
+        Date.now(),
+      )
       .toArray();
     return rows.flatMap((row) => {
       const token = String(row['token'] ?? '');

@@ -166,9 +166,7 @@ describe('bucket credential auth over real D1', () => {
   it('rejects an expired credential', async () => {
     const cred = await mintCredential('pbf-expired');
     const testEnv = env as unknown as TestEnv;
-    await testEnv.DB.prepare('UPDATE dav_credentials SET expires_at = ? WHERE credential_id = ?')
-      .bind(1, cred.credentialId)
-      .run();
+    await testEnv.DB.prepare('UPDATE dav_credentials SET expires_at = ? WHERE credential_id = ?').bind(1, cred.credentialId).run();
     const res = await SELF.fetch(`https://example.com/${ownerHandle}/${VOLUME}/`, {
       method: 'PROPFIND',
       headers: { Authorization: basic(cred.username, cred.password), Depth: '0' },

@@ -62,19 +62,11 @@ class DavVolumeDAO extends BaseDAO {
   }
 
   public async getById(id: string): Promise<DavVolumeRow | null> {
-    const result = await this.database
-      .prepare('SELECT * FROM dav_volumes WHERE id = ? LIMIT 1')
-      .bind(id)
-      .first<DavVolumeRow>();
+    const result = await this.database.prepare('SELECT * FROM dav_volumes WHERE id = ? LIMIT 1').bind(id).first<DavVolumeRow>();
     return result ?? null;
   }
 
-
-
-  public async update(
-    id: string,
-    patch: { description?: string | null; isPrivate?: boolean; now: number },
-  ): Promise<void> {
+  public async update(id: string, patch: { description?: string | null; isPrivate?: boolean; now: number }): Promise<void> {
     const sets: string[] = ['updated_at = ?'];
     const bindings: unknown[] = [patch.now];
     if (patch.description !== undefined) {
@@ -87,7 +79,11 @@ class DavVolumeDAO extends BaseDAO {
     }
     bindings.push(id);
     await this.withRetry(
-      () => this.database.prepare(`UPDATE dav_volumes SET ${sets.join(', ')} WHERE id = ?`).bind(...bindings).run(),
+      () =>
+        this.database
+          .prepare(`UPDATE dav_volumes SET ${sets.join(', ')} WHERE id = ?`)
+          .bind(...bindings)
+          .run(),
       'update dav volume',
     );
   }

@@ -139,7 +139,7 @@ async function pbkdf2(password: string, salt: Uint8Array, iterations: number): P
 function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
   if (a.length !== b.length) return false;
   let diff = 0;
-  for (let i = 0; i < a.length; i += 1) diff |= (a[i]) ^ (b[i]);
+  for (let i = 0; i < a.length; i += 1) diff |= a[i] ^ b[i];
   return diff === 0;
 }
 

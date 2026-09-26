@@ -55,7 +55,7 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
 
   useEffect(() => {
     if (!notice) {
-    	return;
+      return;
     }
 
     showNotice(notice.type, notice.text);
@@ -87,14 +87,25 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
       <ContextBar
         crumb={
           <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">
-            <Link to={`/${owner}/${volume}`} onClick={() => { setTab('files'); setPath(''); }} className="hover:text-[var(--color-accent)]">
+            <Link
+              to={`/${owner}/${volume}`}
+              onClick={() => {
+                setTab('files');
+                setPath('');
+              }}
+              className="hover:text-[var(--color-accent)]"
+            >
               {owner}/{volume}
             </Link>
             {activeTab === 'files' &&
               crumbs.map((segment, index) => (
                 <span key={`${segment}-${index}`}>
                   <ChevronRight className="inline h-4 w-4 mx-1 text-[var(--color-text-muted)]" />
-                  <button type="button" className="hover:text-[var(--color-accent)]" onClick={() => setPath(crumbs.slice(0, index + 1).join('/'))}>
+                  <button
+                    type="button"
+                    className="hover:text-[var(--color-accent)]"
+                    onClick={() => setPath(crumbs.slice(0, index + 1).join('/'))}
+                  >
                     {segment}
                   </button>
                 </span>
@@ -118,7 +129,13 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
       </div>
       {activeTab === 'settings' ? (
         <AppPage>
-          <VolumeSettingsTab owner={owner} volume={volume} showNotice={showNotice} onUpdated={setVolumeDetail} onDeleted={() => void navigate('/')} />
+          <VolumeSettingsTab
+            owner={owner}
+            volume={volume}
+            showNotice={showNotice}
+            onUpdated={setVolumeDetail}
+            onDeleted={() => void navigate('/')}
+          />
         </AppPage>
       ) : (
         <AppPage>
@@ -126,7 +143,16 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
             <CardHeader>
               <CardTitle>{path === '' ? t('files.root', 'Files') : (path.split('/').pop() ?? path)}</CardTitle>
               <div className="flex gap-2 flex-wrap">
-                <input ref={fileRef} type="file" multiple className="hidden" onChange={(e) => { void mutations.doUpload(e.target.files); if (fileRef.current) fileRef.current.value = ''; }} />
+                <input
+                  ref={fileRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => {
+                    void mutations.doUpload(e.target.files);
+                    if (fileRef.current) fileRef.current.value = '';
+                  }}
+                />
                 <Button variant="secondary" size="sm" disabled={mutations.busy} onClick={() => fileRef.current?.click()}>
                   <Upload className="h-3.5 w-3.5" />
                   {t('files.upload', 'Upload')}
@@ -138,7 +164,11 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
               </div>
             </CardHeader>
             {path !== '' && (
-              <button type="button" className="text-sm text-[var(--color-accent)] hover:underline mb-3" onClick={() => setPath(parentDavPath(path) ?? '')}>
+              <button
+                type="button"
+                className="text-sm text-[var(--color-accent)] hover:underline mb-3"
+                onClick={() => setPath(parentDavPath(path) ?? '')}
+              >
                 {t('files.up', 'Up To Parent Folder')}
               </button>
             )}
@@ -149,7 +179,10 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
               status={status}
               busy={mutations.busy}
               onPreview={(e) => void mutations.openPreview(e, setPath)}
-              onRename={(e) => { mutations.setRenaming(e); mutations.setRenameValue(e.name); }}
+              onRename={(e) => {
+                mutations.setRenaming(e);
+                mutations.setRenameValue(e.name);
+              }}
               onDuplicate={(e) => void mutations.doDuplicate(e)}
               onDelete={(e) => mutations.setDeleting(e)}
             />

@@ -14,7 +14,9 @@ export function LandingView() {
   return (
     <AppPage variant="hero">
       <div className="text-center max-w-2xl mx-auto animate-fade-in-up">
-        <h1 className="text-4xl font-semibold tracking-tight text-[var(--color-text-primary)]">{t('landing.title', 'Self-Hosted WebDAV On Cloudflare Workers')}</h1>
+        <h1 className="text-4xl font-semibold tracking-tight text-[var(--color-text-primary)]">
+          {t('landing.title', 'Self-Hosted WebDAV On Cloudflare Workers')}
+        </h1>
         <p className="mt-4 text-[var(--color-text-secondary)]">
           {t(
             'landing.subtitle',

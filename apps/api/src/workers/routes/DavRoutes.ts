@@ -43,7 +43,6 @@ function stripSlashes(value: string): string {
   return value.slice(start, end);
 }
 
-
 /**
  * 200/304 response builder for cached DAV reads.
  *
@@ -57,15 +56,10 @@ function stripSlashes(value: string): string {
 200/304 for a body already materialised from the DO.
 */
 
-
-
 async function handleDav(c: DavContext, owner: string, volume: string, inner: string): Promise<Response> {
   const method = c.req.method;
   if (!isDavMethod(method)) {
-    return cors(
-      c,
-      new Response('Method Not Allowed', { status: 405, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } }),
-    );
+    return cors(c, new Response('Method Not Allowed', { status: 405, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } }));
   }
   // `OPTIONS` is a capability probe, not an access to resource content. Many
   // DAV clients (and Windows/Office discovery) send it unauthenticated to learn
@@ -146,10 +140,7 @@ function registerDavRoutes(app: App): void {
   // already contained was unreachable and clients saw "not found" for a
   // resource that plainly exists.
   const methodNotAllowed = (c: DavContext): Response =>
-    cors(
-      c,
-      new Response('Method Not Allowed', { status: 405, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } }),
-    );
+    cors(c, new Response('Method Not Allowed', { status: 405, headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS } }));
   app.all('/:owner/:volume', methodNotAllowed as never);
   app.all('/:owner/:volume/*', methodNotAllowed as never);
 }
