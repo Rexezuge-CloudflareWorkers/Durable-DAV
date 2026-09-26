@@ -16,21 +16,19 @@ function bytesToBase64(bytes: Uint8Array): string {
   const remainder = len % 3;
   const limit = len - remainder;
   for (let i = 0; i < limit; i += 3) {
-    const triple = (bytes[i]) * 65_536 + (bytes[i + 1]) * 256 + (bytes[i + 2]);
+    const triple = bytes[i] * 65_536 + bytes[i + 1] * 256 + bytes[i + 2];
     out +=
-      (BASE64_ALPHABET[(triple >> 18) & 63]) +
-      (BASE64_ALPHABET[(triple >> 12) & 63]) +
-      (BASE64_ALPHABET[(triple >> 6) & 63]) +
-      (BASE64_ALPHABET[triple & 63]);
+      BASE64_ALPHABET[(triple >> 18) & 63] +
+      BASE64_ALPHABET[(triple >> 12) & 63] +
+      BASE64_ALPHABET[(triple >> 6) & 63] +
+      BASE64_ALPHABET[triple & 63];
   }
   if (remainder === 1) {
     const value = bytes[limit];
     out += `${BASE64_ALPHABET[value >> 2]}${BASE64_ALPHABET[(value << 4) & 63]}==`;
   } else if (remainder === 2) {
-    const pair = ((bytes[limit]) << 8) | (bytes[limit + 1]);
-    out +=
-      `${BASE64_ALPHABET[pair >> 10]}${BASE64_ALPHABET[(pair >> 4) & 63]}` +
-      `${BASE64_ALPHABET[(pair << 2) & 63]}=`;
+    const pair = (bytes[limit] << 8) | bytes[limit + 1];
+    out += `${BASE64_ALPHABET[pair >> 10]}${BASE64_ALPHABET[(pair >> 4) & 63]}` + `${BASE64_ALPHABET[(pair << 2) & 63]}=`;
   }
   return out;
 }

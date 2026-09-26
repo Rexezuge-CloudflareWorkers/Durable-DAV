@@ -72,7 +72,8 @@ try {
   process.exit(1);
 }
 if (supported.length === 0) fail('could not parse SUPPORTED_LANGUAGES from web i18n.ts');
-for (const tag of supported.filter((tag) => !tags.includes(tag))) fail(`missing locale directory for supported language: ${tag}/translation.json`);
+for (const tag of supported.filter((tag) => !tags.includes(tag)))
+  fail(`missing locale directory for supported language: ${tag}/translation.json`);
 for (const tag of tags.filter((tag) => !supported.includes(tag))) fail(`extra locale directory not in SUPPORTED_LANGUAGES: ${tag}`);
 
 const bundles = new Map();

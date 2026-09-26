@@ -9,19 +9,31 @@ const ok = (): Response => new Response('body', { status: 200 });
 
 describe('CORS origin allow-list', () => {
   it('echoes an allow-listed origin', () => {
-    const res = applyCors(ok(), new Request('https://dav.example.com/a', { headers: { Origin: 'https://dav.example.com' } }), 'https://dav.example.com');
+    const res = applyCors(
+      ok(),
+      new Request('https://dav.example.com/a', { headers: { Origin: 'https://dav.example.com' } }),
+      'https://dav.example.com',
+    );
     expect(res.headers.get('Access-Control-Allow-Origin')).toBe('https://dav.example.com');
   });
 
   it('reflects no origin for a hostile one', () => {
     // The previous implementation echoed whatever asked, so any website could
     // read a WebDAV response — including a private volume's listing.
-    const res = applyCors(ok(), new Request('https://dav.example.com/a', { headers: { Origin: 'https://evil.test' } }), 'https://dav.example.com');
+    const res = applyCors(
+      ok(),
+      new Request('https://dav.example.com/a', { headers: { Origin: 'https://evil.test' } }),
+      'https://dav.example.com',
+    );
     expect(res.headers.get('Access-Control-Allow-Origin')).toBeNull();
   });
 
   it('sets Vary: Origin whenever the response varies by origin', () => {
-    const res = applyCors(ok(), new Request('https://dav.example.com/a', { headers: { Origin: 'https://dav.example.com' } }), 'https://dav.example.com');
+    const res = applyCors(
+      ok(),
+      new Request('https://dav.example.com/a', { headers: { Origin: 'https://dav.example.com' } }),
+      'https://dav.example.com',
+    );
     // Without this a shared cache may hand one origin's response to another.
     expect(res.headers.get('Vary')).toBe('Origin');
   });
@@ -46,7 +58,11 @@ describe('CORS origin allow-list', () => {
     // No cookies or HTTP-auth are used on the WebDAV plane, so credentialed CORS
     // is never appropriate; advertising it would let a hostile origin piggyback
     // on whatever the browser attached.
-    const res = applyCors(ok(), new Request('https://dav.example.com/a', { headers: { Origin: 'https://dav.example.com' } }), 'https://dav.example.com');
+    const res = applyCors(
+      ok(),
+      new Request('https://dav.example.com/a', { headers: { Origin: 'https://dav.example.com' } }),
+      'https://dav.example.com',
+    );
     expect(res.headers.get('Access-Control-Allow-Credentials')).toBe('false');
   });
 
@@ -57,10 +73,7 @@ describe('CORS origin allow-list', () => {
 });
 
 describe('production template carries no auth bypass', () => {
-  const template = readFileSync(
-    fileURLToPath(new URL('../apps/api/wrangler.template.jsonc', import.meta.url)),
-    'utf8',
-  );
+  const template = readFileSync(fileURLToPath(new URL('../apps/api/wrangler.template.jsonc', import.meta.url)), 'utf8');
 
   it('does not ship DEV_AUTH_EMAIL', () => {
     // Either variable authenticates *every* unauthenticated request as that
@@ -76,8 +89,7 @@ describe('production template carries no auth bypass', () => {
 });
 
 describe('AppConfiguration.validate', () => {
-  const env = (overrides: Record<string, string> = {}): Env =>
-    ({ ENVIRONMENT: 'production', ...overrides }) as unknown as Env;
+  const env = (overrides: Record<string, string> = {}): Env => ({ ENVIRONMENT: 'production', ...overrides }) as unknown as Env;
 
   it('is clean for a well-formed production config', () => {
     expect(AppConfiguration.fromEnv(env({ MAX_FILE_BYTES: '52428800' })).validate()).toEqual([]);

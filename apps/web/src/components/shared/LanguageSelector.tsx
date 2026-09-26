@@ -17,15 +17,7 @@ const LANGUAGE_LABELS: Record<string, string> = {
   ko: '한국어',
 };
 
-export function LanguageSelector({
-  value,
-  onChange,
-  disabled,
-}: {
-  value: string;
-  onChange: (lng: string) => void;
-  disabled?: boolean;
-}) {
+export function LanguageSelector({ value, onChange, disabled }: { value: string; onChange: (lng: string) => void; disabled?: boolean }) {
   const { t } = useTranslation();
   return (
     <Select

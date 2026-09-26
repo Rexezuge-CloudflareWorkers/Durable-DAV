@@ -1,4 +1,11 @@
-import { DAV_NAMESPACE, type DeadProperty, renderDavProperty, renderEmptyPropertyElement, renderPropertyElement, renderPropstat } from './xml';
+import {
+  DAV_NAMESPACE,
+  type DeadProperty,
+  renderDavProperty,
+  renderEmptyPropertyElement,
+  renderPropertyElement,
+  renderPropstat,
+} from './xml';
 import { escapeXml, getResourceHref } from './path';
 import { getLockDiscovery, getSupportedLock, type LockDetails } from './locks';
 
@@ -30,7 +37,18 @@ type DavNodeInfo = {
 };
 
 const DEAD_PROPERTY_PREFIX = 'dead_property:';
-const LOCK_PROTECTED_NAMES = new Set(['lock_token', 'lock_owner', 'lock_scope', 'lock_depth', 'lock_timeout', 'lock_expires_at', 'lock_root', 'lock_records', 'supportedlock', 'lockdiscovery']);
+const LOCK_PROTECTED_NAMES = new Set([
+  'lock_token',
+  'lock_owner',
+  'lock_scope',
+  'lock_depth',
+  'lock_timeout',
+  'lock_expires_at',
+  'lock_root',
+  'lock_records',
+  'supportedlock',
+  'lockdiscovery',
+]);
 
 function getDeadPropertyKey(namespaceURI: string, localName: string): string {
   return `${DEAD_PROPERTY_PREFIX}${encodeURIComponent(namespaceURI)}:${encodeURIComponent(localName)}`;
@@ -74,9 +92,7 @@ function toLiveProperties(node: DavNodeInfo | null, base = ''): DavLivePropertie
     lockdiscovery:
       node.locks.length === 0
         ? ''
-        : getLockDiscovery(
-            node.locks.map((l) => ({ ...l, root: getResourceHref(node.key, node.isCollection, base) })),
-          ),
+        : getLockDiscovery(node.locks.map((l) => ({ ...l, root: getResourceHref(node.key, node.isCollection, base) }))),
   };
 }
 
@@ -99,9 +115,7 @@ function generatePropfindResponse(
 ): string {
   const href = getResourceHref(node?.key ?? '', node?.isCollection ?? true, base);
   const live = toLiveProperties(node, base);
-  const liveEntries = Object.entries(live).flatMap(([key, value]) =>
-    value === undefined ? [] : [renderDavProperty(key, value)],
-  );
+  const liveEntries = Object.entries(live).flatMap(([key, value]) => (value === undefined ? [] : [renderDavProperty(key, value)]));
   const dead = node?.deadProperties ?? [];
 
   let ok: string[] = [];

@@ -2,12 +2,7 @@ import { Tokens } from '@durable-dav/backend-services/composition';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 import type { ApiApp, ApiContext } from '@/types/ApiContext';
 import { getVolumeStub } from '../doStubs';
-import {
-  getCachedVolumeList,
-  invalidateVolumeCaches,
-  invalidateVolumeListCache,
-  putCachedVolumeList,
-} from './DavReadCache';
+import { getCachedVolumeList, invalidateVolumeCaches, invalidateVolumeListCache, putCachedVolumeList } from './DavReadCache';
 import { VolumeScopedRoute, requireUser, withErrorMapping } from './VolumeScopedRoute';
 import type { VolumeRequestContext } from './VolumeScopedRoute';
 
@@ -45,7 +40,10 @@ async function handleListVolumes(c: ApiContext): Promise<Response> {
   const email = requireUser(c);
   if (email instanceof Response) return email;
   const scope = BaseRoute.getScope(c);
-  await scope.get(Tokens.UserService).upsertUser(email).catch(() => undefined);
+  await scope
+    .get(Tokens.UserService)
+    .upsertUser(email)
+    .catch(() => undefined);
 
   const cache = scope.get(Tokens.KvCache);
   try {
@@ -125,7 +123,10 @@ async function handleCreateVolume(c: ApiContext): Promise<Response> {
   const email = requireUser(c);
   if (email instanceof Response) return email;
   const scope = BaseRoute.getScope(c);
-  await scope.get(Tokens.UserService).upsertUser(email).catch(() => undefined);
+  await scope
+    .get(Tokens.UserService)
+    .upsertUser(email)
+    .catch(() => undefined);
   const { malformed, oversized, body } = await BaseRoute.readJson<{
     owner?: string;
     name?: string;

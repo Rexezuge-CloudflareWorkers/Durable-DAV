@@ -13,7 +13,9 @@ class DavLimits {
     if (record['DAV_CACHE_TTL_SECONDS'] !== undefined) {
       return EnvParser.positiveInt(this.env, 'DAV_CACHE_TTL_SECONDS', DEFAULT_DAV_CACHE_TTL_SECONDS);
     }
-    return record['GIT_CACHE_TTL_SECONDS'] === undefined ? EnvParser.positiveInt(this.env, 'DAV_CACHE_TTL_SECONDS', DEFAULT_DAV_CACHE_TTL_SECONDS) : EnvParser.positiveInt(this.env, 'GIT_CACHE_TTL_SECONDS', DEFAULT_DAV_CACHE_TTL_SECONDS);
+    return record['GIT_CACHE_TTL_SECONDS'] === undefined
+      ? EnvParser.positiveInt(this.env, 'DAV_CACHE_TTL_SECONDS', DEFAULT_DAV_CACHE_TTL_SECONDS)
+      : EnvParser.positiveInt(this.env, 'GIT_CACHE_TTL_SECONDS', DEFAULT_DAV_CACHE_TTL_SECONDS);
   }
 
   public getMaxFileBytes(): number {

@@ -1,68 +1,26 @@
 {
   "extends": "../tsconfig.json",
   "compilerOptions": {
-    "types": [
-      "vitest/globals",
-      "node",
-      "@cloudflare/workers-types",
-      "vite/client"
-    ],
+    "types": ["vitest/globals", "node", "@cloudflare/workers-types", "vite/client"],
     "jsx": "react-jsx",
     "paths": {
-      "~/*": [
-        "../apps/web/src/*"
-      ],
-      "@/*": [
-        "../apps/api/src/*"
-      ],
-      "@durable-dav/background": [
-        "../apps/background/src"
-      ],
-      "@durable-dav/background/*": [
-        "../apps/background/src/*"
-      ],
-      "@durable-dav/backend-data": [
-        "../packages/backend-data/src"
-      ],
-      "@durable-dav/backend-data/*": [
-        "../packages/backend-data/src/*"
-      ],
-      "@durable-dav/backend-errors": [
-        "../packages/backend-errors/src"
-      ],
-      "@durable-dav/backend-errors/*": [
-        "../packages/backend-errors/src/*"
-      ],
-      "@durable-dav/backend-runtime": [
-        "../packages/backend-runtime/src"
-      ],
-      "@durable-dav/backend-runtime/*": [
-        "../packages/backend-runtime/src/*"
-      ],
-      "@durable-dav/backend-services": [
-        "../packages/backend-services/src"
-      ],
-      "@durable-dav/backend-services/*": [
-        "../packages/backend-services/src/*"
-      ],
-      "@durable-dav/shared": [
-        "../packages/shared/src"
-      ],
-      "@durable-dav/shared/*": [
-        "../packages/shared/src/*"
-      ],
-      "@durable-dav/webdav": [
-        "../packages/webdav/src"
-      ],
-      "@durable-dav/dav-store": [
-        "../packages/dav-store/src"
-      ]
+      "~/*": ["../apps/web/src/*"],
+      "@/*": ["../apps/api/src/*"],
+      "@durable-dav/background": ["../apps/background/src"],
+      "@durable-dav/background/*": ["../apps/background/src/*"],
+      "@durable-dav/backend-data": ["../packages/backend-data/src"],
+      "@durable-dav/backend-data/*": ["../packages/backend-data/src/*"],
+      "@durable-dav/backend-errors": ["../packages/backend-errors/src"],
+      "@durable-dav/backend-errors/*": ["../packages/backend-errors/src/*"],
+      "@durable-dav/backend-runtime": ["../packages/backend-runtime/src"],
+      "@durable-dav/backend-runtime/*": ["../packages/backend-runtime/src/*"],
+      "@durable-dav/backend-services": ["../packages/backend-services/src"],
+      "@durable-dav/backend-services/*": ["../packages/backend-services/src/*"],
+      "@durable-dav/shared": ["../packages/shared/src"],
+      "@durable-dav/shared/*": ["../packages/shared/src/*"],
+      "@durable-dav/webdav": ["../packages/webdav/src"],
+      "@durable-dav/dav-store": ["../packages/dav-store/src"]
     }
   },
-  "include": [
-    "../worker-configuration.d.ts",
-    "../packages/backend-runtime/src/env.d.ts",
-    "**/*.ts",
-    "**/*.tsx"
-  ]
+  "include": ["../worker-configuration.d.ts", "../packages/backend-runtime/src/env.d.ts", "**/*.ts", "**/*.tsx"]
 }

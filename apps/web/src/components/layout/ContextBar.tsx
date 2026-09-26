@@ -22,5 +22,9 @@ export function ContextBar({ crumb, actions, bare = false }: { crumb: React.Reac
       {actions && <div className="ml-auto flex items-center gap-2 shrink-0">{actions}</div>}
     </div>
   );
-  return bare ? row : <div className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface-1)]/95 backdrop-blur">{row}</div>;
+  return bare ? (
+    row
+  ) : (
+    <div className="sticky top-0 z-40 border-b border-[var(--color-border)] bg-[var(--color-surface-1)]/95 backdrop-blur">{row}</div>
+  );
 }

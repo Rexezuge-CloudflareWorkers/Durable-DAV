@@ -36,7 +36,6 @@ function deserializeErrorBody(data: ErrorResponse | null | undefined, fallback: 
   }
 }
 
-
 // Lenient parser for web-compat: accepts AWS envelope, legacy
 // `{error,message}`, and plain-text bodies.
 function parseErrorPayload(payload: unknown, httpStatus: number): ServiceError {

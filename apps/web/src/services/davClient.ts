@@ -88,13 +88,7 @@ export async function deleteEntry(owner: string, volume: string, innerPath: stri
   await davFetch(entryUrl(owner, volume, innerPath), { method: 'DELETE' });
 }
 
-export async function moveEntry(
-  owner: string,
-  volume: string,
-  fromPath: string,
-  toPath: string,
-  overwrite = true,
-): Promise<void> {
+export async function moveEntry(owner: string, volume: string, fromPath: string, toPath: string, overwrite = true): Promise<void> {
   const destination = new URL(entryUrl(owner, volume, toPath), globalThis.location.origin).href;
   await davFetch(entryUrl(owner, volume, fromPath), {
     method: 'MOVE',
@@ -102,13 +96,7 @@ export async function moveEntry(
   });
 }
 
-export async function copyEntry(
-  owner: string,
-  volume: string,
-  fromPath: string,
-  toPath: string,
-  overwrite = true,
-): Promise<void> {
+export async function copyEntry(owner: string, volume: string, fromPath: string, toPath: string, overwrite = true): Promise<void> {
   const destination = new URL(entryUrl(owner, volume, toPath), globalThis.location.origin).href;
   await davFetch(entryUrl(owner, volume, fromPath), {
     method: 'COPY',

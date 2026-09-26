@@ -63,8 +63,6 @@ function nullableStringField(row: SqlRow, key: string): string | undefined {
   return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint' ? String(value) : undefined;
 }
 
-
-
 function upsertNode(
   sql: DurableSqlStorage,
   path: string,

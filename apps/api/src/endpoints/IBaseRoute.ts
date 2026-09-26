@@ -90,7 +90,6 @@ abstract class BaseRoute {
     return toMappedStatus(error);
   }
 
-
   /**
    * Status → AWS `Exception.Type` mapping for direct validation returns.
    * Call sites that previously wrote `c.json({ error: msg }, status)` must
@@ -114,7 +113,6 @@ abstract class BaseRoute {
   public static toErrorType(status: number): string {
     return this.ERROR_TYPE_REGISTRY[status] ?? 'InternalServerError';
   }
-
 
   public static jsonError(c: HonoContext, message: string, status: number): Response {
     return c.json({ Exception: { Type: this.toErrorType(status), Message: message } }, status as ContentfulStatusCode);
@@ -167,8 +165,6 @@ abstract class BaseRoute {
       return 'en';
     }
   }
-
-
 }
 
 export { BaseRoute };

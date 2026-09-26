@@ -29,11 +29,7 @@ function validateChunkSize(chunkSize: unknown): number {
 function createDofsFs(ctx: unknown, env: unknown, options: DofsOptions = {}): DofsFs {
   const { chunkSize = DEFAULT_CHUNK_SIZE } = options;
   const validated = validateChunkSize(chunkSize);
-  return new Fs(
-    ctx as ConstructorParameters<typeof Fs>[0],
-    env as ConstructorParameters<typeof Fs>[1],
-    { chunkSize: validated },
-  );
+  return new Fs(ctx as ConstructorParameters<typeof Fs>[0], env as ConstructorParameters<typeof Fs>[1], { chunkSize: validated });
 }
 
 function setDofsDeviceSize(dofs: DofsFs, bytes: number): void {

@@ -28,8 +28,6 @@ export function Badge({
 export function VisibilityBadge({ isPrivate }: { isPrivate: boolean }) {
   const { t } = useTranslation();
   return (
-    <Badge variant={isPrivate ? 'warning' : 'success'}>
-      {isPrivate ? t('volumes.private', 'Private') : t('volumes.public', 'Public')}
-    </Badge>
+    <Badge variant={isPrivate ? 'warning' : 'success'}>{isPrivate ? t('volumes.private', 'Private') : t('volumes.public', 'Public')}</Badge>
   );
 }

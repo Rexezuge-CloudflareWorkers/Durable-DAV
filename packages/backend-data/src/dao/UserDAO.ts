@@ -52,8 +52,6 @@ class UserDAO extends BaseDAO {
     // while making `idx_users_username` unusable.
     return this.database.prepare('SELECT * FROM users WHERE username = ? LIMIT 1').bind(usernameCi.toLowerCase()).first<UserRow>();
   }
-
-
 }
 
 export { UserDAO };

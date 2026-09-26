@@ -6,16 +6,14 @@
   "durable_objects": {
     "bindings": [
       { "name": "DAV_VOLUME", "class_name": "DavVolumeWorker" },
-      { "name": "CRON_TASKS", "class_name": "CronTasksWorker" }
-    ]
+      { "name": "CRON_TASKS", "class_name": "CronTasksWorker" },
+    ],
   },
-  "migrations": [
-    { "tag": "v1000000000", "new_sqlite_classes": ["DavVolumeWorker", "CronTasksWorker"] }
-  ],
+  "migrations": [{ "tag": "v1000000000", "new_sqlite_classes": ["DavVolumeWorker", "CronTasksWorker"] }],
   "d1_databases": [{ "binding": "DB", "database_name": "durable-dav-test-db", "database_id": "00000000-0000-0000-0000-000000000000" }],
   "vars": {
     "ENVIRONMENT": "development",
     "DEV_AUTH_EMAIL": "test@example.com",
-    "SITE_URL": "https://example.com"
-  }
+    "SITE_URL": "https://example.com",
+  },
 }

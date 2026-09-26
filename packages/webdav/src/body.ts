@@ -75,7 +75,10 @@ async function readCappedBody(request: Request, maxBytes: number): Promise<BodyR
 /**
 Decode a capped body as UTF-8 text.
 */
-async function readCappedText(request: Request, maxBytes: number): Promise<{ ok: true; text: string } | { ok: false; reason: 'too-large' }> {
+async function readCappedText(
+  request: Request,
+  maxBytes: number,
+): Promise<{ ok: true; text: string } | { ok: false; reason: 'too-large' }> {
   const result = await readCappedBody(request, maxBytes);
   return result.ok ? { ok: true, text: new TextDecoder().decode(result.bytes) } : result;
 }

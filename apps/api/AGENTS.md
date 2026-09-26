@@ -10,7 +10,7 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 
 ## Auth
 
-- `/user/*` — Cloudflare Access (`DEMO_MODE` → `DEV_AUTH_EMAIL` → JWT → `ctx.access` fallback). Neither bypass is set in `wrangler.template.jsonc`: each authenticates *every* unauthenticated request as a fixed identity, and `AppConfiguration.validate()` warns if one is present with `ENVIRONMENT=production`.
+- `/user/*` — Cloudflare Access (`DEMO_MODE` → `DEV_AUTH_EMAIL` → JWT → `ctx.access` fallback). Neither bypass is set in `wrangler.template.jsonc`: each authenticates _every_ unauthenticated request as a fixed identity, and `AppConfiguration.validate()` warns if one is present with `ENVIRONMENT=production`.
 - WebDAV `/:owner/:volume/*` — bucket-level Basic only (username AND password validated, bound to volume id, expiry enforced). Public buckets allow anon reads; all writes and all private access require a bucket credential. No Bearer, no user-level PAT, no collaborators.
 
 ## Routes
@@ -25,6 +25,6 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 ## Composition
 
 - Single scope per request: `scopeMiddleware` installs one `Container` + `ServiceContext`; handlers resolve via `BaseRoute.getScope(c).get(Tokens.X)`.
-- `src/endpoints/IBaseRoute.ts` — `BaseRoute` (`readJson` with a *stream* cap via `readCappedBody`, `getScope`, `toErrorResponse` mapping `ServiceError`; AWS envelope `{Exception:{Type,Message}}`).
+- `src/endpoints/IBaseRoute.ts` — `BaseRoute` (`readJson` with a _stream_ cap via `readCappedBody`, `getScope`, `toErrorResponse` mapping `ServiceError`; AWS envelope `{Exception:{Type,Message}}`).
 - `src/workers/routes/VolumeScopedRoute.ts` — template method for every `/user/volumes/:owner/:volume/...` handler: one ownership guard, 404-vs-403 as a constructor argument (the browser plane hides existence, the credential plane does not), one error mapping. `requireUser` reads the identity `/user/*` middleware already stored.
 - Never import `@durable-dav/backend-data/dao` values in routes (type-only allowed); never import `@durable-dav/dav-store` directly — use `@durable-dav/webdav` constants + DO `fetch`.

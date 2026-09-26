@@ -22,10 +22,10 @@ Covers the exact document types plus type wildcards that contain them
 or `text/*` alone scores 1 on both sides and ties.
 */
 function isHtmlRange(type: string): boolean {
-if (HTML_DOCUMENT_TYPES.has(type)) return true;
-if (!type.endsWith('/*') || type.startsWith('*')) return false;
-const prefix = type.slice(0, -1);
-return [...HTML_DOCUMENT_TYPES].some((doc) => doc.startsWith(prefix));
+  if (HTML_DOCUMENT_TYPES.has(type)) return true;
+  if (!type.endsWith('/*') || type.startsWith('*')) return false;
+  const prefix = type.slice(0, -1);
+  return [...HTML_DOCUMENT_TYPES].some((doc) => doc.startsWith(prefix));
 }
 
 /**
@@ -60,7 +60,7 @@ function governingQuality(candidates: readonly Candidate[], target: string): num
   const exact = candidates.find((c) => c.type === target);
   if (exact) return exact.quality;
   const wildcard = candidates.find((c) => c.type.endsWith('/*') && target.startsWith(c.type.slice(0, -1)));
-  return wildcard ? wildcard.quality : candidates.find((c) => c.type === '*/*')?.quality ?? 0;
+  return wildcard ? wildcard.quality : (candidates.find((c) => c.type === '*/*')?.quality ?? 0);
 }
 
 /**
@@ -89,9 +89,7 @@ function acceptsHtml(request: Request): boolean {
   const htmlQuality = Math.max(...[...HTML_DOCUMENT_TYPES].map((type) => governingQuality(candidates, type)));
   if (htmlQuality <= 0) return false;
 
-  const otherQuality = candidates
-    .filter((c) => !isHtmlRange(c.type))
-    .reduce((best, c) => Math.max(best, c.quality), 0);
+  const otherQuality = candidates.filter((c) => !isHtmlRange(c.type)).reduce((best, c) => Math.max(best, c.quality), 0);
   return htmlQuality > otherQuality;
 }
 

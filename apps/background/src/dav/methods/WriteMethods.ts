@@ -28,10 +28,7 @@ async function handlePut(
   // update) and Finder/davfs2's create-only `If-None-Match: *` always
   // succeeded instead of answering 412.
   const previous = repo.readMeta(innerPath);
-  const conditional = new DavConditionalGuard().check(
-    request,
-    { etag: previous.etag ?? null, mtime: previous.mtime ?? null },
-  );
+  const conditional = new DavConditionalGuard().check(request, { etag: previous.etag ?? null, mtime: previous.mtime ?? null });
   if (conditional) return conditional;
   // Streaming cap, not a post-hoc check: an oversize body is refused without
   // ever being fully buffered.
@@ -47,13 +44,7 @@ async function handlePut(
   const now = Date.now();
   // `previous` was read before the write for the precondition check; reuse it
   // so `crtime` is preserved across an overwrite without a second query.
-  repo.upsertFileNode(
-    innerPath,
-    contentType,
-    `"${bytes.byteLength.toString(16)}-${now.toString(16)}"`,
-    now,
-    previous.crtime ?? now,
-  );
+  repo.upsertFileNode(innerPath, contentType, `"${bytes.byteLength.toString(16)}-${now.toString(16)}"`, now, previous.crtime ?? now);
   return existing.exists ? new Response(null, { status: 204 }) : new Response('', { status: 201 });
 }
 
@@ -94,13 +85,7 @@ async function handleDelete(
   return new Response(null, { status: 204 });
 }
 
-async function handleMkcol(
-  request: Request,
-  innerPath: string,
-  repo: DavRepository,
-  locks: DavLockGuard,
-  dofs: DofsFs,
-): Promise<Response> {
+async function handleMkcol(request: Request, innerPath: string, repo: DavRepository, locks: DavLockGuard, dofs: DofsFs): Promise<Response> {
   // RFC 4918 §9.3.1: a body makes the request unsupported. `request.clone()`
   // used to tee the stream so the full payload was buffered twice just to
   // discover it was non-empty.

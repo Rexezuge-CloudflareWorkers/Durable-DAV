@@ -26,6 +26,5 @@ abstract class BaseScheduledTask implements ScheduledTask {
   protected abstract handleScheduledTask(env: Env): Promise<void>;
 }
 
-
 export { BaseScheduledTask };
 export type { ScheduledTask };

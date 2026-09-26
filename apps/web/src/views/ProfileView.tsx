@@ -47,9 +47,7 @@ export function ProfileView({ showNotice }: { showNotice: (type: 'success' | 'er
       <div className="max-w-7xl mx-auto px-6 py-8">
         <Card>
           <h1 className="text-lg font-semibold text-[var(--color-text-primary)]">{t('profile.notFound', 'Profile Not Found')}</h1>
-          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">
-            {t('profile.notFoundDescription', 'This User Does Not Exist.')}
-          </p>
+          <p className="mt-1 text-sm text-[var(--color-text-secondary)]">{t('profile.notFoundDescription', 'This User Does Not Exist.')}</p>
         </Card>
       </div>
     );

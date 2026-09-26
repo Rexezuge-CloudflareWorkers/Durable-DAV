@@ -106,7 +106,9 @@ describe('DavCredentialUtil malformed pbkdf2 rows', () => {
   it('rejects a hostile iteration count rather than burning CPU on it', async () => {
     // `1e300` is a safe "integer" but not a safe work factor. Left unchecked it
     // turns one Basic-auth request into a CPU-exhaustion vector.
-    await expect(DavCredentialUtil.verifyPassword('x', 'pbkdf2-sha256$1e300$AAAAAAAAAAAAAAAAAAAAAA$AAAA')).resolves.toMatchObject({ ok: false });
+    await expect(DavCredentialUtil.verifyPassword('x', 'pbkdf2-sha256$1e300$AAAAAAAAAAAAAAAAAAAAAA$AAAA')).resolves.toMatchObject({
+      ok: false,
+    });
   });
 
   it('rejects an empty salt', async () => {

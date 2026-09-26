@@ -1,19 +1,6 @@
 const DAV_CLASS = '1, 2';
 
-const SUPPORT_METHODS = [
-  'OPTIONS',
-  'PROPFIND',
-  'PROPPATCH',
-  'MKCOL',
-  'GET',
-  'HEAD',
-  'PUT',
-  'DELETE',
-  'COPY',
-  'MOVE',
-  'LOCK',
-  'UNLOCK',
-];
+const SUPPORT_METHODS = ['OPTIONS', 'PROPFIND', 'PROPPATCH', 'MKCOL', 'GET', 'HEAD', 'PUT', 'DELETE', 'COPY', 'MOVE', 'LOCK', 'UNLOCK'];
 
 const CORS_ALLOW_HEADERS = [
   'authorization',

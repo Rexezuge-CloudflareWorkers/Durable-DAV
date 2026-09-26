@@ -8,7 +8,7 @@ Durable-DAV: Cloudflare Workers WebDAV server (`@durable-dav/monorepo`, `pnpm@11
 - **API**: `apps/api` Hono+Chanfana `DurableDavWorker` (`/:owner/:volume/*` WebDAV via DO `fetch` forward + `/user/volumes` CRUD (quota-enforced, owner-only, private-by-default, `PATCH` visibility) + per-bucket `/user/volumes/:owner/:volume/credentials` + `/user/me` + `/users/:username` + `/health`, `/docs`); permissions owner-only via `DavPermissionService`; `apps/api/src/index.ts` re-exports DOs for bindings.
 - **Web**: `apps/web` Vite SPA (build embeds `dist/index.html` → `apps/api/src/generated/spa-shell.ts`); `GET /`, `/new`, `/settings`, `/:username` serve the shell, `GET /:owner/:volume` content-negotiates (`Accept: text/html` → SPA `VolumeView` with `?path=` subpaths + `?tab=settings` per-bucket General/Credentials/Danger-Zone, else DO forward); WebDAV clients use raw methods.
 - **Composition**: single scope per request via `scopeMiddleware` (`BaseRoute.getScope(c).get(Tokens.X)`; `createRequestScope(env)` is the composition root, table-driven DAO wiring + single `DavPermissionService` binding); `Container` + `createServiceContext` + `AppConfiguration` in `@durable-dav/backend-runtime/di+config` are the DI foundation. `VolumeScopedRoute` (`apps/api`) is the template method for every volume-scoped handler: one ownership guard, 404-vs-403 as a constructor argument, one error mapping.
-- **D1 predicates**: lowercase the *parameter*, never the column — `lower(col)` makes that column's index unusable. Credential lookup never filters on `password_hash`.
+- **D1 predicates**: lowercase the _parameter_, never the column — `lower(col)` makes that column's index unusable. Credential lookup never filters on `password_hash`.
 - **i18n**: backend strings in `packages/shared/src/i18n` (wired via `BaseRoute.toErrorResponse`).
 
 ## Commands
@@ -55,15 +55,16 @@ Enforced by ESLint `no-restricted-imports` in `eslint.config.mjs`: `apps/api` bl
 
 ## Index
 
-| Area                              | Guide                          |
-| --------------------------------- | ------------------------------ |
-| API worker, auth, routes          | `apps/api/AGENTS.md`           |
-| Background worker, cron, volumes  | `apps/background/AGENTS.md`    |
-| WebDAV RFC 4918 notes             | `packages/webdav/README.md`    |
-| D1/DAO layer                      | `packages/backend-data/AGENTS.md` |
-| Bindings, wrangler, env vars, DI  | `docs/agents/runtime/AGENTS.md` |
-| Tests, thresholds, mock patterns  | `docs/agents/testing/AGENTS.md` |
-```
+| Area                             | Guide                             |
+| -------------------------------- | --------------------------------- |
+| API worker, auth, routes         | `apps/api/AGENTS.md`              |
+| Background worker, cron, volumes | `apps/background/AGENTS.md`       |
+| WebDAV RFC 4918 notes            | `packages/webdav/README.md`       |
+| D1/DAO layer                     | `packages/backend-data/AGENTS.md` |
+| Bindings, wrangler, env vars, DI | `docs/agents/runtime/AGENTS.md`   |
+| Tests, thresholds, mock patterns | `docs/agents/testing/AGENTS.md`   |
+
+````
 
 ## Commit Policy
 
@@ -86,4 +87,4 @@ Format: `<TYPE>[optional scope]: <description>`
 [Markdown body]
 
 [optional footers]
-```
+````

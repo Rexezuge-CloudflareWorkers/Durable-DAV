@@ -80,7 +80,10 @@ async function handleCopy(
   const destExists = repo.statInner(destInner).exists;
   if (!overwrite && destExists) return new Response('Precondition Failed', { status: 412 });
   if (destExists) {
-    const removed = await removeDestination(destInner, new Request(request.url, { method: 'DELETE', headers: forwardLockHeaders(request) }));
+    const removed = await removeDestination(
+      destInner,
+      new Request(request.url, { method: 'DELETE', headers: forwardLockHeaders(request) }),
+    );
     if (removed) return removed;
   }
   if (srcStat.isDirectory) {
@@ -151,10 +154,7 @@ async function handleMove(
   const destExists = repo.statInner(destInner).exists;
   if (!overwrite && destExists) return new Response('Precondition Failed', { status: 412 });
   if (destExists) {
-    const removed = await deleteForMove(
-      destInner,
-      new Request(request.url, { method: 'DELETE', headers: forwardLockHeaders(request) }),
-    );
+    const removed = await deleteForMove(destInner, new Request(request.url, { method: 'DELETE', headers: forwardLockHeaders(request) }));
     if (removed) return removed;
   }
   try {
