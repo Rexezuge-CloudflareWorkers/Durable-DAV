@@ -1,0 +1,32 @@
+{
+  "name": "@durable-dav/test",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@durable-dav/backend-data": "workspace:*",
+    "@durable-dav/backend-errors": "workspace:*",
+    "@durable-dav/backend-runtime": "workspace:*",
+    "@durable-dav/backend-services": "workspace:*",
+    "@durable-dav/dav-store": "workspace:*",
+    "@durable-dav/shared": "workspace:*",
+    "@durable-dav/webdav": "workspace:*",
+    "hono": "4.13.8",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
+    "vitest": "4.1.11"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "5.20260921.1",
+    "@testing-library/jest-dom": "7.0.1",
+    "@testing-library/react": "16.3.3",
+    "@types/node": "26.6.2",
+    "@types/react": "19.3.0",
+    "@types/react-dom": "19.3.0",
+    "typescript": "6.0.3"
+  }
+}

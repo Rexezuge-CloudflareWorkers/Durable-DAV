@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DavPermissionService, VolumeService, VolumeCredentialService, checkVolumeQuota } from '@durable-dav/backend-services/dav';
 import { DavCredentialUtil } from '@durable-dav/shared/utils';
+import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 
 function fakeVolumeDb(opts: { ownedCount?: number; username?: string | null; existing?: unknown } = {}) {
   const calls = { credentialsDeleted: 0 };
@@ -14,7 +15,11 @@ function fakeVolumeDb(opts: { ownedCount?: number; username?: string | null; exi
   };
   const userDAO = {
     getByEmail: async () =>
-      opts.username === undefined ? { email: 'a@x.co', username: 'alice' } : opts.username ? { email: 'a@x.co', username: opts.username } : null,
+      opts.username === undefined
+        ? { email: 'a@x.co', username: 'alice' }
+        : opts.username
+          ? { email: 'a@x.co', username: opts.username }
+          : null,
   };
   return {
     calls,
@@ -42,9 +47,7 @@ describe('VolumeService user-only buckets', () => {
   it('enforces per-user quota from MAX_VOLUMES_PER_USER', async () => {
     const { deps } = fakeVolumeDb({ ownedCount: 2, username: 'alice' });
     const svc = new VolumeService({ DB: {} as never, MAX_VOLUMES_PER_USER: '2' }, deps);
-    await expect(
-      svc.createVolume({ owner: 'alice', name: 'b1', creatorEmail: 'a@x.co' }),
-    ).rejects.toThrow(/Maximum 2 volumes/);
+    await expect(svc.createVolume({ owner: 'alice', name: 'b1', creatorEmail: 'a@x.co' })).rejects.toThrow(/Maximum 2 volumes/);
   });
 
   it('rejects owner mismatch (no org volumes)', async () => {
@@ -63,36 +66,42 @@ describe('VolumeService user-only buckets', () => {
     };
     const seen: Array<{ isPrivate: boolean }> = [];
     const { deps, calls } = fakeVolumeDb({ ownedCount: 0, username: 'alice', existing: null });
-    const svc = new VolumeService({ DB: {} as never }, {
-      ...deps,
-      volumeDAO: () =>
-        Promise.resolve({
-          getByOwnerName: async () => null,
-          getById: async () => created as never,
-          listByOwnerEmail: async () => [],
-          create: async (input: { isPrivate: boolean }) => {
-            seen.push({ isPrivate: input.isPrivate });
-          },
-          update: async () => undefined,
-          deleteById: async () => undefined,
-        } as never),
-    });
+    const svc = new VolumeService(
+      { DB: {} as never },
+      {
+        ...deps,
+        volumeDAO: () =>
+          Promise.resolve({
+            getByOwnerName: async () => null,
+            getById: async () => created as never,
+            listByOwnerEmail: async () => [],
+            create: async (input: { isPrivate: boolean }) => {
+              seen.push({ isPrivate: input.isPrivate });
+            },
+            update: async () => undefined,
+            deleteById: async () => undefined,
+          } as never),
+      },
+    );
     const row = await svc.createVolume({ owner: 'alice', name: 'photos', creatorEmail: 'A@X.co' });
     expect(row.owner_email).toBe('a@x.co');
     expect(seen[0]?.isPrivate).toBe(true);
 
-    const deleter = new VolumeService({ DB: {} as never }, {
-      ...deps,
-      volumeDAO: () =>
-        Promise.resolve({
-          getByOwnerName: async () => created as never,
-          getById: async () => created as never,
-          listByOwnerEmail: async () => [],
-          create: async () => undefined,
-          update: async () => undefined,
-          deleteById: async () => undefined,
-        } as never),
-    });
+    const deleter = new VolumeService(
+      { DB: {} as never },
+      {
+        ...deps,
+        volumeDAO: () =>
+          Promise.resolve({
+            getByOwnerName: async () => created as never,
+            getById: async () => created as never,
+            listByOwnerEmail: async () => [],
+            create: async () => undefined,
+            update: async () => undefined,
+            deleteById: async () => undefined,
+          } as never),
+      },
+    );
     await deleter.deleteVolume('alice', 'photos');
     expect(calls.credentialsDeleted).toBe(1);
   });
@@ -107,18 +116,21 @@ describe('VolumeService user-only buckets', () => {
       is_private: 1,
     };
     const { deps } = fakeVolumeDb({ ownedCount: 0, username: 'alice' });
-    const svc = new VolumeService({ DB: {} as never }, {
-      ...deps,
-      volumeDAO: () =>
-        Promise.resolve({
-          getByOwnerName: async () => stored as never,
-          getById: async () => ({ ...stored, description: 'hi', is_private: 0 }) as never,
-          listByOwnerEmail: async () => [],
-          create: async () => undefined,
-          update: async () => undefined,
-          deleteById: async () => undefined,
-        } as never),
-    });
+    const svc = new VolumeService(
+      { DB: {} as never },
+      {
+        ...deps,
+        volumeDAO: () =>
+          Promise.resolve({
+            getByOwnerName: async () => stored as never,
+            getById: async () => ({ ...stored, description: 'hi', is_private: 0 }) as never,
+            listByOwnerEmail: async () => [],
+            create: async () => undefined,
+            update: async () => undefined,
+            deleteById: async () => undefined,
+          } as never),
+      },
+    );
     const updated = await svc.updateVolume('alice', 'photos', 'a@x.co', { description: 'hi', isPrivate: false });
     expect(updated.description).toBe('hi');
     await expect(svc.updateVolume('alice', 'photos', 'other@x.co', { isPrivate: true })).rejects.toThrow(/owner/);
@@ -126,15 +138,18 @@ describe('VolumeService user-only buckets', () => {
 });
 
 describe('DavPermissionService owner-only', () => {
-  const volume = { id: 'v1', owner_email: 'owner@x.co', is_private: 1 } as never;
+  // `getRole` only reads `owner_email` and `is_private`, so a minimal
+  // projection is enough and keeps the fixture readable.
+  const volume = { id: 'v1', owner_email: 'owner@x.co', is_private: 1 } as DavVolumeRow;
 
   it('owner is admin, others hidden on private, public read', async () => {
     const perm = new DavPermissionService();
     await expect(perm.getRole('owner@x.co', volume)).resolves.toBe('admin');
     await expect(perm.getRole('friend@x.co', volume)).resolves.toBeNull();
     await expect(perm.getRole(null, volume)).resolves.toBeNull();
-    await expect(perm.getRole(null, { ...volume, is_private: 0 } as never)).resolves.toBe('read');
-    await expect(perm.getRole('friend@x.co', { ...volume, is_private: 0 } as never)).resolves.toBe('read');
+    const publicVolume: DavVolumeRow = { ...volume, is_private: 0 };
+    await expect(perm.getRole(null, publicVolume)).resolves.toBe('read');
+    await expect(perm.getRole('friend@x.co', publicVolume)).resolves.toBe('read');
   });
 });
 

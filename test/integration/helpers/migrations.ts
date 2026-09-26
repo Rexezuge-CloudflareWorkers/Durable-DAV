@@ -35,7 +35,7 @@ function splitSql(sql: string): string[] {
     // `CREATE [TEMP|TEMPORARY] TRIGGER` opens a body; a table merely named
     // "trigger" (`CREATE TABLE trigger`) must not. The word before TRIGGER
     // disambiguates.
-    if (upper === 'TRIGGER' && ['CREATE', 'TEMP', 'TEMPORARY'].includes(recentKeywords[recentKeywords.length - 2] ?? '')) {
+    if (upper === 'TRIGGER' && ['CREATE', 'TEMP', 'TEMPORARY'].includes(recentKeywords.at(-2) ?? '')) {
       inTrigger = true;
       triggerDepth = 0;
     } else if (inTrigger && upper === 'BEGIN') {
@@ -139,8 +139,8 @@ export async function applyMigrations(db: D1Database): Promise<void> {
     if (stmt.length === 0) continue;
     // Skip pure-comment statements (no executable SQL).
     const withoutComments = stmt
-      .replace(/--[^\n]*/g, '')
-      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .replaceAll(/--[^\n]*/g, '')
+      .replaceAll(/\/\*[\s\S]*?\*\//g, '')
       .trim();
     if (withoutComments.length === 0) continue;
     await db.prepare(stmt).run();

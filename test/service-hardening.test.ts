@@ -12,7 +12,11 @@ import { DavLockGuard } from '../apps/background/src/dav/DavLockGuard';
  * when the query shape changed, which reads as "not locked" and turns a
  * refactor into a false green.
  */
-function lockSql(rowsByPath: Record<string, Array<Record<string, unknown>>>) {
+type LockRow = { token: string; scope: string; depth: string; expires_at: number };
+
+type LockRowMap = Record<string, LockRow[]>;
+
+function lockSql(rowsByPath: LockRowMap) {
   return {
     exec: (query: string, ...bindings: unknown[]) => {
       const inMatch = /path IN \(([^)]*)\)/.exec(query);
@@ -20,9 +24,9 @@ function lockSql(rowsByPath: Record<string, Array<Record<string, unknown>>>) {
       const pathCount = (inMatch[1]?.match(/\?/g) ?? []).length;
       const paths = bindings.slice(0, pathCount).filter((b): b is string => typeof b === 'string');
       const now = bindings[pathCount] as number;
-      const rows = paths
-        .flatMap((p) => (rowsByPath[p] ?? []).map((row) => ({ path: p, ...row })))
-        .filter((row) => Number(row['expires_at'] ?? 0) > now);
+      const rows: Array<LockRow & { path: string }> = paths
+        .flatMap((p) => (rowsByPath[p] ?? []).map((row) => ({ ...row, path: p })))
+        .filter((row) => Number(row.expires_at ?? 0) > now);
       return { toArray: () => rows };
     },
   };
@@ -31,41 +35,43 @@ function lockSql(rowsByPath: Record<string, Array<Record<string, unknown>>>) {
 describe('VolumeService quota hardening', () => {
   it('prefers COUNT(*) over listing rows', async () => {
     let listed = false;
-    const svc = new VolumeService({ DB: {} as never, MAX_VOLUMES_PER_USER: '1' }, {
-      volumeDAO: () =>
-        Promise.resolve({
-          countByOwnerEmail: async () => 1,
-          listByOwnerEmail: async () => {
-            listed = true;
-            return [];
-          },
-          getByOwnerName: async () => null,
-        } as never),
-      userDAO: () => Promise.resolve({ getByEmail: async () => ({ username: 'alice' }) } as never),
-      credentialDAO: () => Promise.resolve({} as never),
-    });
-    await expect(svc.createVolume({ owner: 'alice', name: 'b1', creatorEmail: 'a@x.co' })).rejects.toThrow(
-      /Maximum 1 volumes/,
+    const svc = new VolumeService(
+      { DB: {} as never, MAX_VOLUMES_PER_USER: '1' },
+      {
+        volumeDAO: () =>
+          Promise.resolve({
+            countByOwnerEmail: async () => 1,
+            listByOwnerEmail: async () => {
+              listed = true;
+              return [];
+            },
+            getByOwnerName: async () => null,
+          } as never),
+        userDAO: () => Promise.resolve({ getByEmail: async () => ({ username: 'alice' }) } as never),
+        credentialDAO: () => Promise.resolve({} as never),
+      },
     );
+    await expect(svc.createVolume({ owner: 'alice', name: 'b1', creatorEmail: 'a@x.co' })).rejects.toThrow(/Maximum 1 volumes/);
     expect(listed).toBe(false);
   });
 
   it('falls back to list length when COUNT is unavailable (fake-DB compat)', async () => {
-    const svc = new VolumeService({ DB: {} as never, MAX_VOLUMES_PER_USER: '1' }, {
-      volumeDAO: () =>
-        Promise.resolve({
-          countByOwnerEmail: async () => {
-            throw new Error('no such function: count');
-          },
-          listByOwnerEmail: async () => [{ id: 'v1' }],
-          getByOwnerName: async () => null,
-        } as never),
-      userDAO: () => Promise.resolve({ getByEmail: async () => ({ username: 'alice' }) } as never),
-      credentialDAO: () => Promise.resolve({} as never),
-    });
-    await expect(svc.createVolume({ owner: 'alice', name: 'b1', creatorEmail: 'a@x.co' })).rejects.toThrow(
-      /Maximum 1 volumes/,
+    const svc = new VolumeService(
+      { DB: {} as never, MAX_VOLUMES_PER_USER: '1' },
+      {
+        volumeDAO: () =>
+          Promise.resolve({
+            countByOwnerEmail: async () => {
+              throw new Error('no such function: count');
+            },
+            listByOwnerEmail: async () => [{ id: 'v1' }],
+            getByOwnerName: async () => null,
+          } as never),
+        userDAO: () => Promise.resolve({ getByEmail: async () => ({ username: 'alice' }) } as never),
+        credentialDAO: () => Promise.resolve({} as never),
+      },
     );
+    await expect(svc.createVolume({ owner: 'alice', name: 'b1', creatorEmail: 'a@x.co' })).rejects.toThrow(/Maximum 1 volumes/);
   });
 });
 
@@ -90,10 +96,7 @@ describe('DavLockGuard hardening', () => {
     const guard = new DavLockGuard(sql as never);
     const locked = guard.assertLock(new Request('https://x/'), 'a/b');
     expect(locked?.status).toBe(423);
-    const unlocked = guard.assertLock(
-      new Request('https://x/', { headers: { If: '(<opaquelocktoken:1>)' } }),
-      'a/b',
-    );
+    const unlocked = guard.assertLock(new Request('https://x/', { headers: { If: '(<opaquelocktoken:1>)' } }), 'a/b');
     expect(unlocked).toBeNull();
   });
 

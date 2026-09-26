@@ -54,13 +54,12 @@ describe('email shape validation', () => {
 });
 
 describe('XML element names from client documents are validated', () => {
-  const propfind = (prop: string): string =>
-    `<?xml version="1.0"?><propfind xmlns="DAV:" xmlns:z="urn:z"><prop>${prop}</prop></propfind>`;
+  const propfind = (prop: string): string => `<?xml version="1.0"?><propfind xmlns="DAV:" xmlns:z="urn:z"><prop>${prop}</prop></propfind>`;
 
   it('accepts a well-formed qualified name', () => {
     const parsed = parsePropfindRequest(propfind('<z:custom xmlns:z="urn:z"/>'));
     expect(parsed?.mode).toBe('prop');
-    expect(parsed?.properties[0]?.localName).toBe('custom');
+    expect(parsed?.mode === 'prop' ? parsed.properties[0]?.localName : undefined).toBe('custom');
   });
 
   it('rejects a local name that is not a valid NCName', () => {

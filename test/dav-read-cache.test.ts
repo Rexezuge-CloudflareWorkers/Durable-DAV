@@ -79,7 +79,7 @@ describe('dav KV domains', () => {
   it('rejects unknown domains, empty parts, and empty segments', () => {
     expect(() => buildKvKey('nope' as never, ['x'])).toThrow(/Unknown KV domain/);
     expect(() => buildKvKey('davProp', [])).toThrow(/at least one key part/);
-    expect(() => buildKvKey('davFile', ['   '])).toThrow(/must not be empty/);
+    expect(() => buildKvKey('davFile', [' '.repeat(3)])).toThrow(/must not be empty/);
   });
 
   it('hashes overlong DAV keys deterministically within the length cap', () => {
@@ -118,8 +118,8 @@ describe('clampTtl for DAV domains', () => {
     expect(clampTtl(1, 'davMeta')).toBe(60);
     // Every domain declares a required ttl, so a non-finite override falls back
     // to that default rather than disabling expiry.
-    expect(clampTtl(Number.NaN, 'davProp')).toBe(120);
-    expect(clampTtl(Number.POSITIVE_INFINITY, 'davFile')).toBe(300);
+    expect(clampTtl(NaN, 'davProp')).toBe(120);
+    expect(clampTtl(Infinity, 'davFile')).toBe(300);
   });
 });
 

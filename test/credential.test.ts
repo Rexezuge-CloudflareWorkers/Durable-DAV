@@ -19,16 +19,15 @@ function createCredentialFakeDb() {
     }>,
   };
   function statement(query: string, params: unknown[]) {
-    const q = query.replace(/\s+/g, ' ').trim();
+    const q = query.replaceAll(/\s+/g, ' ').trim();
     return {
       first<T>(): Promise<T | null> {
         if (q.includes('FROM dav_credentials WHERE username = ? AND password_hash = ?')) {
           const row = state.rows.find((r) => r.username === params[0] && r.password_hash === params[1]);
           if (!row) return Promise.resolve(null);
-          if (q.includes('expires_at > ?') && !(row.expires_at > (params[2] as number))) {
-            return Promise.resolve(null);
-          }
-          return Promise.resolve(row as T);
+          return q.includes('expires_at > ?') && !(row.expires_at > (params[2] as number))
+            ? Promise.resolve(null)
+            : Promise.resolve(row as T);
         }
         if (q.startsWith('SELECT 1 AS found FROM dav_credentials WHERE username = ?')) {
           const found = state.rows.some((r) => r.username === params[0]);

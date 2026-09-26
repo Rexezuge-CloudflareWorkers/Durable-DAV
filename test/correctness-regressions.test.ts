@@ -9,14 +9,7 @@ describe('live property lookup rejects prototype-chain keys', () => {
   // walked the prototype chain, so a client-supplied `<D:constructor/>` in a
   // PROPFIND returned a *function* which `escapeXml` then called
   // `.replaceAll` on — an unauthenticated 500 on any bucket.
-  const NODE_PROPS = [
-    'constructor',
-    '__proto__',
-    'toString',
-    'valueOf',
-    'hasOwnProperty',
-    '__defineGetter__',
-  ];
+  const NODE_PROPS = ['constructor', '__proto__', 'toString', 'valueOf', 'hasOwnProperty', '__defineGetter__'];
 
   for (const localName of NODE_PROPS) {
     it(`treats <D:${localName}/> as absent instead of crashing`, () => {
@@ -31,7 +24,9 @@ describe('live property lookup rejects prototype-chain keys', () => {
 
   it('still resolves genuine DAV: live properties', () => {
     expect(getLivePropertyValue(null, { namespaceURI: 'DAV:', prefix: '', localName: 'getcontentlength', valueXml: '' })).toBe('0');
-    expect(getLivePropertyValue(null, { namespaceURI: 'DAV:', prefix: '', localName: 'resourcetype', valueXml: '' })).toBe('<collection />');
+    expect(getLivePropertyValue(null, { namespaceURI: 'DAV:', prefix: '', localName: 'resourcetype', valueXml: '' })).toBe(
+      '<collection />',
+    );
   });
 
   it('ignores non-DAV namespaces entirely', () => {
@@ -61,17 +56,20 @@ describe('DavLockGuard fails closed on lookup errors', () => {
 
 describe('VolumeService.createVolume owner check fails closed', () => {
   const service = (userDAO: unknown) =>
-    new VolumeService({ DB: {} as never }, {
-      volumeDAO: () =>
-        Promise.resolve({
-          countByOwnerEmail: async () => 0,
-          getByOwnerName: async () => null,
-          getById: async () => null,
-          create: async () => undefined,
-        } as never),
-      userDAO: () => Promise.resolve(userDAO as never),
-      credentialDAO: () => Promise.resolve({} as never),
-    });
+    new VolumeService(
+      { DB: {} as never },
+      {
+        volumeDAO: () =>
+          Promise.resolve({
+            countByOwnerEmail: async () => 0,
+            getByOwnerName: async () => null,
+            getById: async () => null,
+            create: async () => undefined,
+          } as never),
+        userDAO: () => Promise.resolve(userDAO as never),
+        credentialDAO: () => Promise.resolve({} as never),
+      },
+    );
 
   it('rejects when the caller has no provisioned username', async () => {
     // Previously `resolveCallerUsername` returned null here and the check
@@ -93,9 +91,7 @@ describe('VolumeService.createVolume owner check fails closed', () => {
 
   it('rejects a mismatched owner', async () => {
     const svc = service({ getByEmail: async () => ({ username: 'alice' }) });
-    await expect(svc.createVolume({ owner: 'victim', name: 'photos', creatorEmail: 'a@x.co' })).rejects.toThrow(
-      /Only the bucket owner/,
-    );
+    await expect(svc.createVolume({ owner: 'victim', name: 'photos', creatorEmail: 'a@x.co' })).rejects.toThrow(/Only the bucket owner/);
   });
 });
 

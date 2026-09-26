@@ -28,7 +28,7 @@ describe('DavContext hardening', () => {
     const req = new Request('https://example.com/a/b', { headers: { 'X-Dav-Path': 'a/%2e%2e/b' } });
     const inner = resolveInnerPath(req, new URL(req.url), '/a/b');
     expect(inner).toBe('a/../b');
-    expect(isValidInnerPath(inner)).toBe(false);
+    expect(isValidInnerPath(inner ?? '')).toBe(false);
   });
 
   it('matches Destination base case-insensitively', () => {
