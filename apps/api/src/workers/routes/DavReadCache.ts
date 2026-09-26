@@ -235,30 +235,6 @@ async function putCachedVolumeList(cache: KvCache, ownerEmail: string, value: un
   }
 }
 
-async function getCachedVolumeDetail<T>(cache: KvCache, owner: string, volume: string): Promise<T | null> {
-  try {
-    return await cache.getJson<T>('davMeta', ['volume', cacheKeyForVolume(owner, volume)]);
-  } catch {
-    return null;
-  }
-}
-
-async function putCachedVolumeDetail(cache: KvCache, owner: string, volume: string, value: unknown): Promise<void> {
-  try {
-    await cache.putJson('davMeta', ['volume', cacheKeyForVolume(owner, volume)], value, { ttlSeconds: DAV_META_TTL_SECONDS });
-  } catch {
-    // Best-effort cache population.
-  }
-}
-
-async function invalidateVolumeDetailCache(cache: KvCache, owner: string, volume: string): Promise<void> {
-  try {
-    await cache.del('davMeta', ['volume', cacheKeyForVolume(owner, volume)]);
-  } catch {
-    // Best-effort invalidation.
-  }
-}
-
 export {
   DAV_PROP_TTL_SECONDS,
   DAV_FILE_TTL_SECONDS,
@@ -278,9 +254,6 @@ export {
   invalidateVolumeListCache,
   getCachedVolumeList,
   putCachedVolumeList,
-  getCachedVolumeDetail,
-  putCachedVolumeDetail,
-  invalidateVolumeDetailCache,
   bytesToBase64,
   base64ToBytes,
   invalidatesReadCache,

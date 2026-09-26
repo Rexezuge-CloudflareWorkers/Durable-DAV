@@ -1,5 +1,6 @@
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
+import { readCappedBody } from '@durable-dav/webdav';
 import { ServiceError, DatabaseError, DefaultInternalServerError } from '@durable-dav/backend-errors';
 import type { ApiContext } from '@/types/ApiContext';
 import { getBackendStrings } from '@durable-dav/shared/i18n';
@@ -9,6 +10,11 @@ import { getRequestScope, asScopedContext } from '@durable-dav/backend-runtime/d
 import { toServiceStatus as toMappedStatus } from '@durable-dav/backend-services/errors';
 
 type HonoContext = ApiContext;
+
+/**
+Largest JSON request body the API accepts.
+*/
+const MAX_JSON_BODY_BYTES = 1_048_576;
 
 /**
  * Template Method base for Hono route handlers (Otter `IBaseRoute` pattern).
@@ -49,34 +55,36 @@ abstract class BaseRoute {
   }
 
   /**
-   * Strict JSON body reader. Distinguishes malformed JSON (`malformed: true`)
-   * from a valid empty object — callers must return 400 on malformed instead
-   * of collapsing to `{}` and surfacing a misleading `required` error.
+   * Strict, size-capped JSON body reader.
+   *
+   * Distinguishes malformed JSON (`malformed: true`) from a valid empty object —
+   * callers must return 400 on malformed instead of collapsing to `{}` and
+   * surfacing a misleading `required` error.
+   *
+   * The cap is enforced on the *stream*, not just the declared
+   * `Content-Length`. A header probe alone is advisory: a chunked request omits
+   * it, and `fetch` may drop an explicitly-set one, so the previous check let an
+   * unbounded body through to `req.json()`.
    */
-  public static async readJson<T>(
-    c: HonoContext | Context | { req: { json: () => Promise<unknown>; header?: (name: string) => string | undefined } },
-  ): Promise<{ malformed: boolean; oversized: boolean; body: T }> {
+  public static async readJson<T>(c: HonoContext | Context): Promise<{ malformed: boolean; oversized: boolean; body: T }> {
+    const contentLength = (() => {
+      const raw = c.req.header('content-length');
+      const n = raw === undefined ? NaN : Number(raw);
+      return Number.isFinite(n) ? n : NaN;
+    })();
+    if (contentLength > MAX_JSON_BODY_BYTES) {
+      return { malformed: false, oversized: true, body: {} as T };
+    }
+    const raw = await readCappedBody(c.req.raw, MAX_JSON_BODY_BYTES);
+    if (!raw.ok) return { malformed: false, oversized: true, body: {} as T };
+    const text = new TextDecoder().decode(raw.bytes);
+    if (text.trim() === '') return { malformed: false, oversized: false, body: {} as T };
     try {
-      const contentLength = (() => {
-        try {
-          const header = (c as { req?: { header?: (n: string) => string | undefined } }).req?.header;
-          const raw = typeof header === 'function' ? header('content-length') : undefined;
-          const n = raw === undefined ? NaN : Number(raw);
-          return Number.isFinite(n) ? n : NaN;
-        } catch {
-          return NaN;
-        }
-      })();
-      if (Number.isFinite(contentLength) && (contentLength) > 1_048_576) {
-        return { malformed: false, oversized: true, body: {} as T };
-      }
-      const body = (await (c as { req: { json: () => Promise<unknown> } }).req.json()) as T;
-      return { malformed: false, oversized: false, body };
+      return { malformed: false, oversized: false, body: JSON.parse(text) as T };
     } catch {
       return { malformed: true, oversized: false, body: {} as T };
     }
   }
-
 
   public static toServiceStatus(error: unknown): 400 | 401 | 403 | 404 | 409 | 413 | 429 | 500 {
     return toMappedStatus(error);

@@ -1,12 +1,12 @@
-import type { Context, Hono } from 'hono';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import { SUPPORT_METHODS, DAV_CLASS } from '@durable-dav/webdav';
-import { BaseRoute } from '@/endpoints/IBaseRoute';
+import type { ApiApp, ApiContext } from '@/types/ApiContext';
 import { getVolumeStub } from '../doStubs';
 import { invalidateVolumeCaches, invalidatesReadCache } from './DavReadCache';
+import { VolumeScopedRoute } from './VolumeScopedRoute';
+import type { VolumeRequestContext } from './VolumeScopedRoute';
 
-type App = Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
-type BrowserContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string } }>;
+type App = ApiApp;
 
 function stripSlashes(value: string): string {
   let start = 0;
@@ -16,17 +16,6 @@ function stripSlashes(value: string): string {
   return value.slice(start, end);
 }
 
-function isDavMethod(method: string): boolean {
-  return SUPPORT_METHODS.includes(method);
-}
-
-function notFound(c: BrowserContext): Response {
-  // Hide existence (Git `requireVisibleRepo` pattern): missing and forbidden
-  // both surface as 404 JSON, never 401 + WWW-Authenticate so browsers never
-  // show a native username/password prompt for the SPA file browser.
-  return c.json({ Exception: { Type: 'NotFound', Message: 'Volume not found' } }, 404);
-}
-
 function innerFromPath(pathname: string): string {
   // Browser prefix is /user/volumes/:owner/:volume/files[/inner...].
   // Split on '/' so owner/volume case or encoding never breaks extraction.
@@ -34,94 +23,106 @@ function innerFromPath(pathname: string): string {
   return parts.length <= 5 ? '' : parts.slice(5).join('/');
 }
 
+/**
+ * Rewrite a browser-shaped `Destination` onto the DAV base.
+ *
+ * Returns `null` for a cross-origin destination. RFC 4918 §10.3 requires the
+ * server to reject one it cannot map with `502 Bad Gateway`; forwarding the raw
+ * header instead relied entirely on a same-origin check inside the DO, one
+ * package away.
+ */
 function rewriteDestination(destinationHeader: string | null, requestUrl: string, davBase: string): string | null {
   if (!destinationHeader) return null;
   try {
     const destUrl = new URL(destinationHeader, requestUrl);
+    if (destUrl.origin !== new URL(requestUrl).origin) return null;
     const parts = stripSlashes(destUrl.pathname).split('/');
     // Browser-style destination: /user/volumes/<owner>/<vol>/files/<inner>
     if (parts.length >= 5 && parts[0] === 'user' && parts[1] === 'volumes' && parts[4] === 'files') {
       const destInner = parts.slice(5).join('/');
-      const suffix = destInner === '' ? '/' : `/${destInner}`;
-      return `${destUrl.origin}${davBase}${suffix}`;
+      return `${destUrl.origin}${davBase}${destInner === '' ? '/' : `/${destInner}`}`;
     }
-    return destinationHeader;
+    return destUrl.href;
   } catch {
-    return destinationHeader;
+    return null;
   }
 }
 
-async function browserHandler(c: BrowserContext): Promise<Response> {
-  const method = c.req.method;
-  if (!isDavMethod(method)) {
-    return new Response('Method Not Allowed', {
-      status: 405,
-      headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS },
-    });
+/**
+ * Session-authenticated browser plane.
+ *
+ * Same DO content as the WebDAV plane, but authorised by the Access session so
+ * a private bucket never answers 401 + `WWW-Authenticate` (which would pop a
+ * native username/password prompt in the SPA's file browser).
+ *
+ * `404` is the not-owner response here, not `403`: this plane deliberately
+ * hides existence so a stranger cannot probe which buckets exist. That was
+ * previously duplicated inline and had already drifted from the credential
+ * plane, which returned 403.
+ */
+class BrowserVolumeRoute extends VolumeScopedRoute {
+  constructor() {
+    super(404);
   }
-  const email = c.get('AuthenticatedUserEmailAddress') as string | undefined;
-  if (!email) {
-    // Middleware normally rejects unauthenticated /user/* with JSON 401.
-    // Defensive: same shape, no WWW-Authenticate.
-    return c.json({ Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } }, 401);
-  }
-  const owner = c.req.param('owner') ?? '';
-  const volume = c.req.param('volume') ?? '';
-  const scope = BaseRoute.getScope(c as never);
-  const row = await scope
-    .get(Tokens.VolumeService)
-    .getVolume(owner, volume)
-    .catch(() => null);
-  if (!row) return notFound(c);
-  if (row.owner_email.toLowerCase() !== email.toLowerCase()) return notFound(c);
 
-  const stub = getVolumeStub(c.env, row.owner, row.name);
-  const davBase = `/${row.owner}/${row.name}`;
-  const url = new URL(c.req.url);
-  const inner = innerFromPath(url.pathname);
-  const hasBody = !['GET', 'HEAD', 'OPTIONS'].includes(method);
-  const rewrittenDest = rewriteDestination(c.req.raw.headers.get('Destination'), c.req.url, davBase);
-  // Forward to the DAV-base URL (not the browser URL): the DO falls back to
-  // pathname parsing when X-Dav-Path is empty (root), and the browser prefix
-  // would resolve to a nonexistent inner path there.
-  const davUrl = `${url.origin}${davBase}/${inner}`;
-  const forward = new Request(davUrl, {
-    method,
-    headers: (() => {
-      const h = new Headers(c.req.raw.headers);
-      h.set('X-Dav-Base', davBase);
-      h.set('X-Dav-Path', inner);
-      h.set('X-Dav-User', email);
-      if (rewrittenDest) h.set('Destination', rewrittenDest);
-      // Never forward ambient Basic credentials into the DO on this plane;
-      // session identity is authoritative here.
-      h.delete('Authorization');
-      return h;
-    })(),
-    body: hasBody ? c.req.raw.body : undefined,
-    ...(hasBody && { duplex: 'half' }),
-  });
-  const response = await stub.fetch(forward);
-  // Browser-plane writes share the same DO state as the WebDAV plane, so
-  // invalidate the front read cache too (fail-soft, best-effort). Same
-  // allow-list the WebDAV plane uses, so the two can't drift.
-  if (invalidatesReadCache(method)) {
-    try {
-      await invalidateVolumeCaches(scope.get(Tokens.KvCache), row.owner, row.name);
-    } catch {
-      // Never break writes on cache errors.
+  protected async run(c: ApiContext, { scope, email, row }: VolumeRequestContext): Promise<Response> {
+    const method = c.req.method;
+    if (!SUPPORT_METHODS.includes(method)) {
+      return new Response('Method Not Allowed', {
+        status: 405,
+        headers: { Allow: SUPPORT_METHODS.join(', '), DAV: DAV_CLASS },
+      });
     }
+
+    const stub = getVolumeStub(c.env, row.owner, row.name);
+    const davBase = `/${row.owner}/${row.name}`;
+    const url = new URL(c.req.url);
+    const inner = innerFromPath(url.pathname);
+    const hasBody = !['GET', 'HEAD', 'OPTIONS'].includes(method);
+    const destination = rewriteDestination(c.req.raw.headers.get('Destination'), c.req.url, davBase);
+    if (destination === null && c.req.raw.headers.has('Destination')) {
+      // §10.3: a destination on another server cannot be satisfied.
+      return c.json({ Exception: { Type: 'BadGateway', Message: 'Cross-origin Destination' } }, 502);
+    }
+    // Forward to the DAV-base URL (not the browser URL): the DO falls back to
+    // pathname parsing when X-Dav-Path is empty (root), and the browser prefix
+    // would resolve to a nonexistent inner path there.
+    const forward = new Request(`${url.origin}${davBase}/${inner}`, {
+      method,
+      headers: (() => {
+        const h = new Headers(c.req.raw.headers);
+        h.set('X-Dav-Base', davBase);
+        h.set('X-Dav-Path', inner);
+        h.set('X-Dav-User', email);
+        if (destination) h.set('Destination', destination);
+        // Never forward ambient Basic credentials into the DO on this plane;
+        // session identity is authoritative here.
+        h.delete('Authorization');
+        return h;
+      })(),
+      body: hasBody ? c.req.raw.body : undefined,
+      ...(hasBody && { duplex: 'half' }),
+    });
+    const response = await stub.fetch(forward);
+    // Browser-plane writes share the same DO state as the WebDAV plane, so
+    // invalidate the front read cache too (fail-soft, best-effort). Same
+    // allow-list the WebDAV plane uses, so the two cannot drift.
+    if (invalidatesReadCache(method)) {
+      try {
+        await invalidateVolumeCaches(scope.get(Tokens.KvCache), row.owner, row.name);
+      } catch {
+        // Never break writes on cache errors.
+      }
+    }
+    return response;
   }
-  return response;
 }
 
 function registerVolumeBrowserRoutes(app: App): void {
-  // Session-authenticated browser plane (Git read-model pattern):
-  // same DO forward as DavRoutes but authed via Access session, private
-  // volumes hide existence (404 JSON), never 401 + WWW-Authenticate.
+  const handler = new BrowserVolumeRoute();
   const methods = [...SUPPORT_METHODS] as never[];
-  app.on(methods, '/user/volumes/:owner/:volume/files', browserHandler as never);
-  app.on(methods, '/user/volumes/:owner/:volume/files/*', browserHandler as never);
+  app.on(methods, '/user/volumes/:owner/:volume/files', (c) => handler.handle(c));
+  app.on(methods, '/user/volumes/:owner/:volume/files/*', (c) => handler.handle(c));
 }
 
-export { registerVolumeBrowserRoutes };
+export { registerVolumeBrowserRoutes, innerFromPath, rewriteDestination };

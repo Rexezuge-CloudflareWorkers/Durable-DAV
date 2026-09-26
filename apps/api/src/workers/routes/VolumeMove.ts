@@ -91,5 +91,5 @@ async function moveVolumeDosForRename(env: Env, moves: VolumeMoveItem[]): Promis
   }
 }
 
-export { moveVolumeDosForRename, moveOneVolume };
+export { moveVolumeDosForRename, moveOneVolume, splitFull };
 export type { VolumeMoveItem };
