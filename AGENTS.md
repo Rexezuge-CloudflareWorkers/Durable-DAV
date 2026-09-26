@@ -3,26 +3,31 @@
 Durable-DAV: Cloudflare Workers WebDAV server (`@durable-dav/monorepo`, `pnpm@11.2.2`).
 
 - **WebDAV core**: `packages/webdav` (pure RFC 4918 Class 1+2: path/XML/prop/lock helpers, zero runtime deps except `@xmldom/xmldom`) + `packages/dav-store` (`dofs` `Fs` factory via `createDofsFs` + SQLite metadata `dav_nodes/dav_props/dav_locks`).
-- **Storage**: `apps/background` `DavVolumeWorker` facade (one per bucket `DAV_VOLUME.getByName(owner/volume-lowercase)`, 5GB device, files at `/` in `dofs`, dead props/locks in DO SQLite; lifecycle `setVolumeKey/deleteVolume`) + `CronTasksWorker` (`*/10 * * * *`, credential prune only); D1 `migrations/0001_init.sql` baseline + `0002_bucket_credentials.sql` (`dav_credentials`, private-by-default rebuild, drops legacy token/collaborator tables).
-- **Auth**: `/user/*` Cloudflare Access (`AccessAuthService`: DEMO→DEV→JWT→`ctx.access` fallback; never trust `Cf-Access-Authenticated-User-Email`); email login, globally-unique mutable username (single `user` namespace; buckets are owner-only, no orgs, no collaborators); WebDAV bucket Basic (`username:password` validated, bound to volume id, expiry enforced, `volume-adjective-animal-digits` usernames, `MAX_CREDENTIALS_PER_VOLUME=10`, private-by-default, public opt-in anon reads).
+- **Storage**: `apps/background` `DavVolumeWorker` facade (one per bucket `DAV_VOLUME.getByName(owner/volume-lowercase)`, 5GB device applied once per isolate, files at `/` in `dofs`, dead props/locks in DO SQLite; lifecycle `deleteVolume`, username-rename transfer in `dav/VolumeTransfer.ts`) + `CronTasksWorker` (`*/10 * * * *`, credential prune only); D1 `migrations/0001_init.sql` baseline + `0002_bucket_credentials.sql` (`dav_credentials`, private-by-default rebuild, drops legacy token/collaborator tables).
+- **Auth**: `/user/*` Cloudflare Access (`AccessAuthService`: DEMO→DEV→JWT→`ctx.access` fallback; never trust `Cf-Access-Authenticated-User-Email`); email login, globally-unique mutable username (single `user` namespace; buckets are owner-only, no orgs, no collaborators); WebDAV bucket Basic (`username:password`, PBKDF2-SHA256 with per-hash salt + constant-time compare, bound to volume id, expiry enforced, `volume-adjective-animal-digits` usernames, `MAX_CREDENTIALS_PER_VOLUME=10`, private-by-default, public opt-in anon reads). Credential lookup is by `username` only — a salted hash cannot be searched on; the legacy unsalted-SHA256 format still verifies and is rehashed on first successful use. The `DEMO_MODE`/`DEV_AUTH_EMAIL` bypasses are **not** in `wrangler.template.jsonc` and `AppConfiguration.validate()` warns if one is set with `ENVIRONMENT=production`.
 - **API**: `apps/api` Hono+Chanfana `DurableDavWorker` (`/:owner/:volume/*` WebDAV via DO `fetch` forward + `/user/volumes` CRUD (quota-enforced, owner-only, private-by-default, `PATCH` visibility) + per-bucket `/user/volumes/:owner/:volume/credentials` + `/user/me` + `/users/:username` + `/health`, `/docs`); permissions owner-only via `DavPermissionService`; `apps/api/src/index.ts` re-exports DOs for bindings.
 - **Web**: `apps/web` Vite SPA (build embeds `dist/index.html` → `apps/api/src/generated/spa-shell.ts`); `GET /`, `/new`, `/settings`, `/:username` serve the shell, `GET /:owner/:volume` content-negotiates (`Accept: text/html` → SPA `VolumeView` with `?path=` subpaths + `?tab=settings` per-bucket General/Credentials/Danger-Zone, else DO forward); WebDAV clients use raw methods.
-- **Composition**: single scope per request via `scopeMiddleware` (`getScope(c).get(Tokens.X)`; `createRequestScope(env)` is the composition root, table-driven DAO wiring + single `DavPermissionService` binding); `Container` + `createServiceContext` + `AppConfiguration` in `@durable-dav/backend-runtime/di+config` are the DI foundation.
+- **Composition**: single scope per request via `scopeMiddleware` (`BaseRoute.getScope(c).get(Tokens.X)`; `createRequestScope(env)` is the composition root, table-driven DAO wiring + single `DavPermissionService` binding); `Container` + `createServiceContext` + `AppConfiguration` in `@durable-dav/backend-runtime/di+config` are the DI foundation. `VolumeScopedRoute` (`apps/api`) is the template method for every volume-scoped handler: one ownership guard, 404-vs-403 as a constructor argument, one error mapping.
+- **D1 predicates**: lowercase the *parameter*, never the column — `lower(col)` makes that column's index unusable. Credential lookup never filters on `password_hash`.
 - **i18n**: backend strings in `packages/shared/src/i18n` (wired via `BaseRoute.toErrorResponse`).
 
 ## Commands
 
 ```bash
 pnpm install --ignore-scripts
-pnpm -r typecheck
-pnpm run lint
+pnpm -r typecheck        # 11 projects, including `test/`
+pnpm run lint            # NODE_OPTIONS=--max-old-space-size=8192 is required; bare `eslint` OOMs
 pnpm run test
+pnpm run test:coverage   # enforced floor 35/31/41/36 — raise, never lower to pass
 pnpm run test:integration
+pnpm run validate:locales
+pnpm run checks          # typecheck + lint + god-files
 pnpm run typegen
 pnpm exec wrangler dev --config ./wrangler.jsonc
 ```
 
-No committed `wrangler.jsonc` secrets. God-file guard 300/400 warn-only.
+No committed `wrangler.jsonc` secrets. God-file guard 300/400 warn-only; currently **zero** files over 300.
+`test/` is a workspace project, so `pnpm -r typecheck` and `pnpm run lint` both reach it. Integration tests collect no coverage: the v8 provider needs `node:inspector/promises`, which does not exist inside workerd.
 
 ## Layers
 

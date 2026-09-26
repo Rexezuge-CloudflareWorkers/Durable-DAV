@@ -110,7 +110,8 @@ class AppConfiguration {
    * Fail-fast misconfiguration report (why: `EnvParser` silent fallback hid
    * typos like `MAX_FILE_BYTES=banana`). Returns human-readable warnings
    * for explicitly-set but malformed numeric vars; empty means clean.
-   * Call at worker startup or in tests — never per-request.
+   *
+   * Called once per isolate at worker startup — never per-request.
    */
   public validate(): string[] {
     const warnings: string[] = [];
@@ -127,6 +128,14 @@ class AppConfiguration {
       if (!EnvParser.isValidPositiveInt(this.env, key)) {
         warnings.push(`Invalid configuration: ${key} must be a positive integer`);
       }
+    }
+    // An auth bypass in production is a full account takeover, so it is worth a
+    // loud warning even though `AuthConfig.isBypassAllowed` already refuses to
+    // act on it. This catches the deployment mistake rather than the request.
+    if (this.getEnvironment() === 'production' && (this.getDevAuthEmail() !== null || this.isDemoMode())) {
+      warnings.push(
+        'Security: DEV_AUTH_EMAIL or DEMO_MODE is set while ENVIRONMENT=production. These bypass authentication for every unauthenticated request and are ignored in production — remove them.',
+      );
     }
     return warnings;
   }

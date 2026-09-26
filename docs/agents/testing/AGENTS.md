@@ -10,6 +10,6 @@ Never lower thresholds to make CI pass.
 **Mock patterns**:
 
 - DAOs/services: in-memory fake D1 implementing `prepare().bind().first/all/run` with per-table arrays; assert via state, not `vi.mock` (composition test is the exception — it mocks the DAO module with `vi.hoisted` fns).
-- Credential hashing: real `DavCredentialUtil.hashPassword` (`sha256`) with ephemeral random passwords; expiry via `TimestampUtil` arithmetic.
+- Credential hashing: real `DavCredentialUtil.hashPassword` (PBKDF2-HMAC-SHA256, 100k iterations, per-hash salt) with ephemeral random passwords. Tests assert the salt/verify contract, never hash determinism; the legacy unsalted-SHA256 format is still accepted and reports `needsRehash` for the migration path. Expiry via `TimestampUtil` arithmetic.
 - Access auth: stub env (`DEV_AUTH_EMAIL`/`DEMO_MODE`); never trust `Cf-Access-Authenticated-User-Email`.
 - Integration: `test/integration/vitest.config.mts` + `wrangler.test.jsonc` pool, shared `__INTEGRATION_MIGRATION_SQL__` seeding; `helpers/setup.ts` (`setupIntegrationTest`/`ensureUser`/`seedVolume`/`mintCredentialForVolume`) + `helpers/migrations.ts` (`splitSql`). Upstream fix: `dofs@0.1.0` ships an uncompiled decorator example in `dist/index.js` that the pool workerd rejects with a bare `SyntaxError`; stripped via `patches/dofs@0.1.0.patch` (`pnpm-workspace.yaml` `patchedDependencies`) — re-check on every `dofs` bump, drop the patch once upstream ships compiled dist.

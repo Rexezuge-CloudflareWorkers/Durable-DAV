@@ -39,13 +39,61 @@ const CORS_EXPOSE_HEADERS = [
   'lock-token',
 ].join(', ');
 
-function applyCors(response: Response, request: Request): Response {
+/**
+ * CORS for the WebDAV plane.
+ *
+ * Why an allow-list rather than reflecting `Origin`: the previous
+ * implementation echoed whatever origin asked, so *any* website on the
+ * internet could read a WebDAV response — including a private volume's
+ * listings — for any request the browser was willing to send. It also omitted
+ * `Vary: Origin`, which is the textbook setup for a shared cache serving one
+ * origin's response to another.
+ *
+ * The allow-list is derived from `SITE_URL`, which is already a required
+ * deployment variable. When it is unset the worker falls back to same-origin
+ * only: a browser sends `Origin` on every cross-origin request, so "no
+ * `Origin`, or an `Origin` matching the request host" is exactly the
+ * same-origin case.
+ */
+
+/**
+Origins permitted to read WebDAV responses, or `null` for same-origin only.
+*/
+function allowedOrigins(siteUrl: string | null | undefined): readonly string[] {
+  if (!siteUrl) return [];
+  try {
+    return [new URL(siteUrl).origin];
+  } catch {
+    return [];
+  }
+}
+
+function applyCors(response: Response, request: Request, siteUrl?: string | null): Response {
   // DO RPC responses arrive with immutable headers — rebuild instead of mutating.
   const headers = new Headers(response.headers);
-  headers.set('Access-Control-Allow-Origin', request.headers.get('Origin') ?? '*');
+  const requestOrigin = request.headers.get('Origin');
+  const allowed = allowedOrigins(siteUrl);
+
+  if (requestOrigin === null) {
+    // Same-origin or a non-browser client: nothing to negotiate.
+    headers.delete('Access-Control-Allow-Origin');
+  } else {
+    // Echo the origin verbatim only when it is allow-listed; otherwise omit the
+    // header, which makes the browser block the read.
+    headers.set('Access-Control-Allow-Origin', allowed.includes(requestOrigin) ? requestOrigin : '');
+    if (!allowed.includes(requestOrigin)) {
+      headers.delete('Access-Control-Allow-Origin');
+    }
+    // Required whenever the response varies by `Origin`, so a shared cache
+    // cannot hand one origin's response to another.
+    headers.set('Vary', 'Origin');
+  }
+
   headers.set('Access-Control-Allow-Methods', SUPPORT_METHODS.join(', '));
   headers.set('Access-Control-Allow-Headers', CORS_ALLOW_HEADERS);
   headers.set('Access-Control-Expose-Headers', CORS_EXPOSE_HEADERS);
+  // No cookies or HTTP-auth are ever used for WebDAV, so credentialed CORS is
+  // never appropriate here.
   headers.set('Access-Control-Allow-Credentials', 'false');
   headers.set('Access-Control-Max-Age', '86400');
   return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
@@ -57,4 +105,4 @@ function createdResponse(resourceHref: string, body: BodyInit | null = '', heade
   return new Response(body, { status: 201, headers: responseHeaders });
 }
 
-export { DAV_CLASS, SUPPORT_METHODS, CORS_ALLOW_HEADERS, CORS_EXPOSE_HEADERS, applyCors, createdResponse };
+export { DAV_CLASS, SUPPORT_METHODS, CORS_ALLOW_HEADERS, CORS_EXPOSE_HEADERS, applyCors, createdResponse, allowedOrigins };

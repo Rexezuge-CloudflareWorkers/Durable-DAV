@@ -36,24 +36,35 @@ class DavCredentialDAO extends BaseDAO {
     return credential;
   }
 
-  public async getByUsernameAndHash(
+  /**
+   * Load the active credential for a username, including its stored hash.
+   *
+   * The password is *not* part of the lookup. Passwords are salted (PBKDF2), so
+   * two users with the same password have different hashes and no hash can be
+   * searched on. The caller verifies the password against the returned
+   * `passwordHash` with a constant-time compare. `username` is globally unique,
+   * so at most one row can match.
+   *
+   * The hash is intentionally part of the return value — it is the input to
+   * verification, and returning a metadata projection without it would force a
+   * second query on the auth hot path.
+   */
+  public async getActiveByUsername(
     username: string,
-    passwordHash: string,
-    activeOnly: boolean,
-  ): Promise<(DavCredentialMetadata & { volumeId: string }) | undefined> {
+  ): Promise<(DavCredentialMetadata & { volumeId: string; passwordHash: string }) | undefined> {
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    const activeFilter = activeOnly ? ' AND expires_at > ?' : '';
-    const bindings: unknown[] = activeOnly ? [username, passwordHash, now] : [username, passwordHash];
     const row = await this.database
       .prepare(
         `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at
          FROM dav_credentials
-         WHERE username = ? AND password_hash = ?${activeFilter}
+         WHERE username = ? AND expires_at > ?
          LIMIT 1`,
       )
-      .bind(...bindings)
+      .bind(username, now)
       .first<DavCredentialInternal>();
-    return row ? this.toMetadata(row) : undefined;
+    if (!row) return undefined;
+    const metadata = this.toMetadata(row);
+    return metadata ? { ...metadata, passwordHash: row.password_hash } : undefined;
   }
 
   public async getById(credentialId: string): Promise<DavCredentialMetadata | undefined> {
@@ -94,8 +105,21 @@ class DavCredentialDAO extends BaseDAO {
     return Boolean(row?.found);
   }
 
-  public async updateLastUsed(credentialId: string): Promise<void> {
+  /**
+   * Replace a credential's password hash.
+   *
+   * Used by the opportunistic legacy-digest upgrade on the auth path. `prefix`
+   * and `last_four` are stored alongside the hash for display only and do not
+   * change, so they are intentionally not rewritten here.
+   */
+  public async updatePasswordHash(credentialId: string, passwordHash: string): Promise<void> {
     await this.withRetry(
+      () => this.database.prepare('UPDATE dav_credentials SET password_hash = ? WHERE credential_id = ?').bind(passwordHash, credentialId).run(),
+      'update dav credential password hash',
+    );
+  }
+
+  public async updateLastUsed(credentialId: string): Promise<void> {    await this.withRetry(
       () =>
         this.database
           .prepare('UPDATE dav_credentials SET last_used_at = ? WHERE credential_id = ?')

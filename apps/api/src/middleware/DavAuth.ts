@@ -93,13 +93,37 @@ async function davAuthForVolumeInner(
   if (basic) {
     // Bucket-level credential: username AND password both validated, bound
     // to this volume id (CalDAV-style). No Bearer, no user-level PAT.
-    const passwordHash = await DavCredentialUtil.hashPassword(basic.password);
     const credentialDAO = await scope.get(Tokens.DavCredentialDAO)();
     // No `.catch` on the lookup: swallowing it here turned a D1 outage into a
     // 401 (and a native Basic re-prompt loop) instead of the 503 the wrapper
     // above maps `DatabaseError` to.
-    const credential = await credentialDAO.getByUsernameAndHash(basic.username, passwordHash, true);
-    if (!credential || credential.volumeId !== volume.id) return unauthorizedDav();
+    //
+    // The password is not part of the query — it is salted, so it cannot be.
+    // Load by the (globally unique) username, then verify.
+    const credential = await credentialDAO.getActiveByUsername(basic.username);
+    if (!credential) return unauthorizedDav();
+    // A malformed stored hash throws. Treat it as a failed auth rather than a
+    // 500: the row is unusable either way, and surfacing 401 lets the client
+    // mint a fresh credential instead of seeing an opaque error.
+    const { ok, needsRehash } = await DavCredentialUtil.verifyPassword(basic.password, credential.passwordHash).catch(() => ({
+      ok: false,
+      needsRehash: false,
+    }));
+    if (!ok) return unauthorizedDav();
+    if (credential.volumeId !== volume.id) return unauthorizedDav();
+    // Opportunistic upgrade: a credential still on the legacy unsalted
+    // SHA-256 digest is re-hashed the first time it is used, so the migration
+    // completes without a password-reset prompt and without a batch job.
+    if (needsRehash) {
+      await credentialDAO
+        .updatePasswordHash(credential.credentialId, await DavCredentialUtil.hashPassword(basic.password))
+        .catch((error: unknown) => {
+          console.error('credential rehash failed; credential stays on the legacy digest', {
+            credentialId: credential.credentialId,
+            error: error instanceof Error ? (error.stack ?? error.message) : error,
+          });
+        });
+    }
     // `last_used_at` is genuinely best-effort telemetry; a failure here must
     // not fail an otherwise-valid request.
     await credentialDAO.updateLastUsed(credential.credentialId).catch(() => undefined);

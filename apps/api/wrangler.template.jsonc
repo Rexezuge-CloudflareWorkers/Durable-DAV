@@ -56,6 +56,13 @@
   "triggers": {
     "crons": ["*/10 * * * *"]
   },
+  // No DEV_AUTH_EMAIL / DEMO_MODE here on purpose. Those are authentication
+  // bypasses: with either set, every unauthenticated request authenticates as
+  // that identity. They are guarded by `ENVIRONMENT !== "production"`, but
+  // shipping a ready-made bypass identity inside the production template makes
+  // a one-word edit (`ENVIRONMENT: "staging"`, or an `env.staging` block that
+  // inherits `vars`) a full account takeover with no attacker effort. Set them
+  // only in a non-production environment block, via a secret.
   "vars": {
     "ENVIRONMENT": "production",
     "DEBUG_MODE": "false",
@@ -68,7 +75,6 @@
     "MAX_CREDENTIAL_EXPIRY_DAYS": "365",
     "MAX_FILE_BYTES": "52428800",
     "DO_DEVICE_BYTES": "5368709120",
-    "DAV_CACHE_TTL_SECONDS": "300",
-    "DEV_AUTH_EMAIL": "test@example.com"
+    "DAV_CACHE_TTL_SECONDS": "300"
   }
 }

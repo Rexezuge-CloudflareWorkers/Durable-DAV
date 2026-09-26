@@ -86,6 +86,87 @@ const CREDENTIAL_ADJECTIVES = [
   'willow',
 ] as const;
 
+/**
+ * PBKDF2 work factor.
+ *
+ * OWASP's 2023 floor for PBKDF2-HMAC-SHA256 is 600 000 iterations. Cloudflare
+ * Workers CPU budget is 30 s of wall time per request with a much smaller
+ * default CPU allowance, and this runs on the Basic-auth hot path (every
+ * unauthenticated request), so 600 000 would price out ordinary clients. 100 000
+ * keeps a single verification in the low milliseconds while remaining ~100x
+ * more expensive to attack than the bare SHA-256 it replaces. Raise it as
+ * hardware headroom allows; the count is stored per-hash, so existing rows stay
+ * verifiable after a change.
+ */
+const PBKDF2_ITERATIONS = 100_000;
+const PBKDF2_PREFIX = 'pbkdf2-sha256';
+const PBKDF2_KEY_BYTES = 32;
+
+function base64Url(bytes: Uint8Array): string {
+  let binary = '';
+  for (const byte of bytes) binary += String.fromCodePoint(byte);
+  // `=` only ever appears as trailing base64 padding, so a linear replaceAll is
+  // equivalent to a trailing-run regex here and has no backtracking.
+  return btoa(binary).replaceAll('+', '-').replaceAll('/', '_').replaceAll('=', '');
+}
+
+function fromBase64Url(value: string): Uint8Array {
+  const padded = value.replaceAll('-', '+').replaceAll('_', '/');
+  const binary = atob(padded.padEnd(padded.length + ((4 - (padded.length % 4)) % 4), '='));
+  const out = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i += 1) out[i] = binary.codePointAt(i) ?? 0;
+  return out;
+}
+
+async function pbkdf2(password: string, salt: Uint8Array, iterations: number): Promise<Uint8Array> {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'PBKDF2', hash: 'SHA-256', salt: salt as BufferSource, iterations },
+    key,
+    PBKDF2_KEY_BYTES * 8,
+  );
+  return new Uint8Array(bits);
+}
+
+/**
+ * Constant-time compare.
+ *
+ * A timing oracle on a password hash is still an oracle: an attacker who can
+ * measure how long the rejection takes recovers the digest byte by byte, which
+ * is enough to verify a guessed password offline. Accumulating the XOR of every
+ * pair and branching once at the end keeps the loop free of early exits.
+ */
+function timingSafeEqual(a: Uint8Array, b: Uint8Array): boolean {
+  if (a.length !== b.length) return false;
+  let diff = 0;
+  for (let i = 0; i < a.length; i += 1) diff |= (a[i]) ^ (b[i]);
+  return diff === 0;
+}
+
+async function verifyPbkdf2(password: string, stored: string): Promise<boolean> {
+  const parts = stored.split('$');
+  // `['pbkdf2-sha256', iterations, salt, hash]`
+  if (parts.length !== 4) return false;
+  const [, iterationText, saltText, hashText] = parts as [string, string, string, string];
+  // `isSafeInteger` rather than `isInteger`: a hostile row cannot smuggle in a
+  // huge work factor and turn one Basic-auth request into a CPU-exhaustion
+  // vector, and `1e300` is a safe "integer" but not a safe iteration count.
+  const iterations = Number(iterationText);
+  if (!Number.isSafeInteger(iterations) || iterations <= 0) return false;
+  let salt: Uint8Array;
+  let expected: Uint8Array;
+  try {
+    salt = fromBase64Url(saltText);
+    expected = fromBase64Url(hashText);
+  } catch {
+    // Not valid base64url: a corrupt row, not a wrong password.
+    return false;
+  }
+  // A zero-length salt or hash is a corrupt row. Short-circuit so `pbkdf2` is
+  // never handed one (an empty salt is a real, if useless, derivation).
+  return salt.length > 0 && expected.length > 0 && timingSafeEqual(await pbkdf2(password, salt, iterations), expected);
+}
+
 function slugifyVolume(volumeName: string): string {
   const lower = volumeName.toLowerCase();
   let out = '';
@@ -121,8 +202,42 @@ class DavCredentialUtil {
     return `${slug}-${adjective}-${animal}-${digits}`;
   }
 
+  /**
+   * Hash a WebDAV Basic password.
+   *
+   * Why not a bare SHA-256: these passwords authenticate the whole WebDAV
+   * surface, and a bare digest is unsalted. A single D1 leak is then trivially
+   * reversible with a precomputed table, and every user who picked the same
+   * password shares a hash, so one lookup cracks all of them.
+   *
+   * The encoding is self-describing so it can be rotated later:
+   * `pbkdf2-sha256$<iterations>$<saltBase64Url>$<hashBase64Url>`.
+   */
   public static async hashPassword(password: string): Promise<string> {
-    return CryptoUtil.sha256Hex(password);
+    const salt = crypto.getRandomValues(new Uint8Array(16));
+    const derived = await pbkdf2(password, salt, PBKDF2_ITERATIONS);
+    return `pbkdf2-sha256$${PBKDF2_ITERATIONS}$${base64Url(salt)}$${base64Url(derived)}`;
+  }
+
+  /**
+   * Verify a password against a stored hash, accepting the legacy format.
+   *
+   * Returns `true`/`false`; returns `true` for `needsRehash` when a legacy
+   * digest matched, so the caller can upgrade the row in place. A stored value
+   * that is neither format is a hard failure, not a silent `false`: a
+   * malformed hash means the row is unusable, and reporting "wrong password"
+   * would send the user into a password-reset loop that cannot succeed.
+   */
+  public static async verifyPassword(password: string, stored: string): Promise<{ ok: boolean; needsRehash: boolean }> {
+    if (stored.startsWith(PBKDF2_PREFIX)) return { ok: await verifyPbkdf2(password, stored), needsRehash: false };
+    if (/^[\da-f]{64}$/iu.test(stored)) {
+      // Legacy unsalted SHA-256. Still accepted so existing credentials keep
+      // working; the caller's `needsRehash` upgrades them on first successful
+      // use.
+      const matches = (await CryptoUtil.sha256Hex(password)) === stored.toLowerCase();
+      return { ok: matches, needsRehash: matches };
+    }
+    throw new Error('verifyPassword: unrecognized stored hash format');
   }
 
   public static getPrefix(password: string): string {

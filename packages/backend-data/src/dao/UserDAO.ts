@@ -40,11 +40,17 @@ class UserDAO extends BaseDAO {
   }
 
   public async getByEmail(email: string): Promise<UserRow | null> {
-    return this.database.prepare('SELECT * FROM users WHERE lower(email) = lower(?) LIMIT 1').bind(email).first<UserRow>();
+    // Emails are lowercased by every writer (`UserService.upsertUser`), so a
+    // `lower(email) = lower(?)` predicate is redundant *and* index-defeating:
+    // the function call on the column means `idx_users_email` cannot be used.
+    return this.database.prepare('SELECT * FROM users WHERE email = ? LIMIT 1').bind(email.toLowerCase()).first<UserRow>();
   }
 
   public async getByUsernameCi(usernameCi: string): Promise<UserRow | null> {
-    return this.database.prepare('SELECT * FROM users WHERE lower(username) = ? LIMIT 1').bind(usernameCi).first<UserRow>();
+    // Lowercase the parameter rather than the column: the column is stored
+    // lowercased, so `lower(username) = ?` gave identical matching semantics
+    // while making `idx_users_username` unusable.
+    return this.database.prepare('SELECT * FROM users WHERE username = ? LIMIT 1').bind(usernameCi.toLowerCase()).first<UserRow>();
   }
 
 

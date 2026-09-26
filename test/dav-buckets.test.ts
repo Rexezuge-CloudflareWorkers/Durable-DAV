@@ -163,11 +163,15 @@ describe('DavCredentialUtil username pattern', () => {
     expect(parts.length).toBeGreaterThanOrEqual(4);
   });
 
-  it('hashes passwords deterministically', async () => {
+  it('salts each password hash and still verifies it', async () => {
+    // Determinism was the bug: an unsalted digest is rainbow-table reversible,
+    // and every user who picked the same password shares a hash. See
+    // `test/credential-hashing.test.ts` for the full matrix.
     const a = await DavCredentialUtil.hashPassword('secret');
     const b = await DavCredentialUtil.hashPassword('secret');
-    expect(a).toBe(b);
-    expect(a).toMatch(/^[0-9a-f]{64}$/);
+    expect(a).not.toBe(b);
+    await expect(DavCredentialUtil.verifyPassword('secret', a)).resolves.toMatchObject({ ok: true });
+    await expect(DavCredentialUtil.verifyPassword('wrong', a)).resolves.toMatchObject({ ok: false });
   });
 });
 

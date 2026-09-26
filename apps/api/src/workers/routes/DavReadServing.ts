@@ -101,6 +101,10 @@ interface ServeReadArgs {
   inner: string;
   cache: KvCache;
   headOnly: boolean;
+  /**
+  Resolved from `DAV_CACHE_TTL_SECONDS`.
+  */
+  ttls: { prop: number; file: number };
 }
 
 /**
@@ -110,7 +114,7 @@ interface ServeReadArgs {
  * them). HTML collection listings are never cached.
  */
 async function serveGet(args: ServeReadArgs): Promise<Response> {
-  const { c, stub, auth, inner, cache, headOnly } = args;
+  const { c, stub, auth, inner, cache, headOnly, ttls } = args;
   const hasRange = c.req.raw.headers.has('Range');
   if (!hasRange) {
     try {
@@ -132,7 +136,9 @@ async function serveGet(args: ServeReadArgs): Promise<Response> {
   const buf = await response.arrayBuffer().catch(() => null);
   if (!buf) return response;
   if (buf.byteLength <= MAX_CACHED_FILE_BYTES) {
-    await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag).catch(() => undefined);
+    await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag, ttls.file).catch(
+    () => undefined,
+  );
   }
   // Build an explicit header set: `buf` is the runtime-*decoded* body, so
   // cloning the DO's headers verbatim could carry a now-wrong `Content-Length`,
@@ -146,7 +152,7 @@ async function serveGet(args: ServeReadArgs): Promise<Response> {
  * Only `Depth: 0`/`1` are cached; an infinity walk can exceed KV limits.
  */
 async function servePropfind(args: Omit<ServeReadArgs, 'headOnly'>): Promise<Response> {
-  const { c, stub, auth, inner, cache } = args;
+  const { c, stub, auth, inner, cache, ttls } = args;
   const depth = c.req.raw.headers.get('Depth') ?? 'infinity';
   const cacheable = depth === '0' || depth === '1';
   // Read once as bytes: `c.req.text()` decoded as UTF-8 and re-encoding it
@@ -172,7 +178,9 @@ async function servePropfind(args: Omit<ServeReadArgs, 'headOnly'>): Promise<Res
   const text = await response.text().catch(() => null);
   if (text === null) return response;
   const etag = response.headers.get('ETag') ?? etagForPropfind(`${auth.owner}/${auth.volume}`.toLowerCase(), inner, depth, hashBody(bodyText));
-  await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag }).catch(() => undefined);
+  await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag }, ttls.prop).catch(
+    () => undefined,
+  );
   return respondFromBytes('propfind', 207, text, etag, {}, c.req.raw, false);
 }
 

@@ -22,12 +22,13 @@ function createCredentialFakeDb() {
     const q = query.replaceAll(/\s+/g, ' ').trim();
     return {
       first<T>(): Promise<T | null> {
-        if (q.includes('FROM dav_credentials WHERE username = ? AND password_hash = ?')) {
-          const row = state.rows.find((r) => r.username === params[0] && r.password_hash === params[1]);
+        // Passwords are salted, so the auth lookup is by the globally unique
+        // username and the expiry check; the password is verified in the
+        // worker, not in SQL.
+        if (q.includes('FROM dav_credentials') && q.includes('WHERE username = ? AND expires_at > ?')) {
+          const row = state.rows.find((r) => r.username === params[0]);
           if (!row) return Promise.resolve(null);
-          return q.includes('expires_at > ?') && !(row.expires_at > (params[2] as number))
-            ? Promise.resolve(null)
-            : Promise.resolve(row as T);
+          return row.expires_at > (params[1] as number) ? Promise.resolve(row as T) : Promise.resolve(null);
         }
         if (q.startsWith('SELECT 1 AS found FROM dav_credentials WHERE username = ?')) {
           const found = state.rows.some((r) => r.username === params[0]);
@@ -76,6 +77,11 @@ function createCredentialFakeDb() {
           if (row) row.last_used_at = params[0] as number;
           return Promise.resolve({ success: true, meta: { changes: 1 } });
         }
+        if (q.startsWith('UPDATE dav_credentials SET password_hash')) {
+          const row = state.rows.find((r) => r.credential_id === params[1]);
+          if (row) row.password_hash = params[0] as string;
+          return Promise.resolve({ success: true, meta: { changes: row ? 1 : 0 } });
+        }
         return Promise.resolve({ success: true, meta: { changes: 0 } });
       },
     };
@@ -87,13 +93,18 @@ function createCredentialFakeDb() {
 }
 
 describe('DavCredentialUtil', () => {
-  it('hashes deterministically and differs per password', async () => {
+  it('salts each hash and still verifies the original password', async () => {
+    // Two hashes of the same password must differ — determinism was the
+    // security bug, not a feature. Full matrix in
+    // `test/credential-hashing.test.ts`.
     const a = await DavCredentialUtil.hashPassword('abc');
     const b = await DavCredentialUtil.hashPassword('abc');
     const c = await DavCredentialUtil.hashPassword('abd');
-    expect(a).toBe(b);
+    expect(a).not.toBe(b);
     expect(a).not.toBe(c);
-    expect(a).toMatch(/^[0-9a-f]{64}$/);
+    expect(a).toMatch(/^pbkdf2-sha256\$\d+\$/u);
+    await expect(DavCredentialUtil.verifyPassword('abc', a)).resolves.toMatchObject({ ok: true });
+    await expect(DavCredentialUtil.verifyPassword('abd', a)).resolves.toMatchObject({ ok: false });
   });
 
   it('generates volume-adjective-animal usernames without colons', () => {

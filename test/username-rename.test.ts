@@ -17,11 +17,13 @@ function makeD1(db: Db) {
     prepare: (query: string) => ({
       bind: (...bindings: unknown[]) => ({
         first: async () => {
-          if (query.includes('FROM users WHERE lower(email)')) {
-            return (db.users.find((u) => u.email.toLowerCase() === String(bindings[0]).toLowerCase()) ?? null) as never;
+          // The DAOs now lowercase the *parameter* instead of wrapping the
+          // column in `lower()`, so the index on each column stays usable.
+          if (query.includes('FROM users WHERE email = ?')) {
+            return (db.users.find((u) => u.email === String(bindings[0]).toLowerCase()) ?? null) as never;
           }
-          if (query.includes('FROM users WHERE lower(username)')) {
-            return (db.users.find((u) => (u.username ?? '').toLowerCase() === String(bindings[0]).toLowerCase()) ?? null) as never;
+          if (query.includes('FROM users WHERE username = ?')) {
+            return (db.users.find((u) => (u.username ?? '') === String(bindings[0]).toLowerCase()) ?? null) as never;
           }
           return query.includes('FROM namespaces WHERE username_ci')
             ? ((db.namespaces.find((n) => n.username_ci === String(bindings[0])) ?? null) as never)
