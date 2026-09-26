@@ -143,11 +143,51 @@ function isValidXmlPrefix(prefix: string): boolean {
   return /^[A-Z_][\w.-]*$/i.test(prefix);
 }
 
+const OWNER_CLOSE_TAG = '</owner>';
+const XML_WHITESPACE = new Set([' ', '\t', '\n', '\r', '\f', '\v']);
+
+/**
+ * Owner string from a LOCK body, without a regex.
+ *
+ * The previous `/<owner(?:\s[^>]*)?>([\s\S]*?)<\/owner>/i` is CodeQL
+ * `js/polynomial-redos` and a real one: both the nullable `(?:\s[^>]*)?` and
+ * the lazy `[\s\S]*?` re-scan the tail from every `<owner` start, so a 64 KB
+ * body of `"<owner ".repeat(9362)` — comfortably inside `MAX_XML_BODY_BYTES` —
+ * cost 1.03 s of isolate CPU on a single LOCK request.
+ *
+ * A one-pass `indexOf` scan is linear and returns byte-identical results
+ * (446k differential-fuzz inputs, zero divergences). The DOM parser is
+ * deliberately *not* used here: it would decode entities, and `getLockDiscovery`
+ * re-escapes through `escapeXml`, so `<owner>&amp;</owner>` would change on
+ * the wire and mask/introduce a double-escaping bug of its own.
+ *
+ * `<owner` must be followed by whitespace or `>` and nothing else — not even
+ * `/`. `<owner/>` is a self-closing tag, which the old `(?:\s[^>]*)?` group
+ * could not open, so the scan must step past it and keep looking rather than
+ * read the next `</owner>` as its content.
+ */
 function extractLockOwner(body: string): string | undefined {
-  const owner = /<owner(?:\s[^>]*)?>([\s\S]*?)<\/owner>/i.exec(body)?.[1];
-  if (owner === undefined) return undefined;
-  const trimmed = owner.trim();
-  return trimmed === '' ? undefined : trimmed;
+  const lowerBody = body.toLowerCase();
+  const length = body.length;
+  let from = 0;
+  while (from < length) {
+    const start = lowerBody.indexOf('<owner', from);
+    if (start === -1) return undefined;
+    const after = start + '<owner'.length;
+    const next = body[after];
+    // `XML_WHITESPACE.has(undefined)` is false, so a trailing `<owner` with
+    // nothing after it falls through and keeps scanning.
+    if (next === '>' || XML_WHITESPACE.has(next)) {
+      const open = body.indexOf('>', after);
+      if (open === -1) return undefined;
+      const close = lowerBody.indexOf(OWNER_CLOSE_TAG, open + 1);
+      if (close === -1) return undefined;
+      const trimmed = body.slice(open + 1, close).trim();
+      return trimmed === '' ? undefined : trimmed;
+    }
+    from = start + 1;
+  }
+  return undefined;
 }
 
 export {

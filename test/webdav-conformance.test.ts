@@ -129,6 +129,43 @@ describe('If header grammar (RFC 4918 §10.4)', () => {
   it('fails closed on an unparseable If header', () => {
     expect(hasAlwaysFalseIfCondition(new Request('https://x/', { headers: { If: '(garbage' } }))).toBe(true);
   });
+
+  it('reads one condition per list, ignoring text between lists', () => {
+    // A `Resource-Tag` is a bare `<…>` that is not itself a list, and a list
+    // holds several conditions; only the parenthesised ones count.
+    expect(parseIfHeader('<http://x/r> (<urn:uuid:abc>)')).toEqual([{ kind: 'token', value: 'urn:uuid:abc', negated: false }]);
+    expect(parseIfHeader('(<urn:uuid:abc>) (["e1"])')).toEqual([
+      { kind: 'token', value: 'urn:uuid:abc', negated: false },
+      { kind: 'etag', value: '"e1"', negated: false },
+    ]);
+    expect(parseIfHeader('(<urn:uuid:a>) junk (<urn:uuid:b>)')).toEqual([
+      { kind: 'token', value: 'urn:uuid:a', negated: false },
+      { kind: 'token', value: 'urn:uuid:b', negated: false },
+    ]);
+  });
+
+  it('fails closed when a group opens but never closes', () => {
+    // The scan cannot advance past a `]` that does not exist, so it stops and
+    // reports the header as unreadable rather than guessing at the remainder.
+    expect(parseIfHeader('([unterminated')).toEqual([{ kind: 'unknown' }]);
+    expect(parseIfHeader('(<unterminated')).toEqual([{ kind: 'unknown' }]);
+    expect(hasAlwaysFalseIfCondition(new Request('https://x/', { headers: { If: '(<urn:uuid:a>) ([bad' } }))).toBe(true);
+  });
+
+  it('reports an empty group as unreadable instead of ignoring it', () => {
+    expect(parseIfHeader('()')).toEqual([{ kind: 'unknown' }]);
+    expect(hasAlwaysFalseIfCondition(new Request('https://x/', { headers: { If: '()' } }))).toBe(true);
+  });
+
+  it('parses a large adversarial If header in linear time (CodeQL js/polynomial-redos)', () => {
+    // The old `/\(\s*(Not\s+)?(<[^>]*>|\[[^\]]*\])/gi` matched at every `(` and
+    // re-ran the `\[[^\]]*\]` backtrack over the rest of the header each time:
+    // 3.6 s at the 64 KB platform header limit, from a single request.
+    const hostile = '[('.repeat(32_768);
+    const startedAt = performance.now();
+    parseIfHeader(hostile);
+    expect(performance.now() - startedAt).toBeLessThan(500);
+  });
 });
 
 describe('DavConditionalGuard (RFC 7232)', () => {
