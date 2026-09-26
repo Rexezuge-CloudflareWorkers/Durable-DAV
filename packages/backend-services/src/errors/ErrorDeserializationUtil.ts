@@ -36,14 +36,6 @@ function deserializeErrorBody(data: ErrorResponse | null | undefined, fallback: 
   }
 }
 
-async function deserializeError(response: Response): Promise<ServiceError> {
-  try {
-    const data = (await response.json()) as ErrorResponse;
-    return deserializeErrorBody(data, 'Unknown error occurred');
-  } catch {
-    return new InternalServerError(`HTTP ${response.status}: ${response.statusText}`);
-  }
-}
 
 // Lenient parser for web-compat: accepts AWS envelope, legacy
 // `{error,message}`, and plain-text bodies.
@@ -74,4 +66,4 @@ function parseErrorPayload(payload: unknown, httpStatus: number): ServiceError {
   return new InternalServerError(`HTTP ${httpStatus}`);
 }
 
-export { deserializeError, deserializeErrorBody, parseErrorPayload };
+export { deserializeErrorBody, parseErrorPayload };

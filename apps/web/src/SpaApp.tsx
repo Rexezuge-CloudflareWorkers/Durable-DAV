@@ -15,7 +15,9 @@ function TopHeader({ userEmail, username }: { userEmail: string | null; username
 
 export default function SpaApp() {
   const { notice, showNotice } = useNotice();
-  const { user, setUser, authorized } = useCurrentUser();
+  const { user, setUser, authorized } = useCurrentUser((message) => {
+    showNotice('error', `Could Not Load Your Account: ${message}`);
+  });
   const { language, languageStatus, languagePending, handleLanguageChange } = useSpaLanguage({
     user,
     showNotice,

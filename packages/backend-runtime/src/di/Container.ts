@@ -16,26 +16,25 @@ type Token<T = unknown> = (string | symbol) & { readonly __type?: T };
 class Container {
   private readonly factories = new Map<Token<unknown>, Factory<unknown>>();
   private readonly singletons = new Map<Token<unknown>, unknown>();
-  private disposed = false;
 
   public bind<T>(token: Token<T>, factory: Factory<T>): this {
-    this.assertUsable();
     this.factories.set(token, factory);
     return this;
   }
 
   public bindValue<T>(token: Token<T>, value: T): this {
-    this.assertUsable();
     this.singletons.set(token, value);
     return this;
   }
 
+  /**
+  Is a token bound (as a value or a factory)? Used to assert wiring.
+  */
   public has<T>(token: Token<T>): boolean {
     return this.singletons.has(token) || this.factories.has(token);
   }
 
   public get<T>(token: Token<T>): T {
-    this.assertUsable();
     if (this.singletons.has(token)) {
       return this.singletons.get(token) as T;
     }
@@ -46,38 +45,6 @@ class Container {
     const instance = (factory as Factory<T>)(this);
     this.singletons.set(token, instance);
     return instance;
-  }
-
-  /**
-  Resolve without memoizing — for request-scoped objects.
-  */
-  public resolve<T>(token: Token<T>): T {
-    this.assertUsable();
-    const factory = this.factories.get(token);
-    return factory ? (factory as Factory<T>)(this) : this.get(token);
-  }
-
-  public createChild(): Container {
-    this.assertUsable();
-    const child = new Container();
-    for (const [token, value] of this.singletons) {
-      child.bindValue(token, value);
-    }
-    for (const [token, factory] of this.factories) {
-      child.bind(token, factory);
-    }
-    return child;
-  }
-
-  // Release memoized singletons (Workers isolation / test teardown).
-  public dispose(): void {
-    this.factories.clear();
-    this.singletons.clear();
-    this.disposed = true;
-  }
-
-  private assertUsable(): void {
-    if (this.disposed) throw new Error('DI container has been disposed.');
   }
 }
 

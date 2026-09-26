@@ -48,7 +48,18 @@ export async function readJson<T>(response: Response): Promise<T> {
     const { message, type } = extractErrorMessage(text, response.status);
     throw new BackendError(message, type, response.status);
   }
-  return response.json();
+  // A 204 — or an empty body from an edge error page — has no JSON to parse.
+  // `response.json()` threw `SyntaxError: Unexpected end of JSON input`, and
+  // because that is not a `BackendError` the caller reported a generic failure
+  // for an operation that had actually succeeded (e.g. credential revoke).
+  if (response.status === 204) return undefined as T;
+  const text = await response.text();
+  if (text.trim() === '') return undefined as T;
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new BackendError(`HTTP ${response.status}: response body was not JSON`, null, response.status);
+  }
 }
 
 export async function readDav(response: Response): Promise<string> {
@@ -96,10 +107,6 @@ export async function apiPatch<T>(path: string, body?: unknown): Promise<T> {
   return apiPost<T>(path, body, 'PATCH');
 }
 
-export async function apiPut<T>(path: string, body?: unknown): Promise<T> {
-  return apiPost<T>(path, body, 'PUT');
-}
 
-export { buildQuery };
 
 export { BackendError, getBackendErrorStatus, getBackendErrorType };

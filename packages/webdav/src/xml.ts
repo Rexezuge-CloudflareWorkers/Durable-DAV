@@ -61,6 +61,11 @@ function renderPropstat(status: string, properties: string[]): string {
 function getElementProperty(element: XmlElement): DeadProperty | null {
   if (element.prefix && (element.namespaceURI === null || element.namespaceURI === '')) return null;
   if (element.localName === null) return null;
+  // `localName` and `prefix` come straight from the client document and are
+  // interpolated into element names by `renderPropertyElement`. Validate them
+  // here — the validator already existed in this file but was never called.
+  if (!isValidXmlTagName(element.localName)) return null;
+  if (element.prefix !== null && !isValidXmlPrefix(element.prefix)) return null;
   return {
     namespaceURI: element.namespaceURI ?? '',
     localName: element.localName,
@@ -129,6 +134,13 @@ function parseProppatchRequest(body: string): { operations: ProppatchOperation[]
 
 function isValidXmlTagName(propName: string): boolean {
   return /^[A-Z_][\w.:-]*$/i.test(propName);
+}
+
+/**
+XML `NCName` for the prefix half of a qualified name.
+*/
+function isValidXmlPrefix(prefix: string): boolean {
+  return /^[A-Z_][\w.-]*$/i.test(prefix);
 }
 
 function extractLockOwner(body: string): string | undefined {

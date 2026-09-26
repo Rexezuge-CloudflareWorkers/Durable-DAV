@@ -1,79 +1,28 @@
 // Single-KV keyspace: one `CACHE` binding, domains separated by key prefix.
 //
-// Rationale: D1 stays the source of truth (joins, transactions). KV is a
+// Rationale: D1 and the Durable Object stay the source of truth. KV is a
 // loss-tolerant, read-heavy cache only — a miss or eviction must always be
-// recoverable by recompute. Call sites never touch `env.CACHE` directly;
-// they go through `KvCache` with a closed `KvDomainName` registry so prefixes
-// cannot collide and TTL/size policy lives in one table.
-//
-// Ported from `../Git` (`@edge-git/backend-runtime/kv`): `KvCache` semantics
-// are identical (fail-soft, D1/DO authoritative). Git-only domains
-// (`refs`/`readmodel`/`code`/`searchCursor`/`oauth2`) are retained for
-// compat; DAV read paths use `davProp`/`davFile`/`davMeta` (see
-// `apps/api/src/workers/routes/DavReadCache.ts`).
+// recoverable by recompute. Call sites never touch `env.CACHE` directly; they
+// go through `KvCache` with a closed `KvDomainName` registry so prefixes cannot
+// collide and TTL/size policy lives in one table.
 
 const KV_KEY_VERSION = 'v1';
 const KV_MAX_KEY_LENGTH = 512;
 const KV_MIN_TTL_SECONDS = 60;
-const KV_PLATFORM_MAX_VALUE_BYTES = 26_214_400;
 
-type KvDomainName =
-  | 'jwks'
-  | 'oauth2'
-  | 'code'
-  | 'searchCursor'
-  | 'refs'
-  | 'readmodel'
-  | 'ratelimit'
-  | 'davProp'
-  | 'davFile'
-  | 'davMeta';
+type KvDomainName = 'davProp' | 'davFile' | 'davMeta';
 
 interface KvDomainDef {
-  ttlSeconds?: number;
+  ttlSeconds: number;
   maxValueBytes: number;
   description: string;
 }
 
 const KV_DOMAINS: Record<KvDomainName, KvDomainDef> = {
-  jwks: {
-    ttlSeconds: 600,
-    maxValueBytes: 65_536,
-    description: 'Cloudflare Access JWKS cert documents per team domain.',
-  },
-  oauth2: {
-    ttlSeconds: 3600,
-    maxValueBytes: 16_384,
-    description: 'OAuth token artefacts; per-entry TTL should track expiry.',
-  },
-  code: {
-    maxValueBytes: 1_048_576,
-    description: 'Indexed file bodies (D1 code_index keeps metadata only). Persistent until invalidated on push.',
-  },
-  searchCursor: {
-    ttlSeconds: 604_800,
-    maxValueBytes: 4096,
-    description: 'Search backfill cron progress markers per repo.',
-  },
-  refs: {
-    ttlSeconds: 86_400,
-    maxValueBytes: 1_048_576,
-    description: 'Advertised ref snapshots per repo; invalidated on receive-pack. Long-lived (24h) to keep DO rows_read low.',
-  },
-  readmodel: {
-    ttlSeconds: 86_400,
-    maxValueBytes: 1_048_576,
-    description: 'Repo read-model snapshots (overview/branches/tags/tree/commits/blob) keyed by head oid; invalidated on push. Long-lived (24h) to keep DO rows_read low.',
-  },
-  ratelimit: {
-    ttlSeconds: 60,
-    maxValueBytes: 1024,
-    description: 'Rate-limit / idempotency windows. Short-lived by design.',
-  },
   davProp: {
     ttlSeconds: 120,
     maxValueBytes: 1_048_576,
-    description: 'PROPFIND multistatus snapshots per volume+path+depth+body; invalidated on write. Short-lived (120s).',
+    description: 'PROPFIND multistatus snapshots per volume+path+depth+body; invalidated on write.',
   },
   davFile: {
     ttlSeconds: 300,
@@ -83,17 +32,37 @@ const KV_DOMAINS: Record<KvDomainName, KvDomainDef> = {
   davMeta: {
     ttlSeconds: 60,
     maxValueBytes: 65_536,
-    description: 'Volume list/detail snapshots per owner email; invalidated on volume mutation. Short-lived (60s).',
+    description: 'Volume list/detail snapshots per owner email; invalidated on volume mutation.',
   },
 };
 
-function fnv1aHex(input: string): string {
-  let hash = 0x81_1c_9d_c5;
-  for (let i = 0; i < input.length; i += 1) {
-    hash ^= input.codePointAt(i) ?? 0;
-    hash = Math.imul(hash, 0x01_00_01_93);
+/**
+ * 128-bit digest built from four independent FNV-1a lanes.
+ *
+ * Why not a single 32-bit FNV: `buildKvKey` falls back to a digest when a key
+ * exceeds the platform's 512-character limit, and `davFile` keys embed a
+ * user-controlled file path. A 32-bit digest over a shared keyspace is
+ * collision-searchable — an attacker who controls paths in their own volume
+ * could grind a colliding key and read another tenant's cached bytes. Four
+ * lanes over the same bytes with different offsets/primes cost one extra pass
+ * and take a birthday collision to ~2^64 work, which is not worth attacking.
+ *
+ * Synchronous on purpose: `buildKvKey` is called from sync cache-key builders.
+ */
+function digest128(input: string): string {
+  const LANES = 4;
+  const offsets = [0x81_1c_9d_c5, 0xc2_b2_ae_35, 0x27_d4_eb_2f, 0x16_56_67_b1];
+  let out = '';
+  for (let lane = 0; lane < LANES; lane += 1) {
+    let hash = offsets[lane];
+    const prime = 0x01_00_01_93 + lane * 0x9e_37_79_b9;
+    for (let i = 0; i < input.length; i += 1) {
+      hash ^= input.codePointAt(i) ?? 0;
+      hash = Math.imul(hash, prime);
+    }
+    out += (hash >>> 0).toString(16).padStart(8, '0');
   }
-  return (hash >>> 0).toString(16).padStart(8, '0');
+  return out;
 }
 
 function sanitizeSegment(segment: string): string {
@@ -110,20 +79,26 @@ function buildKvKey(domain: KvDomainName, parts: readonly string[]): string {
   const joined = parts.map((part) => sanitizeSegment(part)).join(':');
   const full = prefix + joined;
   if (full.length <= KV_MAX_KEY_LENGTH) return full;
-  // Deterministic fallback: a miss just recomputes, so a 32-bit digest is fine.
-  return `${prefix}h:${fnv1aHex(joined)}`;
+  // Deterministic overflow form. Note the consequence for invalidation: an
+  // overflowing key does not start with `<domain>:<version>:<volume>`, so
+  // `purgePrefix` on a volume will not match it. Callers must therefore bound
+  // the path length they cache — see `MAX_CACHEABLE_PATH_LENGTH` in
+  // `DavReadCache`.
+  return `${prefix}h:${digest128(joined)}`;
 }
 
 function utf8ByteLength(value: string): number {
   return new TextEncoder().encode(value).length;
 }
 
-function clampTtl(ttlSeconds: number | undefined, domain: KvDomainName): number | undefined {
+/**
+ * Resolve a TTL, defaulting to the domain's own. Every domain declares a
+ * required `ttlSeconds`, so there is no "no TTL" case to represent.
+ */
+function clampTtl(ttlSeconds: number | undefined, domain: KvDomainName): number {
   const effective = ttlSeconds ?? KV_DOMAINS[domain].ttlSeconds;
-  if (effective === undefined) return undefined;
-  return Number.isFinite(effective) ? Math.max(KV_MIN_TTL_SECONDS, Math.floor(effective)) : undefined;
+  return Number.isFinite(effective) ? Math.max(KV_MIN_TTL_SECONDS, Math.floor(effective)) : KV_DOMAINS[domain].ttlSeconds;
 }
 
-export { KV_DOMAINS, KV_KEY_VERSION, KV_MAX_KEY_LENGTH, KV_MIN_TTL_SECONDS, KV_PLATFORM_MAX_VALUE_BYTES };
-export { buildKvKey, clampTtl, fnv1aHex, utf8ByteLength };
+export { KV_DOMAINS, KV_MAX_KEY_LENGTH, buildKvKey, clampTtl, digest128, utf8ByteLength };
 export type { KvDomainDef, KvDomainName };

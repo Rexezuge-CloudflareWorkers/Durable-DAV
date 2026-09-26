@@ -1,11 +1,7 @@
 export { TimestampUtil } from './TimestampUtil';
 export { UUIDUtil } from './UUIDUtil';
 export { CryptoUtil } from './CryptoUtil';
-export { DavCredentialUtil, CREDENTIAL_ANIMALS, CREDENTIAL_ADJECTIVES, slugifyVolume } from './DavCredentialUtil';
-export { err, getOrThrow, isOk, mapResult, ok } from './Result';
-export type { Err, Ok, Result } from './Result';
-export { EmailAddress, isValidEmailFormat } from './Identity';
-export { SLUG_RE, isValidSlug, validateSlug } from './SlugValidation';
+export { DavCredentialUtil } from './DavCredentialUtil';
 export { canonicalizeLanguageTag } from './LanguageTag';
+export { isValidEmailFormat } from './EmailUtil';
 export { ErrorSanitizationUtil } from './ErrorSanitizationUtil';
-export { mapWithConcurrency } from './ConcurrencyUtil';

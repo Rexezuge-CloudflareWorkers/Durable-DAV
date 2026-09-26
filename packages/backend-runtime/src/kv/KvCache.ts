@@ -63,8 +63,11 @@ class KvCache {
       return false;
     }
     try {
+      // `clampTtl` always resolves to a number: every domain declares a
+      // required `ttlSeconds`, so there is no "persist forever" case to branch
+      // on any more.
       const ttl = clampTtl(options?.ttlSeconds, domain);
-      await ns.put(buildKvKey(domain, parts), value, ttl === undefined ? undefined : { expirationTtl: ttl });
+      await ns.put(buildKvKey(domain, parts), value, { expirationTtl: ttl });
       return true;
     } catch (error) {
       logger.debug(`KV put failed for ${domain}: ${error instanceof Error ? error.message : String(error)}`);

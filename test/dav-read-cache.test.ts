@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { KvCache } from '@durable-dav/backend-runtime/kv';
 import type { KvNamespaceLike } from '@durable-dav/backend-runtime/kv';
-import { buildKvKey, clampTtl, fnv1aHex, KV_DOMAINS, KV_MAX_KEY_LENGTH } from '@durable-dav/backend-runtime/kv';
+import { buildKvKey, clampTtl, digest128, KV_DOMAINS, KV_MAX_KEY_LENGTH } from '@durable-dav/backend-runtime/kv';
 import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
 import {
   MAX_CACHED_FILE_BYTES,
@@ -94,10 +94,18 @@ describe('dav KV domains', () => {
     expect(first).toContain(':h:');
   });
 
-  it('fnv1a is stable and 8 hex chars', () => {
-    expect(fnv1aHex('durable-dav')).toBe(fnv1aHex('durable-dav'));
-    expect(fnv1aHex('a')).not.toBe(fnv1aHex('b'));
-    expect(fnv1aHex('x')).toMatch(/^[0-9a-f]{8}$/);
+  it('digest128 is stable and 32 hex chars', () => {
+    // 128 bits, not 32: `davFile` keys embed a user-controlled path, so a
+    // short digest in a shared keyspace is collision-searchable.
+    expect(digest128('durable-dav')).toBe(digest128('durable-dav'));
+    expect(digest128('a')).not.toBe(digest128('b'));
+    expect(digest128('x')).toMatch(/^[0-9a-f]{32}$/);
+  });
+
+  it('overflow keys are 32 hex chars and still domain-prefixed', () => {
+    const long = 'a'.repeat(600);
+    const key = buildKvKey('davFile', ['alice/demo', `path:${long}`]);
+    expect(key).toMatch(/^davFile:v1:h:[0-9a-f]{32}$/);
   });
 });
 
@@ -109,10 +117,12 @@ describe('clampTtl for DAV domains', () => {
     expect(clampTtl(180, 'davProp')).toBe(180);
   });
 
-  it('clamps below the platform minimum and drops non-finite values', () => {
+  it('clamps below the platform minimum and falls back to the domain default', () => {
     expect(clampTtl(1, 'davMeta')).toBe(60);
-    expect(clampTtl(Number.NaN, 'davProp')).toBeUndefined();
-    expect(clampTtl(Number.POSITIVE_INFINITY, 'davFile')).toBeUndefined();
+    // Every domain declares a required ttl, so a non-finite override falls back
+    // to that default rather than disabling expiry.
+    expect(clampTtl(Number.NaN, 'davProp')).toBe(120);
+    expect(clampTtl(Number.POSITIVE_INFINITY, 'davFile')).toBe(300);
   });
 });
 

@@ -6,7 +6,7 @@ import {
 import type { UserRow } from '@durable-dav/backend-data/dao';
 import type { D1Queryable } from '@durable-dav/backend-data/utils';
 import { BadRequestError, NotFoundError } from '@durable-dav/backend-errors';
-import { isReservedNamespaceName } from '@durable-dav/shared/constants';
+import { USERNAME_MAX_LENGTH, isReservedNamespaceName, isValidUsername } from '@durable-dav/shared/constants';
 import { TimestampUtil } from '@durable-dav/shared/utils';
 import { cascadeOwnerVolumes } from './volumeRenameCascade';
 
@@ -20,8 +20,6 @@ interface UserServiceDeps {
   volumeDAO?: () => Promise<Pick<DavVolumeDAO, 'renameOwner'>>;
 }
 
-const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/i;
-
 function deriveUsernameCandidate(email: string): string {
   const prefix = email.split('@', 1)[0].toLowerCase();
   let sanitized = '';
@@ -34,12 +32,12 @@ function deriveUsernameCandidate(email: string): string {
   let end = sanitized.length;
   while (end > start && sanitized[end - 1] === '-') end -= 1;
   sanitized = sanitized.slice(start, end);
-  if (USERNAME_RE.test(sanitized)) return sanitized;
+  if (isValidUsername(sanitized)) return sanitized;
   let alnum = '';
   for (const ch of sanitized) {
     if ((ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9')) alnum += ch;
   }
-  return alnum.length > 0 ? alnum.slice(0, 39) : 'user';
+  return alnum.length > 0 ? alnum.slice(0, USERNAME_MAX_LENGTH) : 'user';
 }
 
 class UserService {
@@ -58,7 +56,7 @@ class UserService {
   }
 
   public static validateUsername(username: string): void {
-    if (!USERNAME_RE.test(username)) {
+    if (!isValidUsername(username)) {
       throw new BadRequestError('Invalid username');
     }
     if (isReservedNamespaceName(username)) {

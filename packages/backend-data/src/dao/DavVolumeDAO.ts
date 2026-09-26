@@ -69,33 +69,7 @@ class DavVolumeDAO extends BaseDAO {
     return result ?? null;
   }
 
-  public async listVisibleForUser(userEmail: string | null, limit = 100): Promise<DavVolumeRow[]> {
-    if (userEmail === null) {
-      const result = await this.database
-        .prepare('SELECT * FROM dav_volumes WHERE is_private = 0 ORDER BY updated_at DESC LIMIT ?')
-        .bind(limit)
-        .all<DavVolumeRow>();
-      return result.results ?? [];
-    }
-    // Owner-only buckets: owned rows plus public rows. No collaborators.
-    const result = await this.database
-      .prepare(
-        `SELECT * FROM dav_volumes
-         WHERE is_private = 0 OR lower(owner_email) = lower(?)
-         ORDER BY updated_at DESC LIMIT ?`,
-      )
-      .bind(userEmail, limit)
-      .all<DavVolumeRow>();
-    return result.results ?? [];
-  }
 
-  public async listPublicByOwner(owner: string, limit = 100): Promise<DavVolumeRow[]> {
-    const result = await this.database
-      .prepare('SELECT * FROM dav_volumes WHERE owner_ci = ? AND is_private = 0 ORDER BY updated_at DESC LIMIT ?')
-      .bind(owner.toLowerCase(), limit)
-      .all<DavVolumeRow>();
-    return result.results ?? [];
-  }
 
   public async update(
     id: string,

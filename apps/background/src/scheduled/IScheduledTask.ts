@@ -1,4 +1,3 @@
-import { TimestampUtil } from '@durable-dav/shared/utils';
 import { createLogger } from '@durable-dav/backend-runtime/logger';
 
 const logger = createLogger('CronTasks');
@@ -27,29 +26,6 @@ abstract class BaseScheduledTask implements ScheduledTask {
   protected abstract handleScheduledTask(env: Env): Promise<void>;
 }
 
-// Template Method for retention pruning (Otter `AbstractPruningTask` pattern):
-// subclasses supply the retention window + the batched prune call; the base
-// owns cutoff arithmetic, failure swallowing (a prune miss retries next tick),
-// and count logging so the three prune tasks stop duplicating the shape.
-abstract class AbstractPruningTask extends BaseScheduledTask {
-  protected abstract getRetentionDays(env: Env): number;
 
-  protected abstract pruneBatch(env: Env, cutoff: number, batchSize: number): Promise<number>;
-
-  protected abstract getPrunedNoun(): string;
-
-  protected getBatchSize(): number {
-    return 500;
-  }
-
-  protected async handleScheduledTask(env: Env): Promise<void> {
-    const cutoff = TimestampUtil.getCurrentUnixTimestampInSeconds() - this.getRetentionDays(env) * 86_400;
-    const pruned = await this.pruneBatch(env, cutoff, this.getBatchSize()).catch(() => 0);
-    if (pruned > 0) {
-      logger.info(`Pruned ${pruned} ${this.getPrunedNoun()}`);
-    }
-  }
-}
-
-export { BaseScheduledTask, AbstractPruningTask };
+export { BaseScheduledTask };
 export type { ScheduledTask };

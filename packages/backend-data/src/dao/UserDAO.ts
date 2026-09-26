@@ -47,41 +47,7 @@ class UserDAO extends BaseDAO {
     return this.database.prepare('SELECT * FROM users WHERE lower(username) = ? LIMIT 1').bind(usernameCi).first<UserRow>();
   }
 
-  public async getByEmails(emails: string[]): Promise<UserRow[]> {
-    const deduped = new Set(emails.map((e) => e.trim().toLowerCase()).filter(Boolean));
-    const keys = [...deduped];
-    if (keys.length === 0) return [];
-    const out: UserRow[] = [];
-    for (let i = 0; i < keys.length; i += 50) {
-      const chunk = keys.slice(i, i + 50);
-      const placeholders = chunk.map(() => 'lower(?)').join(', ');
-      const result = await this.database
-        .prepare(`SELECT * FROM users WHERE lower(email) IN (${placeholders})`)
-        .bind(...chunk)
-        .all<UserRow>();
-      const rows = result.results ?? [];
-      for (const row of rows) out.push(row);
-    }
-    return out;
-  }
 
-  public async getByUsernames(usernames: string[]): Promise<UserRow[]> {
-    const deduped = new Set(usernames.map((u) => u.trim().toLowerCase()).filter(Boolean));
-    const keys = [...deduped];
-    if (keys.length === 0) return [];
-    const out: UserRow[] = [];
-    for (let i = 0; i < keys.length; i += 50) {
-      const chunk = keys.slice(i, i + 50);
-      const placeholders = chunk.map(() => '?').join(', ');
-      const result = await this.database
-        .prepare(`SELECT * FROM users WHERE lower(username) IN (${placeholders})`)
-        .bind(...chunk)
-        .all<UserRow>();
-      const rows = result.results ?? [];
-      for (const row of rows) out.push(row);
-    }
-    return out;
-  }
 }
 
 export { UserDAO };

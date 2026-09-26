@@ -14,8 +14,6 @@ const CRON_TASK_FACTORIES: readonly TaskDefinition[] = [
   { name: 'ExpiredCredentialPruningTask', phase: 1, make: () => new ExpiredCredentialPruningTask() },
 ];
 
-const CRON_TASK_DEFINITIONS: ScheduledTask[] = CRON_TASK_FACTORIES.map((d) => d.make());
-
 function tasksForPhase(phase: 1 | 2): ScheduledTask[] {
   return CRON_TASK_FACTORIES.filter((d) => d.phase === phase).map((d) => d.make());
 }
@@ -28,6 +26,6 @@ async function runScheduledTasks(env: Env, cron: string, scheduledTime: number):
   await Promise.all(phase2.map((t) => t.run(env).catch((error: unknown) => logger.error(`Task ${t.name} failed`, error))));
 }
 
-export { CRON_TASK_DEFINITIONS, CRON_TASK_FACTORIES, tasksForPhase, runScheduledTasks };
+export { CRON_TASK_FACTORIES, tasksForPhase, runScheduledTasks };
 export { ExpiredCredentialPruningTask } from './ExpiredCredentialPruningTask';
 export type { ScheduledTask } from './IScheduledTask';

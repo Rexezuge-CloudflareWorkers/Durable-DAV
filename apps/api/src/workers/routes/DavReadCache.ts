@@ -1,5 +1,5 @@
 import type { KvCache } from '@durable-dav/backend-runtime/kv';
-import { fnv1aHex } from '@durable-dav/backend-runtime/kv';
+import { digest128 } from '@durable-dav/backend-runtime/kv';
 import { normalizeVolumeKey } from '@durable-dav/webdav';
 
 // KV-backed read cache for DAV RPCs (Git `RepoReadCache` pattern).
@@ -17,6 +17,22 @@ const DAV_META_TTL_SECONDS = 60;
 // 1MiB; base64 inflates ~33%, so only small responses are cached.
 // Large files bypass the cache and always hit the DO.
 const MAX_CACHED_FILE_BYTES = 700_000;
+
+/**
+ * Longest inner path the KV cache will key on.
+ *
+ * `buildKvKey` falls back to a digest when a key exceeds the platform's
+ * 512-character limit, and a digested key no longer starts with
+ * `<domain>:<version>:<volume>` — so `purgePrefix` on a volume would never
+ * match it and the entry would keep serving pre-write bytes for its full TTL.
+ * Refusing to cache long paths keeps every key purgeable; long-path files are
+ * cold anyway.
+ */
+const MAX_CACHEABLE_PATH_LENGTH = 200;
+
+function isCacheablePath(inner: string): boolean {
+  return inner.length <= MAX_CACHEABLE_PATH_LENGTH;
+}
 
 /**
  * DAV methods that can change volume content, and therefore must drop the
@@ -65,7 +81,7 @@ function withEtagHeaders(response: Response, etag: string, cacheControl: string)
 }
 
 function hashBody(value: string): string {
-  return fnv1aHex(value);
+  return digest128(value);
 }
 
 function propfindCacheParts(volumeKey: string, innerPath: string, depth: string, body: string): readonly string[] {
@@ -88,7 +104,7 @@ interface CachedFile {
 }
 
 function etagForPropfind(volumeKey: string, innerPath: string, depth: string, bodyHash: string): string {
-  return `W/"prop-${fnv1aHex(`${volumeKey}:${innerPath}:${depth}:${bodyHash}`)}"`;
+  return `W/"prop-${digest128(`${volumeKey}:${innerPath}:${depth}:${bodyHash}`)}"`;
 }
 
 async function getCachedPropfind(
@@ -99,6 +115,7 @@ async function getCachedPropfind(
   depth: string,
   body: string,
 ): Promise<CachedPropfind | null> {
+  if (!isCacheablePath(innerPath)) return null;
   try {
     return await cache.getJson<CachedPropfind>('davProp', propfindCacheParts(cacheKeyForVolume(owner, volume), innerPath, depth, body));
   } catch {
@@ -115,6 +132,7 @@ async function putCachedPropfind(
   body: string,
   entry: CachedPropfind,
 ): Promise<void> {
+  if (!isCacheablePath(innerPath)) return;
   try {
     await cache.putJson('davProp', propfindCacheParts(cacheKeyForVolume(owner, volume), innerPath, depth, body), entry, {
       ttlSeconds: DAV_PROP_TTL_SECONDS,
@@ -141,6 +159,7 @@ function base64ToBytes(b64: string): Uint8Array {
 }
 
 async function getCachedFile(cache: KvCache, owner: string, volume: string, innerPath: string): Promise<CachedFile | null> {
+  if (!isCacheablePath(innerPath)) return null;
   try {
     return await cache.getJson<CachedFile>('davFile', fileCacheParts(cacheKeyForVolume(owner, volume), innerPath));
   } catch {
@@ -157,6 +176,9 @@ async function putCachedFile(
   contentType: string,
   etag: string,
 ): Promise<void> {
+  // Every key must stay purgeable by volume prefix — see
+  // `MAX_CACHEABLE_PATH_LENGTH`.
+  if (!isCacheablePath(innerPath)) return;
   if (bytes.byteLength > MAX_CACHED_FILE_BYTES) return;
   try {
     await cache.putJson(
@@ -262,5 +284,6 @@ export {
   bytesToBase64,
   base64ToBytes,
   invalidatesReadCache,
+  isCacheablePath,
 };
 export type { CachedPropfind, CachedFile };

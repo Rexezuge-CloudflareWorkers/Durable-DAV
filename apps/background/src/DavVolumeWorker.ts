@@ -185,13 +185,6 @@ class DavVolumeWorker extends DurableObject<Env> {
     return true;
   }
 
-  public async setVolumeKey(volumeKey: string): Promise<void> {
-    try {
-      await this.ctx.storage.put('volumeKey', volumeKey);
-    } catch {
-      // Lifecycle bookkeeping is best-effort; routing uses the DO id.
-    }
-  }
 
   // Username-rename transfer primitives (Git `RepoWorker` copy pattern).
   // Locks are never copied (RFC 4918 §9.8); dead props follow file bytes.
@@ -334,11 +327,6 @@ class DavVolumeWorker extends DurableObject<Env> {
       sql.exec(`DELETE FROM dav_locks`);
     } catch {
       // Filesystem delete already succeeded; metadata GC retries on next op.
-    }
-    try {
-      await this.ctx.storage.delete('volumeKey');
-    } catch {
-      // Lifecycle bookkeeping is best-effort.
     }
   }
 }

@@ -2,6 +2,7 @@ import { DavCredentialDAO, DavVolumeDAO, UserDAO } from '@durable-dav/backend-da
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import type { D1Queryable } from '@durable-dav/backend-data/utils';
 import { BadRequestError, ForbiddenError, NotFoundError } from '@durable-dav/backend-errors';
+import { isValidUsername, isValidVolumeName } from '@durable-dav/shared/constants';
 import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { checkVolumeQuota, validateVolumePatch } from './VolumeCreatePolicy';
@@ -17,9 +18,6 @@ interface VolumeServiceDeps {
   credentialDAO?: () => Promise<DavCredentialDAO>;
   config?: AppConfiguration;
 }
-
-const OWNER_RE = /^[a-z0-9][a-z0-9-]*$/i;
-const VOLUME_RE = /^[a-z0-9][\w.-]*$/i;
 
 class VolumeService {
   private readonly deps: Required<Pick<VolumeServiceDeps, 'volumeDAO' | 'userDAO' | 'credentialDAO' | 'config'>>;
@@ -46,11 +44,15 @@ class VolumeService {
   }
 
   private static assertValidOwner(owner: string): void {
-    if (!OWNER_RE.test(owner) || owner.length > 39) throw new BadRequestError('Invalid owner name');
+    // The owner *is* a username, so it must satisfy the username rule. The
+    // previous owner-only regex allowed a trailing hyphen, which no username
+    // can have — that admitted bucket owners that could never resolve against
+    // `/users/:username`.
+    if (!isValidUsername(owner)) throw new BadRequestError('Invalid owner name');
   }
 
   private static assertValidName(name: string): void {
-    if (!VOLUME_RE.test(name) || name.length > 100) throw new BadRequestError('Invalid volume name');
+    if (!isValidVolumeName(name)) throw new BadRequestError('Invalid volume name');
   }
 
   private async countOwnedVolumes(creatorEmail: string): Promise<number> {
@@ -68,7 +70,10 @@ class VolumeService {
 
   public async getVolume(owner: string, name: string): Promise<DavVolumeRow | null> {
     const dao = await this.deps.volumeDAO();
-    return dao.getByOwnerName(owner, name).catch(() => null);
+    // No `.catch(() => null)`: that made a D1 outage indistinguishable from a
+    // missing bucket, so `davAuthForVolume`'s `DatabaseError -> 503` branch was
+    // unreachable and clients cached a 404 for a bucket that still existed.
+    return dao.getByOwnerName(owner, name);
   }
 
   public async requireVolume(owner: string, name: string): Promise<DavVolumeRow> {

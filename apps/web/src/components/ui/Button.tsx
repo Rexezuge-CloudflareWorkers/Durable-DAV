@@ -26,9 +26,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement>, Var
   loading?: boolean;
 }
 
-export function Button({ className, variant, size, loading, children, disabled, ...props }: ButtonProps) {
+export function Button({ className, variant, size, loading, children, disabled, type = 'button', ...props }: ButtonProps) {
   return (
-    <button className={cn(buttonVariants({ variant, size }), className)} disabled={disabled || loading} {...props}>
+    // Default `type="button"`: HTML defaults a bare `<button>` to submit, so
+    // every non-submit button in the app relied on never being nested in a
+    // form. `{...props}` still wins, so `type="submit"` is passed explicitly
+    // where it is meant.
+    <button type={type} className={cn(buttonVariants({ variant, size }), className)} disabled={disabled || loading} {...props}>
       {loading && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
       {children}
     </button>

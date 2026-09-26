@@ -1,8 +1,4 @@
-import type { DeadProperty, LockDetails } from '@durable-dav/webdav';
-
-type SqlExecutor = {
-  exec: (sql: string, ...params: unknown[]) => unknown;
-};
+import type { DeadProperty } from '@durable-dav/webdav';
 
 type SqlRow = Record<string, unknown>;
 
@@ -67,35 +63,7 @@ function nullableStringField(row: SqlRow, key: string): string | undefined {
   return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint' ? String(value) : undefined;
 }
 
-function pruneExpiredLocks(sql: DurableSqlStorage, now = nowMs()): void {
-  try {
-    sql.exec(`DELETE FROM dav_locks WHERE expires_at <= ?`, now);
-  } catch {
-    // best-effort; read path still filters expired rows
-  }
-}
 
-function listLocksForPath(sql: DurableSqlStorage, path: string, now = nowMs()): LockDetails[] {
-  pruneExpiredLocks(sql, now);
-  const rows = sql.exec(`SELECT token, scope, depth, owner, timeout, expires_at as expiresAt, root FROM dav_locks WHERE path = ?`, path).toArray();
-  return rows.flatMap((row) => {
-    const token = stringField(row, 'token', '');
-    if (!token) return [];
-    const expiresAt = Number(row['expiresAt'] ?? 0);
-    if (!Number.isFinite(expiresAt) || expiresAt <= now) return [];
-    return [
-      {
-        token,
-        owner: nullableStringField(row, 'owner'),
-        scope: row['scope'] === 'shared' ? 'shared' : 'exclusive',
-        depth: row['depth'] === 'infinity' ? 'infinity' : '0',
-        timeout: stringField(row, 'timeout', ''),
-        expiresAt,
-        root: stringField(row, 'root', '/'),
-      },
-    ];
-  });
-}
 
 function upsertNode(
   sql: DurableSqlStorage,
@@ -167,5 +135,5 @@ function getDeadProperties(sql: DurableSqlStorage, path: string): DeadProperty[]
   }
 }
 
-export { ensureDavSchema, pruneExpiredLocks, listLocksForPath, upsertNode, deleteNodeCascade, renameNodeCascade, getDeadProperties };
-export type { SqlExecutor, SqlRow, DurableSqlStorage };
+export { ensureDavSchema, upsertNode, deleteNodeCascade, renameNodeCascade, getDeadProperties };
+export type { DurableSqlStorage };

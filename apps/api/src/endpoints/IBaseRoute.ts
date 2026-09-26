@@ -1,4 +1,5 @@
 import type { Context } from 'hono';
+import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { ServiceError, DatabaseError, DefaultInternalServerError } from '@durable-dav/backend-errors';
 import type { ApiContext } from '@/types/ApiContext';
 import { getBackendStrings } from '@durable-dav/shared/i18n';
@@ -19,8 +20,8 @@ type HonoContext = ApiContext;
  * guidance); `getBackendStrings` is wired here so the shared backend locale
  * bundle is live code, not dead code.
  *
- * Shared statics (`getScope`, `readJson`, `parseLimit`, `toServiceStatus`,
- * `toSafeErrorMessage`, `toErrorResponse`) are the single source of truth;
+ * Shared statics (`getScope`, `readJson`, `toServiceStatus`, `jsonError`,
+ * `toErrorResponse`) are the single source of truth;
  * `PublicViewerResolver` delegates to them so both stay consistent.
  */
 abstract class BaseRoute {
@@ -76,36 +77,11 @@ abstract class BaseRoute {
     }
   }
 
-  /**
-   * Clamped `?limit=` parser. Returns `def` when missing/unparsable, clamped
-   * to `[1, max]` otherwise. Trims whitespace so `?limit= 20 ` and
-   * `?limit=` both fall back to `def` instead of producing 0/1 via
-   * `Number("   ")`.
-   */
-  public static parseLimit(url: string, def = 100, max = 100): number {
-    try {
-      const raw = new URL(url).searchParams.get('limit');
-      if (raw === null || raw.trim() === '') return def;
-      const n = Number(raw.trim());
-      return Number.isFinite(n) ? Math.min(max, Math.max(1, Math.floor(n))) : def;
-    } catch {
-      return def;
-    }
-  }
 
   public static toServiceStatus(error: unknown): 400 | 401 | 403 | 404 | 409 | 413 | 429 | 500 {
     return toMappedStatus(error);
   }
 
-  /**
-   * Mask internal details on 500: callers must use this instead of echoing
-   * `error.message` directly, otherwise D1/DO internals leak to clients.
-   */
-  public static toSafeErrorMessage(error: unknown, fallback: string): string {
-    const status = this.toServiceStatus(error);
-    if (status === 500) return fallback;
-    return error instanceof Error && error.message ? error.message : fallback;
-  }
 
   /**
    * Status → AWS `Exception.Type` mapping for direct validation returns.
@@ -131,14 +107,9 @@ abstract class BaseRoute {
     return this.ERROR_TYPE_REGISTRY[status] ?? 'InternalServerError';
   }
 
-  public static toErrorBody(status: number, message: string): { Exception: { Type: string; Message: string } } {
-    return { Exception: { Type: this.toErrorType(status), Message: message } };
-  }
 
-  public static jsonError(c: HonoContext, message: string, status: number): Response;
-  public static jsonError(c: HonoContext, type: string, message: string, status: number): Response;
-  public static jsonError(c: HonoContext, typeOrMessage: string, messageOrStatus: string | number, status = 400): Response {
-    return typeof messageOrStatus === 'number' ? c.json({ Exception: { Type: this.toErrorType(messageOrStatus), Message: typeOrMessage } }, messageOrStatus as 400) : c.json({ Exception: { Type: typeOrMessage, Message: messageOrStatus } }, status as 400);
+  public static jsonError(c: HonoContext, message: string, status: number): Response {
+    return c.json({ Exception: { Type: this.toErrorType(status), Message: message } }, status as ContentfulStatusCode);
   }
 
   public static toErrorResponse(c: HonoContext, error: unknown): Response {
@@ -189,13 +160,7 @@ abstract class BaseRoute {
     }
   }
 
-  protected json(c: HonoContext, data: unknown, status = 200): Response {
-    return c.json(data, status as 200);
-  }
 
-  protected fail(message: string, status = 400): Response {
-    return Response.json({ Exception: { Type: 'BadRequest', Message: message } }, { status });
-  }
 }
 
 export { BaseRoute };
