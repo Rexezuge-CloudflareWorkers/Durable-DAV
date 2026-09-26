@@ -19,6 +19,7 @@ function bindCoreServices(scope: Container, { env, daos }: ServiceGroupContext):
     createService(UserService, env, {
       userDAO: daos.userDAO,
       namespaceDAO: daos.namespaceDAO,
+      volumeDAO: daos.davVolumeDAO,
     }),
   );
   scope.bind(Tokens.DavPermissionService, () => createService(DavPermissionService, env, {}));

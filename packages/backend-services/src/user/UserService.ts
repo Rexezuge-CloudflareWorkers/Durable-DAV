@@ -1,4 +1,5 @@
 import {
+  DavVolumeDAO,
   NamespaceDAO,
   UserDAO,
 } from '@durable-dav/backend-data/dao';
@@ -7,6 +8,7 @@ import type { D1Queryable } from '@durable-dav/backend-data/utils';
 import { BadRequestError, NotFoundError } from '@durable-dav/backend-errors';
 import { isReservedNamespaceName } from '@durable-dav/shared/constants';
 import { TimestampUtil } from '@durable-dav/shared/utils';
+import { cascadeOwnerVolumes } from './volumeRenameCascade';
 
 interface UserServiceEnv {
   DB: D1Queryable;
@@ -15,6 +17,7 @@ interface UserServiceEnv {
 interface UserServiceDeps {
   userDAO?: () => Promise<UserDAO>;
   namespaceDAO?: () => Promise<NamespaceDAO>;
+  volumeDAO?: () => Promise<Pick<DavVolumeDAO, 'renameOwner'>>;
 }
 
 const USERNAME_RE = /^[a-z0-9](?:[a-z0-9-]{0,37}[a-z0-9])?$/i;
@@ -49,6 +52,7 @@ class UserService {
     this.deps = {
       userDAO: () => Promise.resolve(new UserDAO(env.DB)),
       namespaceDAO: () => Promise.resolve(new NamespaceDAO(env.DB)),
+      volumeDAO: () => Promise.resolve(new DavVolumeDAO(env.DB)),
       ...deps,
     };
   }
@@ -183,6 +187,7 @@ class UserService {
     // If the subsequent update fails, best-effort release the new claim.
     let namespaceClaimed = false;
     let claimedFresh = false;
+    let legacyNamespaces = false;
     try {
       const ns = await this.deps.namespaceDAO();
       await ns.claim({ usernameCi: handleCi, kind: 'user', userEmail: normalized, now });
@@ -191,6 +196,8 @@ class UserService {
     } catch (error) {
       // Claim race: if the existing claim belongs to self (rename-back after
       // a failure), treat as success. Otherwise report taken cleanly.
+      // Legacy DBs without a namespaces table fall back to `users.username`
+      // as authoritative (claim/isTaken both throw there).
       try {
         const nsDao = await this.deps.namespaceDAO();
         const row = await nsDao.get(handleCi).catch(() => null);
@@ -203,9 +210,11 @@ class UserService {
       } catch (inner) {
         if (inner instanceof BadRequestError) throw inner;
         // isTaken itself threw → namespaces table missing → legacy path.
+        legacyNamespaces = true;
       }
-      if (!namespaceClaimed) throw error instanceof Error ? error : new BadRequestError('Username is already taken');
+      if (!legacyNamespaces && !namespaceClaimed) throw error instanceof Error ? error : new BadRequestError('Username is already taken');
     }
+    const oldCi = existing.username?.toLowerCase();
     try {
       await dao.setUsername(normalized, handle, now);
     } catch (error) {
@@ -223,6 +232,16 @@ class UserService {
     // attacker cannot hijack the freed handle in the window between D1
     // rename and propagation. Renamed-away handles remain taken for other
     // accounts, but the owning email may reclaim them.
+    // Simple rename: cascade owner on user-owned volumes. `owner_email` is
+    // the stable key, so only `owner`/`owner_ci` move; DO isolate moves stay
+    // in the API layer (route-level snapshots).
+    if (oldCi) {
+      try {
+        await cascadeOwnerVolumes({ volumeDAO: this.deps.volumeDAO }, { oldOwnerCi: oldCi, newOwner: handle, now });
+      } catch {
+        // ignore
+      }
+    }
     return { email: normalized, username: handle };
   }
 }

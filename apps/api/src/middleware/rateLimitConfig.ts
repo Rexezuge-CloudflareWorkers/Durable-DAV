@@ -17,6 +17,7 @@ interface RateLimitDef {
 const RATE_LIMIT_DEFS: readonly RateLimitDef[] = [
   { path: '/user/volumes*', windowMs: 60_000, max: 60, keyPrefix: 'volumes' },
   { path: '/user/me', windowMs: 60_000, max: 120, keyPrefix: 'user-me' },
+  { path: '/user/me/username', windowMs: 60_000, max: 10, keyPrefix: 'username-rename' },
   { path: '/users/*', windowMs: 60_000, max: 120, keyPrefix: 'public-users' },
   { path: '/:owner/:volume*', windowMs: 60_000, max: 600, keyPrefix: 'webdav' },
 ];
