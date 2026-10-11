@@ -166,10 +166,16 @@ class ReplicationRunner {
       // and `pass_started_at` is cleared as though the tree had been verified.
       const dirty = outcome.errors > 0 || slice.errors > 0 || !slice.complete;
       const status: RunResult['status'] = dirty ? (outcome.applied > 0 ? 'partial' : 'failed') : 'ok';
+      // The fallback names the only dirty state that carries no error: both error
+      // counters always set their `firstError` alongside, so reaching it means a
+      // listing reported itself incomplete without anything failing. The previous
+      // text ("one or more paths could not be synchronised") read as a transfer
+      // failure and sent owners after the wrong cause.
+      const fallbackError = 'a listing was incomplete, so absence-based decisions were held back for this pass';
       await this.replicationDAO.recordRun(
         this.row.replication_id,
         status,
-        dirty ? truncate(outcome.firstError ?? slice.firstError ?? 'one or more paths could not be synchronised') : null,
+        dirty ? truncate(outcome.firstError ?? slice.firstError ?? fallbackError) : null,
         now,
         this.config.getMaxReplicationFailures(),
         slice.cursor,
@@ -179,7 +185,7 @@ class ReplicationRunner {
       await this.invalidateReadCaches();
       return {
         status,
-        error: dirty ? (outcome.firstError ?? slice.firstError) : null,
+        error: dirty ? (outcome.firstError ?? slice.firstError ?? fallbackError) : null,
         remaining: slice.remaining,
         deferredPaths: plan.deferredPaths.length,
       };
