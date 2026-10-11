@@ -4,7 +4,7 @@ import { createDofsFs, setDofsDeviceSize, ensureDavSchema } from '@durable-dav/d
 import type { DofsFs, DurableSqlStorage } from '@durable-dav/dav-store';
 import type { ReplicaStateRow } from '@durable-dav/dav-store';
 import { DAV_CLASS, SUPPORT_METHODS } from '@durable-dav/webdav';
-import { ErrorSanitizationUtil } from '@durable-dav/shared/utils';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { DavRepository } from './dav/DavRepository';
 import { DavLockGuard } from './dav/DavLockGuard';

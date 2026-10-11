@@ -2,7 +2,7 @@
 import { deleteNodeCascade, getDeadProperties, renameNodeCascade, upsertDeadProperty, upsertNode } from '@durable-dav/dav-store';
 import type { DirEntry as DofsChildEntry, DofsFs, DurableSqlStorage } from '@durable-dav/dav-store';
 import type { DavNodeInfo, LockDetails } from '@durable-dav/webdav';
-import { ErrorSanitizationUtil } from '@durable-dav/shared/utils';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 import { hrefOf } from './DavContext';
 import { DavLockGuard } from './DavLockGuard';
 import { lockDetailsFromRow } from './lockRows';

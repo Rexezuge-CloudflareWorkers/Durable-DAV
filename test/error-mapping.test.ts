@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { BaseRoute } from '../apps/api/src/endpoints/IBaseRoute';
-import { BadRequestError, DatabaseError, ForbiddenError, NotFoundError, UnauthorizedError } from '@durable-dav/backend-errors';
+import { BadRequestError, DatabaseError, ForbiddenError, NotFoundError, UnauthorizedError } from '@rexezuge/errors';
 
 /**
  * `toErrorResponse` reads `Accept-Language` off the context for the masked-500

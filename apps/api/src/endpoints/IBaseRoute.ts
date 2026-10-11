@@ -1,12 +1,12 @@
 import type { Context } from 'hono';
 import type { ContentfulStatusCode } from 'hono/utils/http-status';
 import { readCappedBody } from '@durable-dav/webdav';
-import { ServiceError, DatabaseError, DefaultInternalServerError } from '@durable-dav/backend-errors';
+import { CATALOG, ServiceError, DatabaseError, DefaultInternalServerError } from '@rexezuge/errors';
 import type { ApiContext } from '@/types/ApiContext';
-import { getBackendStrings } from '@durable-dav/shared/i18n';
-import { ErrorSanitizationUtil, canonicalizeLanguageTag } from '@durable-dav/shared/utils';
+import { getLocalizedStrings } from '@rexezuge/i18n';
+import { ErrorSanitizationUtil, canonicalizeLanguageTag } from '@rexezuge/shared';
 import { createRequestScope } from '@durable-dav/backend-services/composition';
-import { getRequestScope, asScopedContext } from '@durable-dav/backend-runtime/di';
+import { getRequestScope, asScopedContext } from '@rexezuge/runtime';
 
 type HonoContext = ApiContext;
 
@@ -76,27 +76,36 @@ abstract class BaseRoute {
   }
 
   /**
-   * Status → AWS `Exception.Type` mapping for direct validation returns.
+   * Status → AWS `Exception.Type` naming for direct validation returns.
    * Call sites that previously wrote `c.json({ error: msg }, status)` must
    * use `jsonError` so the wire shape stays `{Exception:{Type,Message}}`.
    *
-   * Why a registry over `switch`: the mapping is data, not branching logic —
-   * a `Record` keeps the 8-entry table scannable and unit-testable as data
-   * (see `ERROR_TYPE_REGISTRY`), and unknown codes fall through to
-   * `InternalServerError` without a `default:` branch.
+   * The name comes from the kit's catalog rather than a local table, so a
+   * direct return and a thrown `ServiceError` spell the same fault the same
+   * way (see `TYPE_BY_STATUS`). Unknown statuses fall through to
+   * `internalServerError` without a `default:` branch.
    */
-  private static readonly ERROR_TYPE_REGISTRY: Readonly<Record<number, string>> = {
-    400: 'BadRequest',
-    401: 'Unauthorized',
-    403: 'Forbidden',
-    404: 'NotFound',
-    409: 'Conflict',
-    413: 'PayloadTooLarge',
-    429: 'RateLimited',
-  };
+  /**
+   * The kit's catalog, read backwards.
+   *
+   * `jsonError` has a status and a message but no error object, so the
+   * envelope's `Type` still needs a name for the fault. It used to be a local
+   * table spelling the type as the class name (`NotFound`), while a *thrown*
+   * `ServiceError` answered the same field from the kit's catalog key
+   * (`notFound`) — one wire field naming the same fault two ways, and the
+   * client that keyed off the string would have had to know both.
+   *
+   * The kit's `CATALOG` is the family's single table (status, code, default
+   * message) and is strictly one status per key, so reading it backwards
+   * removes the second table instead of re-spelling it. An unknown status
+   * answers `internalServerError`, the 500 the envelope is already returning.
+   */
+  private static readonly TYPE_BY_STATUS: ReadonlyMap<number, string> = new Map(
+    Object.entries(CATALOG).map(([type, definition]) => [definition.status, type]),
+  );
 
   public static toErrorType(status: number): string {
-    return this.ERROR_TYPE_REGISTRY[status] ?? 'InternalServerError';
+    return this.TYPE_BY_STATUS.get(status) ?? 'InternalServerError';
   }
 
   public static jsonError(c: HonoContext, message: string, status: number): Response {
@@ -109,7 +118,7 @@ abstract class BaseRoute {
    * Six call sites previously wrote the oversized/malformed pair by hand while
    * `UserRoutes` used `jsonError` for the same two cases — two competing
    * builders for one wire shape, and the hand-written ones had already drifted
-   * away from the `ERROR_TYPE_REGISTRY` that decides the `Type`. Returns `null`
+   * away from the kit catalog that decides the `Type`. Returns `null`
    * for a body that parsed, so a handler is one `if` rather than two.
    */
   public static rejectUnreadableBody(
@@ -129,15 +138,15 @@ abstract class BaseRoute {
       // JSON plane with the DAV plane instead of leaving a retryable outage
       // indistinguishable from a permanent one.
       return Response.json(
-        { Exception: { Type: error.getErrorType(), Message: error.getErrorMessage() } },
-        { status: error.retryable ? 503 : error.getErrorCode() },
+        { Exception: { Type: error.type, Message: error.message } },
+        { status: error.retryable ? 503 : error.status },
       );
     }
     if (error instanceof ServiceError) {
-      const code = error.getErrorCode();
-      const body = { Exception: { Type: error.getErrorType(), Message: error.getErrorMessage() } };
+      const code = error.status;
+      const body = { Exception: { Type: error.type, Message: error.message } };
       if (code < 500) {
-        console.warn(`Responding with ${error.getErrorType()}:`, ErrorSanitizationUtil.sanitizeErrorForLogging(error));
+        console.warn(`Responding with ${error.type}:`, ErrorSanitizationUtil.sanitizeErrorForLogging(error));
       } else {
         console.error('Caught service error during execution:', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
       }
@@ -146,11 +155,11 @@ abstract class BaseRoute {
     // Untyped errors are masked as 500; log the cause server-side only.
     console.error('Unhandled route error', ErrorSanitizationUtil.sanitizeErrorForLogging(error));
     const locale = this.resolveLocale(c);
-    const strings = getBackendStrings(locale);
+    const strings = getLocalizedStrings(locale);
     return Response.json(
       {
         Exception: {
-          Type: DefaultInternalServerError.getErrorType(),
+          Type: DefaultInternalServerError.type,
           Message: strings.common.internalError,
         },
       },

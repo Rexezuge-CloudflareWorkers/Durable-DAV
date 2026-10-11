@@ -9,7 +9,6 @@
   "dependencies": {
     "@cloudflare/vitest-pool-workers": "0.22.0",
     "@durable-dav/backend-data": "workspace:*",
-    "@durable-dav/backend-errors": "workspace:*",
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/backend-services": "workspace:*",
     "@durable-dav/dav-store": "workspace:*",

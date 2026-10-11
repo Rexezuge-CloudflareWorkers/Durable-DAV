@@ -1,4 +1,3 @@
-import type { D1Queryable } from '../utils';
 
 /**
  * The sweep's pass bookkeeping, as statements.
@@ -37,18 +36,19 @@ type ReplicationRunStatus = 'ok' | 'partial' | 'failed';
  */
 const MAX_STORED_ERROR_LENGTH = 500;
 
+interface Statement {
+  sql: string;
+  bindings: unknown[];
+}
+
 /**
  * Open a pass, and park any cursor a previous pass left behind.
- *
- * Clearing the cursor is not optional: a stale resumption point is worse than none,
- * because it would skip everything before the stale position and report the sweep
- * complete — deleting nothing and believing it had reached the end.
  */
-function beginPassStatement(database: D1Queryable, replicationId: string, now: number) {
-  return database
-    .prepare('UPDATE dav_replications SET pass_started_at = ?, cursor_path = NULL, cursor_remaining = 0, updated_at = ? WHERE replication_id = ?')
-    .bind(now, now, replicationId)
-    .run();
+function beginPassStatement(replicationId: string, now: number): Statement {
+  return {
+    sql: 'UPDATE dav_replications SET pass_started_at = ?, cursor_path = NULL, cursor_remaining = 0, updated_at = ? WHERE replication_id = ?',
+    bindings: [now, now, replicationId],
+  };
 }
 
 /**
@@ -59,7 +59,6 @@ function beginPassStatement(database: D1Queryable, replicationId: string, now: n
  * and each decide it was the last straw.
  */
 function recordRunStatement(
-  database: D1Queryable,
   replicationId: string,
   status: ReplicationRunStatus,
   error: string | null,
@@ -67,7 +66,7 @@ function recordRunStatement(
   maxFailures: number,
   cursorPath: string | null,
   remaining: number,
-) {
+): Statement {
   const failed = status !== 'ok';
   // A pass is closed when it failed, or when it finished with nothing left to visit. A
   // clean pass that still has queued collections leaves the gate shut — that is the
@@ -77,9 +76,8 @@ function recordRunStatement(
   // cursor, restarting the sweep from the root on every tick.)
   const closePass = failed || remaining === 0;
   const trimmedError = error === null ? null : error.slice(0, MAX_STORED_ERROR_LENGTH);
-  return database
-    .prepare(
-      `UPDATE dav_replications SET
+  return {
+    sql: `UPDATE dav_replications SET
          last_run_at = ?,
          last_status = ?,
          last_error = ?,
@@ -90,9 +88,8 @@ function recordRunStatement(
          cursor_remaining = ?,
          updated_at = ?
        WHERE replication_id = ?`,
-    )
-    .bind(now, status, trimmedError, failed ? 1 : 0, failed ? 1 : 0, maxFailures, closePass ? 1 : 0, cursorPath, remaining, now, replicationId)
-    .run();
+    bindings: [now, status, trimmedError, failed ? 1 : 0, failed ? 1 : 0, maxFailures, closePass ? 1 : 0, cursorPath, remaining, now, replicationId],
+  };
 }
 
 export { beginPassStatement, recordRunStatement };

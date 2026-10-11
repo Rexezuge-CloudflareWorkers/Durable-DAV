@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { isValidUsername, isValidVolumeName, USERNAME_MAX_LENGTH } from '@durable-dav/shared/constants';
-import { isValidEmailFormat } from '@durable-dav/shared/utils';
+import { isValidEmailFormat } from '@rexezuge/shared';
 import { parsePropfindRequest, parseProppatchRequest } from '@durable-dav/webdav';
 
 describe('shared naming rules are single-sourced', () => {

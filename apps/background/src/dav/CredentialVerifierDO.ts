@@ -1,5 +1,6 @@
 import { DurableObject } from 'cloudflare:workers';
-import { DavCredentialUtil, passwordFingerprint } from '@durable-dav/shared/utils';
+import { passwordFingerprint } from '@rexezuge/shared';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 
 /**
  * Why this class exists: a Worker on the Cloudflare **Free** plan has a 10 ms
@@ -206,4 +207,4 @@ export type { VerifyRequestBody, VerifyResponseBody, CacheEntry };
 // Re-exported so the shard constants stay discoverable next to the class that
 // serves them; the single definition is in `shared` (see `CredentialShardUtil`).
 export {   VERIFY_PATH, DEFAULT_TTL_SECONDS, MAX_CACHE_ENTRIES };
-export {credentialShardOf, CREDENTIAL_SHARD_COUNT} from '@durable-dav/shared/utils';
+export { credentialShardOf, CREDENTIAL_SHARD_COUNT } from '@durable-dav/shared/utils/CredentialShardUtil';

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { BACKEND_STRINGS, SUPPORTED_BACKEND_LOCALES, getBackendStrings, normalizeBackendLocale } from '@durable-dav/shared/i18n';
+import { LOCALE_STRINGS, SUPPORTED_LOCALES, getLocalizedStrings, normalizeLocale } from '@rexezuge/i18n';
 
 // NOTE: `apps/web/src/i18n.ts` (+ `lib/locale.ts`) is not importable in this
 // node unit-test env — it pulls `i18next`/`react-i18next` (web-only deps, not
@@ -11,19 +11,19 @@ import { BACKEND_STRINGS, SUPPORTED_BACKEND_LOCALES, getBackendStrings, normaliz
 
 describe('backend strings (en)', () => {
   it('serves Title Case English strings', () => {
-    const strings = getBackendStrings('en');
-    expect(strings).toBe(BACKEND_STRINGS.en);
+    const strings = getLocalizedStrings('en');
+    expect(strings).toBe(LOCALE_STRINGS.en);
     expect(strings.common.unauthorized).toBe('Authentication Required.');
     expect(strings.common.forbidden).toBe('Access Denied.');
     expect(strings.common.internalError).toBe('Internal Server Error.');
   });
 
   it('keeps locale bundles structurally identical', () => {
-    const enKeys = Object.keys(BACKEND_STRINGS.en).sort();
-    expect(SUPPORTED_BACKEND_LOCALES).toEqual(['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'pl', 'ja', 'zh-CN', 'zh-TW', 'ko']);
-    expect(Object.keys(BACKEND_STRINGS)).toEqual([...SUPPORTED_BACKEND_LOCALES]);
-    for (const locale of SUPPORTED_BACKEND_LOCALES) {
-      expect(Object.keys(BACKEND_STRINGS[locale]).sort()).toEqual(enKeys);
+    const enKeys = Object.keys(LOCALE_STRINGS.en).sort();
+    expect(SUPPORTED_LOCALES).toEqual(['en', 'de', 'fr', 'es', 'it', 'nl', 'pt', 'pl', 'ja', 'zh-CN', 'zh-TW', 'ko']);
+    expect(Object.keys(LOCALE_STRINGS)).toEqual([...SUPPORTED_LOCALES]);
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(Object.keys(LOCALE_STRINGS[locale]).sort()).toEqual(enKeys);
     }
   });
 
@@ -36,10 +36,10 @@ describe('backend strings (en)', () => {
       Object.entries(node).flatMap(([key, value]) =>
         value !== null && typeof value === 'object' ? keyPath(value as object, `${prefix}${key}.`) : [`${prefix}${key}`],
       );
-    const expected = keyPath(BACKEND_STRINGS.en).sort();
+    const expected = keyPath(LOCALE_STRINGS.en).sort();
     expect(expected.length).toBeGreaterThan(0);
-    for (const locale of SUPPORTED_BACKEND_LOCALES) {
-      expect(keyPath(BACKEND_STRINGS[locale]).sort(), locale).toEqual(expected);
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(keyPath(LOCALE_STRINGS[locale]).sort(), locale).toEqual(expected);
     }
   });
 
@@ -53,9 +53,9 @@ describe('backend strings (en)', () => {
         else if (typeof value === 'string' && /\{\w+\}/.test(value)) out.push(value);
       }
     };
-    for (const locale of SUPPORTED_BACKEND_LOCALES) {
+    for (const locale of SUPPORTED_LOCALES) {
       const withPlaceholders: string[] = [];
-      collect(BACKEND_STRINGS[locale], withPlaceholders);
+      collect(LOCALE_STRINGS[locale], withPlaceholders);
       expect(withPlaceholders, locale).toEqual([]);
     }
   });
@@ -63,7 +63,7 @@ describe('backend strings (en)', () => {
 
 describe('backend strings (zh-CN)', () => {
   it('serves Chinese strings', () => {
-    const strings = getBackendStrings('zh-CN');
+    const strings = getLocalizedStrings('zh-CN');
     expect(strings.common.internalError).toBe('服务器内部错误。');
     expect(strings.common.unauthorized).toBe('需要身份验证。');
   });
@@ -72,33 +72,33 @@ describe('backend strings (zh-CN)', () => {
 describe('locale fallback', () => {
   it('falls back to en for unknown, empty, or missing locales', () => {
     for (const locale of ['en-US', 'xx', '', null, undefined]) {
-      expect(getBackendStrings(locale)).toBe(BACKEND_STRINGS.en);
+      expect(getLocalizedStrings(locale)).toBe(LOCALE_STRINGS.en);
     }
   });
 
   it('serves every supported locale directly', () => {
-    for (const locale of SUPPORTED_BACKEND_LOCALES) {
-      expect(getBackendStrings(locale)).toBe(BACKEND_STRINGS[locale]);
+    for (const locale of SUPPORTED_LOCALES) {
+      expect(getLocalizedStrings(locale)).toBe(LOCALE_STRINGS[locale]);
     }
   });
 
   it('maps zh variants to zh-CN', () => {
     for (const locale of ['zh', 'zh_CN', 'ZH-cn']) {
-      expect(getBackendStrings(locale)).toBe(BACKEND_STRINGS['zh-CN']);
+      expect(getLocalizedStrings(locale)).toBe(LOCALE_STRINGS['zh-CN']);
     }
   });
 
   it('base-matches regional variants to their language bundle', () => {
-    expect(getBackendStrings('de-AT')).toBe(BACKEND_STRINGS.de);
-    expect(getBackendStrings('fr-CA')).toBe(BACKEND_STRINGS.fr);
-    expect(getBackendStrings('pt-BR')).toBe(BACKEND_STRINGS.pt);
+    expect(getLocalizedStrings('de-AT')).toBe(LOCALE_STRINGS.de);
+    expect(getLocalizedStrings('fr-CA')).toBe(LOCALE_STRINGS.fr);
+    expect(getLocalizedStrings('pt-BR')).toBe(LOCALE_STRINGS.pt);
   });
 
   it('normalizes tags case- and separator-insensitively', () => {
-    expect(normalizeBackendLocale('zh_cn')).toBe('zh-CN');
-    expect(normalizeBackendLocale('ZH-CN')).toBe('zh-CN');
-    expect(normalizeBackendLocale(' en ')).toBe('en');
-    expect(normalizeBackendLocale('pt')).toBe('pt');
-    expect(normalizeBackendLocale('xx')).toBe('en');
+    expect(normalizeLocale('zh_cn')).toBe('zh-CN');
+    expect(normalizeLocale('ZH-CN')).toBe('zh-CN');
+    expect(normalizeLocale(' en ')).toBe('en');
+    expect(normalizeLocale('pt')).toBe('pt');
+    expect(normalizeLocale('xx')).toBe('en');
   });
 });

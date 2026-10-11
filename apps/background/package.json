@@ -15,12 +15,13 @@
   },
   "dependencies": {
     "@durable-dav/backend-data": "workspace:*",
-    "@durable-dav/backend-errors": "workspace:*",
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/backend-services": "workspace:*",
     "@durable-dav/dav-store": "workspace:*",
     "@durable-dav/shared": "workspace:*",
-    "@durable-dav/webdav": "workspace:*"
+    "@durable-dav/webdav": "workspace:*",
+    "@rexezuge/runtime": "^1.2.0",
+    "@rexezuge/shared": "^1.2.0"
   },
   "devDependencies": {
     "@types/node": "26.6.4",

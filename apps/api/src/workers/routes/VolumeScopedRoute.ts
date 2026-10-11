@@ -2,7 +2,7 @@ import { Tokens } from '@durable-dav/backend-services/composition';
 import { isVolumeOwner } from '@durable-dav/backend-services/dav';
 import type { ViewerIdentity } from '@durable-dav/backend-services/dav';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
-import type { Container } from '@durable-dav/backend-runtime/di';
+import type { Container } from '@rexezuge/runtime';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 
 import type { ApiContext } from '@/types/ApiContext';

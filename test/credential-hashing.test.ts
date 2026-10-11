@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
-import { CryptoUtil } from '@durable-dav/shared/utils';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
+import { CryptoUtil } from '@rexezuge/shared';
 
 /**
  * Password storage for WebDAV Basic credentials.

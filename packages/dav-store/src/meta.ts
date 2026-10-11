@@ -1,5 +1,5 @@
 import type { DeadProperty } from '@durable-dav/webdav';
-import { isMissingSchemaError } from '@durable-dav/shared/utils';
+import { isMissingSchemaError } from '@rexezuge/d1';
 
 type SqlRow = Record<string, unknown>;
 

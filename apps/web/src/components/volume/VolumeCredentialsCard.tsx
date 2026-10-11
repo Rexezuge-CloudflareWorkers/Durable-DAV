@@ -9,8 +9,7 @@ import { Button } from '../ui/Button';
 import { Badge } from '../ui/Badge';
 import { Card, CardHeader, CardTitle } from '../ui/Card';
 import { Input } from '../ui/Input';
-import { RefreshButton } from '../shared/RefreshButton';
-import { ReadOnlyField } from '../shared/ReadOnlyField';
+import { ReadOnlyField, RefreshButton } from '@rexezuge/web';
 import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal';
 
 export function VolumeCredentialsCard({
@@ -125,7 +124,7 @@ export function VolumeCredentialsCard({
     <Card>
       <CardHeader>
         <CardTitle>{t('credentials.bucketCredentials', 'Bucket Credentials')}</CardTitle>
-        <RefreshButton onRefresh={refresh} loading={loading} />
+        <RefreshButton onRefresh={refresh} loading={loading} label={t('common.refresh', 'Refresh')} />
       </CardHeader>
       <p className="text-sm text-[var(--color-text-secondary)] mb-3">
         {t('credentials.hint', 'Each Credential Unlocks Only This Bucket. Use The Generated Username And Password As WebDAV Basic Auth.')}
@@ -160,8 +159,8 @@ export function VolumeCredentialsCard({
       </form>
       {lastCreated && (
         <div className="mt-4 space-y-2">
-          <ReadOnlyField label={t('credentials.newUsername', 'New Username')} value={lastCreated.username} showCopy />
-          <ReadOnlyField label={t('credentials.newPassword', 'New Password (Copy Once)')} value={lastCreated.password} showCopy />
+          <ReadOnlyField label={t('credentials.newUsername', 'New Username')} value={lastCreated.username} showCopy copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')} />
+          <ReadOnlyField label={t('credentials.newPassword', 'New Password (Copy Once)')} value={lastCreated.password} showCopy copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')} />
           {lastCreated.readOnly && (
             <Badge variant="info">{t('credentials.readOnlyBadge', 'Read-Only Access')}</Badge>
           )}

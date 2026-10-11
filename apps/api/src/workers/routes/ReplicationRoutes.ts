@@ -1,9 +1,9 @@
 import { Tokens } from '@durable-dav/backend-services/composition';
 import { VolumeReplicationService } from '@durable-dav/backend-services/dav';
-import { NotFoundError } from '@durable-dav/backend-errors';
+import { NotFoundError } from '@rexezuge/errors';
 import { ReplicationRunner } from '@durable-dav/background/replication';
 import type { LocalReplicaStub, RunResult } from '@durable-dav/background/replication';
-import type { Container } from '@durable-dav/backend-runtime/di';
+import type { Container } from '@rexezuge/runtime';
 import { normalizeVolumeKey } from '@durable-dav/webdav';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 import type { ApiApp, ApiContext } from '@/types/ApiContext';

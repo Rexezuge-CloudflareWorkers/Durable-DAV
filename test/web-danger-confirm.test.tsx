@@ -12,8 +12,8 @@ vi.mock('react-i18next', () => ({
   }),
 }));
 
-import { TypeToConfirmModal } from '../apps/web/src/components/modals/TypeToConfirmModal';
-import { COPY_FEEDBACK_TIMEOUT_MS } from '../apps/web/src/lib/constants';
+import { TypeToConfirmModal } from '@rexezuge/web';
+import { COPY_FEEDBACK_TIMEOUT_MS } from '@rexezuge/web';
 
 function renderModal() {
   const onConfirm = vi.fn();
@@ -24,6 +24,9 @@ function renderModal() {
       description="Permanently Deletes Everything."
       expectedName="alice/my-files"
       confirmLabel="Delete Bucket"
+      cancelLabel="Cancel"
+      copyLabel="Copy To Clipboard"
+      promptLabel="Type alice/my-files To Confirm"
       onConfirm={onConfirm}
       onCancel={onCancel}
     />,
@@ -138,6 +141,9 @@ describe('danger zone type-to-confirm modal', () => {
         description="Permanently Deletes Everything."
         expectedName="alice/my-files"
         confirmLabel="Delete Bucket"
+        cancelLabel="Cancel"
+        copyLabel="Copy To Clipboard"
+        promptLabel="Type alice/my-files To Confirm"
         onConfirm={vi.fn()}
         onCancel={vi.fn()}
       />,

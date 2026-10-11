@@ -1,7 +1,8 @@
+import { DavCredentialUtil } from '../../../packages/shared/src/utils/DavCredentialUtil';
 import { describe, expect, it } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import { setupIntegrationTest, ensureUser } from '../helpers/setup';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
+
 
 /**
  * Bucket-credential authentication against real D1.

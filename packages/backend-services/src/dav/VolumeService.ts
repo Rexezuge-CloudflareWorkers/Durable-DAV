@@ -1,17 +1,17 @@
 import { DavCredentialDAO, DavVolumeDAO } from '@durable-dav/backend-data/dao';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@durable-dav/backend-errors';
+import type { D1Queryable } from '@rexezuge/d1';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@rexezuge/errors';
 import { isValidUsername, isValidVolumeName } from '@durable-dav/shared/constants';
 import type { DavHrefPrefixMode } from '@durable-dav/shared/constants';
-import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { checkVolumeQuota, parseVolumePatch } from './VolumeCreatePolicy';
 import type { VolumePatchInput } from './VolumeCreatePolicy';
 import { isVolumeOwner } from './volumeOwnership';
 import type { ViewerIdentity } from './volumeOwnership';
-import { UserIdentityService } from '../identity/UserIdentityService';
-import type { ResolvedAccount } from '../user/accountLookup';
+import { UserIdentityService } from '../identity';
+import type { ResolvedAccount } from '../user';
 
 interface VolumeServiceEnv {
   DB: D1Queryable;

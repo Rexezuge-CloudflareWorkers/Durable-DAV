@@ -8,12 +8,17 @@
   },
   "dependencies": {
     "@durable-dav/backend-data": "workspace:*",
-    "@durable-dav/backend-errors": "workspace:*",
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/backend-services": "workspace:*",
     "@durable-dav/background": "workspace:*",
     "@durable-dav/shared": "workspace:*",
     "@durable-dav/webdav": "workspace:*",
+    "@rexezuge/d1": "^1.2.0",
+    "@rexezuge/errors": "^1.2.0",
+    "@rexezuge/http": "^1.2.0",
+    "@rexezuge/i18n": "^1.2.0",
+    "@rexezuge/runtime": "^1.2.0",
+    "@rexezuge/shared": "^1.2.0",
     "chanfana": "3.4.0",
     "hono": "4.13.10"
   },

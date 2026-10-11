@@ -1,8 +1,8 @@
-import { createLogger } from '@durable-dav/backend-runtime/logger';
+import { createLogger } from '@rexezuge/runtime';
 
 import type { ReplicationDecision, RemoteVolume } from '@durable-dav/backend-services/replication';
 import { truncateReplicationReason } from '@durable-dav/backend-services/replication';
-import { CryptoUtil } from '@durable-dav/shared/utils';
+import { CryptoUtil } from '@rexezuge/shared';
 import type { ReplicaStateRow } from '@durable-dav/dav-store';
 import type { LocalReplicaStub, Slice } from './collectSlice';
 import { parentOf } from './collectSlice';

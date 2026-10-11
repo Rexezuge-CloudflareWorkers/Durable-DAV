@@ -2,8 +2,8 @@ import { FolderArchive, Lock, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import { Button } from '../components/ui/Button';
 import { Card } from '../components/ui/Card';
-import { AppPage } from '../components/layout/AppPage';
-import { ZERO_TRUST_AUTHENTICATION_PATH } from '../lib/constants';
+import { AppPage } from '@rexezuge/web';
+import { ZERO_TRUST_AUTHENTICATION_PATH } from '@rexezuge/web';
 
 function signIn() {
   globalThis.location.assign(ZERO_TRUST_AUTHENTICATION_PATH);

@@ -1,25 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
-import { KvCache } from '@durable-dav/backend-runtime/kv';
-import type { KvNamespaceLike } from '@durable-dav/backend-runtime/kv';
-import { buildKvKey, clampTtl, digest128, KV_DOMAINS, KV_MAX_KEY_LENGTH } from '@durable-dav/backend-runtime/kv';
+import { KvCache } from '@rexezuge/runtime';
+import type { KvNamespaceLike } from '@rexezuge/runtime';
+import { buildKvKey, clampTtl, digest128, KV_DOMAINS } from '@rexezuge/runtime';
 import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
-import { base64ToBytes, bytesToBase64 } from '@durable-dav/shared/utils';
-import {
-  MAX_CACHED_FILE_BYTES,
-  cacheControlFor,
-  cacheKeyForVolume,
-  etagForPropfind,
-  getCachedFile,
-  getCachedPropfind,
-  getCachedVolumeList,
-  hashBody,
-  invalidateVolumeCaches,
-  invalidateVolumeListCache,
-  isFresh,
-  putCachedFile,
-  putCachedPropfind,
-  putCachedVolumeList,
-} from '../apps/api/src/workers/routes/DavReadCache';
+import { base64ToBytes, bytesToBase64 } from '@rexezuge/shared';
+import { MAX_CACHED_FILE_BYTES, cacheControlFor, cacheKeyForVolume, etagForPropfind, getCachedFile, getCachedPropfind, getCachedVolumeList, hashBody, invalidateVolumeCaches, invalidateVolumeListCache, isFresh, putCachedFile, putCachedPropfind, putCachedVolumeList } from '../apps/api/src/workers/routes/DavReadCache';
 
 // In-memory fake of the single CACHE binding (structural KvNamespaceLike).
 // Ported from ../Git `test/kv-cache.test.ts`. Stores text and binary entries
@@ -95,31 +80,37 @@ function makeFakeKv(initial: Record<string, string> = {}): KvNamespaceLike & {
 }
 
 describe('dav KV domains', () => {
-  it('registers davProp/davFile/davMeta alongside the Git-ported domains', () => {
-    expect(KV_DOMAINS.davProp.ttlSeconds).toBe(120);
-    expect(KV_DOMAINS.davFile.ttlSeconds).toBe(300);
-    expect(KV_DOMAINS.davMeta.ttlSeconds).toBe(60);
-    expect(KV_DOMAINS.davFile.maxValueBytes).toBe(10_485_760);
-    expect(buildKvKey('davProp', ['alice/demo', 'x'])).toBe('davProp:v1:alice%2Fdemo:x');
+  // The kit's closed domain registry: this repo's davProp/davFile/davMeta
+  // vocabulary renamed onto the family's three domains (`davProp`->metadata,
+  // `davFile`->asset, `davMeta`->metadata). KV is a loss-tolerant cache, so a
+  // renamed prefix recomputes rather than migrates.
+  it('registers the family domains the read caches key on', () => {
+    expect(KV_DOMAINS.metadata.ttlSeconds).toBe(120);
+    expect(KV_DOMAINS.asset.ttlSeconds).toBe(300);
+    expect(KV_DOMAINS.asset.maxValueBytes).toBe(10_485_760);
+    expect(buildKvKey('metadata', ['alice/demo', 'x'])).toBe('metadata:v1:alice%2Fdemo:x');
   });
 
   it('isolates DAV domains sharing the same parts', () => {
-    expect(buildKvKey('davProp', ['x'])).not.toBe(buildKvKey('davFile', ['x']));
-    expect(buildKvKey('davMeta', ['x'])).not.toBe(buildKvKey('davProp', ['x']));
+    expect(buildKvKey('metadata', ['x'])).not.toBe(buildKvKey('asset', ['x']));
+    expect(buildKvKey('session', ['x'])).not.toBe(buildKvKey('metadata', ['x']));
   });
 
   it('rejects unknown domains, empty parts, and empty segments', () => {
     expect(() => buildKvKey('nope' as never, ['x'])).toThrow(/Unknown KV domain/);
-    expect(() => buildKvKey('davProp', [])).toThrow(/at least one key part/);
-    expect(() => buildKvKey('davFile', [' '.repeat(3)])).toThrow(/must not be empty/);
+    expect(() => buildKvKey('metadata', [])).toThrow(/at least one key part/);
+    expect(() => buildKvKey('asset', [' '.repeat(3)])).toThrow(/must not be empty/);
   });
 
   it('hashes overlong DAV keys deterministically within the length cap', () => {
     const long = `v/${'a'.repeat(600)}`;
-    const first = buildKvKey('davProp', [long, 'path']);
-    const second = buildKvKey('davProp', [long, 'path']);
+    const first = buildKvKey('metadata', [long, 'path']);
+    const second = buildKvKey('metadata', [long, 'path']);
     expect(first).toBe(second);
-    expect(first.length).toBeLessThanOrEqual(KV_MAX_KEY_LENGTH);
+    // 512 is KV's platform key cap, which the kit's KvDomains enforces by
+    // digesting an overlong key. Asserted here rather than imported: the kit's
+    // package root does not re-export the constant yet.
+    expect(first.length).toBeLessThanOrEqual(512);
     expect(first).toContain(':h:');
   });
 
@@ -133,25 +124,28 @@ describe('dav KV domains', () => {
 
   it('overflow keys are 32 hex chars and still domain-prefixed', () => {
     const long = 'a'.repeat(600);
-    const key = buildKvKey('davFile', ['alice/demo', `path:${long}`]);
-    expect(key).toMatch(/^davFile:v1:h:[0-9a-f]{32}$/);
+    const key = buildKvKey('asset', ['alice/demo', `path:${long}`]);
+    expect(key).toMatch(/^asset:v1:h:[0-9a-f]{32}$/);
   });
 });
 
 describe('clampTtl for DAV domains', () => {
   it('uses domain defaults and honors overrides', () => {
-    expect(clampTtl(undefined, 'davProp')).toBe(120);
-    expect(clampTtl(undefined, 'davFile')).toBe(300);
-    expect(clampTtl(undefined, 'davMeta')).toBe(60);
-    expect(clampTtl(180, 'davProp')).toBe(180);
+    expect(clampTtl(undefined, 'metadata')).toBe(120);
+    expect(clampTtl(undefined, 'asset')).toBe(300);
+    // This repo's former `davMeta` volume-listing cache is a derived snapshot, so it
+    // lands on the kit's `metadata` domain (120s) rather than `session`; its own
+    // 60s TTL is passed explicitly on every write.
+    expect(clampTtl(undefined, 'metadata')).toBe(120);
+    expect(clampTtl(180, 'metadata')).toBe(180);
   });
 
   it('clamps below the platform minimum and falls back to the domain default', () => {
-    expect(clampTtl(1, 'davMeta')).toBe(60);
+    expect(clampTtl(1, 'session')).toBe(60);
     // Every domain declares a required ttl, so a non-finite override falls back
     // to that default rather than disabling expiry.
-    expect(clampTtl(NaN, 'davProp')).toBe(120);
-    expect(clampTtl(Infinity, 'davFile')).toBe(300);
+    expect(clampTtl(NaN, 'metadata')).toBe(120);
+    expect(clampTtl(Infinity, 'asset')).toBe(300);
   });
 });
 
@@ -159,14 +153,14 @@ describe('KvCache without a binding', () => {
   it('is unavailable and fail-soft', async () => {
     const cache = new KvCache(null);
     expect(cache.available).toBe(false);
-    await expect(cache.getText('davProp', ['a'])).resolves.toBeNull();
-    await expect(cache.putText('davProp', ['a'], 'v')).resolves.toBe(false);
-    await expect(cache.getJson('davProp', ['a'])).resolves.toBeNull();
-    await expect(cache.putJson('davProp', ['a'], { v: 1 })).resolves.toBe(false);
-    await expect(cache.getBinary('davFile', ['a'])).resolves.toBeNull();
-    await expect(cache.putBinary('davFile', ['a'], new Uint8Array([1]), { etag: '"e"', contentType: null })).resolves.toBe(false);
-    await expect(cache.del('davProp', ['a'])).resolves.toBeUndefined();
-    await expect(cache.purgePrefix('davProp')).resolves.toBe(0);
+    await expect(cache.getText('metadata', ['a'])).resolves.toBeNull();
+    await expect(cache.putText('metadata', ['a'], 'v')).resolves.toBe(false);
+    await expect(cache.getJson('metadata', ['a'])).resolves.toBeNull();
+    await expect(cache.putJson('metadata', ['a'], { v: 1 })).resolves.toBe(false);
+    await expect(cache.getBinary('asset', ['a'])).resolves.toBeNull();
+    await expect(cache.putBinary('asset', ['a'], new Uint8Array([1]), { etag: '"e"', contentType: null })).resolves.toBe(false);
+    await expect(cache.del('metadata', ['a'])).resolves.toBeUndefined();
+    await expect(cache.purgePrefix('metadata')).resolves.toBe(0);
   });
 });
 
@@ -174,27 +168,27 @@ describe('KvCache DAV round-trips', () => {
   it('stores propfind text with the domain TTL and reads it back', async () => {
     const kv = makeFakeKv();
     const cache = new KvCache(kv);
-    await expect(cache.putText('davProp', ['alice/demo', 'p'], '<multistatus/>')).resolves.toBe(true);
-    await expect(cache.getText('davProp', ['alice/demo', 'p'])).resolves.toBe('<multistatus/>');
+    await expect(cache.putText('metadata', ['alice/demo', 'p'], '<multistatus/>')).resolves.toBe(true);
+    await expect(cache.getText('metadata', ['alice/demo', 'p'])).resolves.toBe('<multistatus/>');
     expect(kv.seen).toHaveLength(1);
-    expect(kv.seen[0].ttl).toBe(KV_DOMAINS.davProp.ttlSeconds);
+    expect(kv.seen[0].ttl).toBe(KV_DOMAINS.metadata.ttlSeconds);
   });
 
   it('rejects oversize values without touching the binding', async () => {
     const kv = makeFakeKv();
     const cache = new KvCache(kv);
-    await expect(cache.putText('davMeta', ['w'], 'x'.repeat(100_000))).resolves.toBe(false);
+    await expect(cache.putText('session', ['w'], 'x'.repeat(100_000))).resolves.toBe(false);
     expect(kv.seen).toHaveLength(0);
   });
 
   it('purges a DAV sub-prefix without touching sibling domains', async () => {
     const kv = makeFakeKv();
     const cache = new KvCache(kv);
-    await cache.putText('davProp', ['alice/demo', 'a'], 'a');
-    await cache.putText('davProp', ['alice/demo', 'b'], 'b');
-    await cache.putBinary('davFile', ['alice/demo', 'a'], new Uint8Array([99]), { etag: '"c"', contentType: null });
-    await expect(cache.purgePrefix('davProp', ['alice/demo'])).resolves.toBe(2);
-    await expect(cache.getBinary('davFile', ['alice/demo', 'a'])).resolves.toEqual({
+    await cache.putText('metadata', ['alice/demo', 'a'], 'a');
+    await cache.putText('metadata', ['alice/demo', 'b'], 'b');
+    await cache.putBinary('asset', ['alice/demo', 'a'], new Uint8Array([99]), { etag: '"c"', contentType: null });
+    await expect(cache.purgePrefix('metadata', ['alice/demo'])).resolves.toBe(2);
+    await expect(cache.getBinary('asset', ['alice/demo', 'a'])).resolves.toEqual({
       bytes: new Uint8Array([99]),
       metadata: { etag: '"c"', contentType: null },
     });
@@ -204,24 +198,24 @@ describe('KvCache DAV round-trips', () => {
     const kv = makeFakeKv();
     const cache = new KvCache(kv);
     await expect(
-      cache.putBinary('davFile', ['alice/demo', 'a'], new Uint8Array([1, 2, 3]), { etag: '"e"', contentType: 'text/plain' }),
+      cache.putBinary('asset', ['alice/demo', 'a'], new Uint8Array([1, 2, 3]), { etag: '"e"', contentType: 'text/plain' }),
     ).resolves.toBe(true);
-    await expect(cache.getBinary('davFile', ['alice/demo', 'a'])).resolves.toEqual({
+    await expect(cache.getBinary('asset', ['alice/demo', 'a'])).resolves.toEqual({
       bytes: new Uint8Array([1, 2, 3]),
       metadata: { etag: '"e"', contentType: 'text/plain' },
     });
-    expect(kv.seen[0].ttl).toBe(KV_DOMAINS.davFile.ttlSeconds);
+    expect(kv.seen[0].ttl).toBe(KV_DOMAINS.asset.ttlSeconds);
     await expect(
-      cache.putBinary('davFile', ['w'], new Uint8Array(KV_DOMAINS.davFile.maxValueBytes + 1), { etag: '"big"', contentType: null }),
+      cache.putBinary('asset', ['w'], new Uint8Array(KV_DOMAINS.asset.maxValueBytes + 1), { etag: '"big"', contentType: null }),
     ).resolves.toBe(false);
-    await expect(cache.putBinary('davFile', ['w'], new Uint8Array([1]), { etag: '', contentType: null })).resolves.toBe(false);
+    await expect(cache.putBinary('asset', ['w'], new Uint8Array([1]), { etag: '', contentType: null })).resolves.toBe(false);
   });
 
   it('reads text-only entries as a binary miss (legacy rows migrate via getJson)', async () => {
     const kv = makeFakeKv();
     const cache = new KvCache(kv);
-    await cache.putText('davFile', ['alice/demo', 'legacy'], '{"b64":"aGk="}');
-    await expect(cache.getBinary('davFile', ['alice/demo', 'legacy'])).resolves.toBeNull();
+    await cache.putText('asset', ['alice/demo', 'legacy'], '{"b64":"aGk="}');
+    await expect(cache.getBinary('asset', ['alice/demo', 'legacy'])).resolves.toBeNull();
   });
 });
 
@@ -235,12 +229,12 @@ describe('KvCache backend failures stay fail-soft', () => {
       list: boom,
     };
     const cache = new KvCache(failing);
-    await expect(cache.getText('davProp', ['a'])).resolves.toBeNull();
-    await expect(cache.putText('davProp', ['a'], 'v')).resolves.toBe(false);
-    await expect(cache.getBinary('davFile', ['a'])).resolves.toBeNull();
-    await expect(cache.putBinary('davFile', ['a'], new Uint8Array([1]), { etag: '"e"', contentType: null })).resolves.toBe(false);
-    await expect(cache.del('davProp', ['a'])).resolves.toBeUndefined();
-    await expect(cache.purgePrefix('davProp')).resolves.toBe(0);
+    await expect(cache.getText('metadata', ['a'])).resolves.toBeNull();
+    await expect(cache.putText('metadata', ['a'], 'v')).resolves.toBe(false);
+    await expect(cache.getBinary('asset', ['a'])).resolves.toBeNull();
+    await expect(cache.putBinary('asset', ['a'], new Uint8Array([1]), { etag: '"e"', contentType: null })).resolves.toBe(false);
+    await expect(cache.del('metadata', ['a'])).resolves.toBeUndefined();
+    await expect(cache.purgePrefix('metadata')).resolves.toBe(0);
   });
 });
 
@@ -341,7 +335,7 @@ describe('DavReadCache helpers', () => {
     const kv = makeFakeKv();
     const cache = new KvCache(kv);
     const bytes = new Uint8Array([104, 105]);
-    await cache.putJson('davFile', ['alice/demo', 'path:legacy.txt'], {
+    await cache.putJson('asset', ['alice/demo', 'path:legacy.txt'], {
       b64: bytesToBase64(bytes),
       contentType: 'text/plain',
       etag: '"old"',
@@ -356,9 +350,9 @@ describe('DavReadCache helpers', () => {
   it('treats undecodable legacy entries and metadata-less binaries as misses', async () => {
     const kv = makeFakeKv();
     const cache = new KvCache(kv);
-    await cache.putJson('davFile', ['alice/demo', 'path:bad.txt'], { b64: '!!!not base64!!!', etag: '"e"' });
+    await cache.putJson('asset', ['alice/demo', 'path:bad.txt'], { b64: '!!!not base64!!!', etag: '"e"' });
     await expect(getCachedFile(cache, 'alice', 'demo', 'bad.txt')).resolves.toBeNull();
-    await kv.put(buildKvKey('davFile', ['alice/demo', 'path:bare.bin']), new Uint8Array([1]).slice().buffer as ArrayBuffer);
+    await kv.put(buildKvKey('asset', ['alice/demo', 'path:bare.bin']), new Uint8Array([1]).slice().buffer as ArrayBuffer);
     await expect(getCachedFile(cache, 'alice', 'demo', 'bare.bin')).resolves.toBeNull();
   });
 

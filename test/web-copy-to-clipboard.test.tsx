@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 import { act, renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useCopyToClipboard } from '~/hooks/useCopyToClipboard';
-import { COPY_FEEDBACK_TIMEOUT_MS } from '~/lib/constants';
+import { useCopyToClipboard } from '@rexezuge/web';
+import { COPY_FEEDBACK_TIMEOUT_MS } from '@rexezuge/web';
 
 /**
  * The clipboard handler's whole job is honesty.

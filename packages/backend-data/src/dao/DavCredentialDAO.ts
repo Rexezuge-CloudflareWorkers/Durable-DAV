@@ -1,7 +1,7 @@
-import { BaseDAO } from './BaseDAO';
-import type { D1Queryable } from '../utils/D1Types';
+import { BaseDAO } from '@rexezuge/d1';
+import type { D1Queryable } from '@rexezuge/d1';
 import type { DavCredentialInternal, DavCredentialMetadata } from '@durable-dav/shared/model';
-import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
 
 class DavCredentialDAO extends BaseDAO {
   constructor(database: D1Queryable) {
@@ -20,18 +20,9 @@ class DavCredentialDAO extends BaseDAO {
   ): Promise<DavCredentialMetadata> {
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const credentialId = UUIDUtil.getRandomUUID();
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare(
-            `INSERT INTO dav_credentials
+    await this.run(`INSERT INTO dav_credentials
               (credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, read_only)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .bind(credentialId, volumeId, username, passwordHash, name, passwordPrefix, passwordLastFour, now, expiresAt, readOnly ? 1 : 0)
-          .run(),
-      'create dav credential',
-    );
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [credentialId, volumeId, username, passwordHash, name, passwordPrefix, passwordLastFour, now, expiresAt, readOnly ? 1 : 0]);
     const credential = await this.getById(credentialId);
     if (!credential) throw new Error('Failed to load DAV credential after create.');
     return credential;
@@ -64,19 +55,10 @@ class DavCredentialDAO extends BaseDAO {
     // `DatabaseError` — so that documented branch was unreachable and a D1 blip
     // surfaced as an opaque 500. Retrying also matches every write in this DAO,
     // which always went through `withRetry`.
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare(
-            `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+    const row = await this.first<DavCredentialInternal>(`SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
              FROM dav_credentials
              WHERE username = ? AND expires_at > ?
-             LIMIT 1`,
-          )
-          .bind(username, now)
-          .first<DavCredentialInternal>(),
-      'get active dav credential by username',
-    );
+             LIMIT 1`, [username, now]);
     if (!row) return undefined;
     const metadata = this.toMetadata(row);
     return metadata ? { ...metadata, passwordHash: row.password_hash } : undefined;
@@ -88,32 +70,14 @@ class DavCredentialDAO extends BaseDAO {
     // `DatabaseError` handler above this read — the 503s in `BaseRoute` — would
     // be unreachable and a D1 blip would surface as an opaque 500. Three lines
     // below `getActiveByUsername`, which documents the rule in full.
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare(
-            `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
-             FROM dav_credentials WHERE credential_id = ? LIMIT 1`,
-          )
-          .bind(credentialId)
-          .first<DavCredentialInternal>(),
-      'get dav credential by id',
-    );
+    const row = await this.first<DavCredentialInternal>(`SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+             FROM dav_credentials WHERE credential_id = ? LIMIT 1`, [credentialId]);
     return row ? this.toMetadata(row) : undefined;
   }
 
   public async listByVolume(volumeId: string): Promise<DavCredentialMetadata[]> {
-    const rows = await this.allWithRetry<DavCredentialInternal>(
-      () =>
-        this.database
-          .prepare(
-            `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
-             FROM dav_credentials WHERE volume_id = ? ORDER BY created_at DESC`,
-          )
-          .bind(volumeId)
-          .all<DavCredentialInternal>(),
-      'list dav credentials by volume',
-    );
+    const rows = await this.all<DavCredentialInternal>(`SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+             FROM dav_credentials WHERE volume_id = ? ORDER BY created_at DESC`, [volumeId]);
     return rows.map((row) => this.toMetadata(row));
   }
 
@@ -125,14 +89,7 @@ class DavCredentialDAO extends BaseDAO {
    * that degraded to `0` would let the cap be bypassed entirely.
    */
   public async countByVolume(volumeId: string): Promise<number> {
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare('SELECT COUNT(*) AS count FROM dav_credentials WHERE volume_id = ?')
-          .bind(volumeId)
-          .first<{ count: number }>(),
-      'count dav credentials by volume',
-    );
+    const row = await this.first<{ count: number }>('SELECT COUNT(*) AS count FROM dav_credentials WHERE volume_id = ?', [volumeId]);
     return row?.count ?? 0;
   }
 
@@ -144,14 +101,7 @@ class DavCredentialDAO extends BaseDAO {
    * throw as "cannot proceed" rather than as "available".
    */
   public async usernameExists(username: string): Promise<boolean> {
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare('SELECT 1 AS found FROM dav_credentials WHERE username = ? LIMIT 1')
-          .bind(username)
-          .first<{ found: number }>(),
-      'check dav credential username exists',
-    );
+    const row = await this.first<{ found: number }>('SELECT 1 AS found FROM dav_credentials WHERE username = ? LIMIT 1', [username]);
     return Boolean(row?.found);
   }
 
@@ -163,14 +113,7 @@ class DavCredentialDAO extends BaseDAO {
    * change, so they are intentionally not rewritten here.
    */
   public async updatePasswordHash(credentialId: string, passwordHash: string): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE dav_credentials SET password_hash = ? WHERE credential_id = ?')
-          .bind(passwordHash, credentialId)
-          .run(),
-      'update dav credential password hash',
-    );
+    await this.run('UPDATE dav_credentials SET password_hash = ? WHERE credential_id = ?', [passwordHash, credentialId]);
   }
 
   /**
@@ -182,44 +125,23 @@ class DavCredentialDAO extends BaseDAO {
    * cannot be used to smuggle a new secret past the copy-once reveal.
    */
   public async updateReadOnly(credentialId: string, volumeId: string, readOnly: boolean): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE dav_credentials SET read_only = ? WHERE credential_id = ? AND volume_id = ?')
-          .bind(readOnly ? 1 : 0, credentialId, volumeId)
-          .run(),
-      'update dav credential read-only flag',
-    );
+    await this.run('UPDATE dav_credentials SET read_only = ? WHERE credential_id = ? AND volume_id = ?', [readOnly ? 1 : 0, credentialId, volumeId]);
   }
 
   public async updateLastUsed(credentialId: string): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE dav_credentials SET last_used_at = ? WHERE credential_id = ?')
-          .bind(TimestampUtil.getCurrentUnixTimestampInSeconds(), credentialId)
-          .run(),
-      'update dav credential last used',
-    );
+    await this.run('UPDATE dav_credentials SET last_used_at = ? WHERE credential_id = ?', [TimestampUtil.getCurrentUnixTimestampInSeconds(), credentialId]);
   }
 
   public async deleteForVolume(credentialId: string, volumeId: string): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database.prepare('DELETE FROM dav_credentials WHERE credential_id = ? AND volume_id = ?').bind(credentialId, volumeId).run(),
-      'delete dav credential',
-    );
+    await this.run('DELETE FROM dav_credentials WHERE credential_id = ? AND volume_id = ?', [credentialId, volumeId]);
   }
 
   public async deleteByVolume(volumeId: string): Promise<void> {
-    await this.withRetry(
-      () => this.database.prepare('DELETE FROM dav_credentials WHERE volume_id = ?').bind(volumeId).run(),
-      'delete dav credentials by volume',
-    );
+    await this.run('DELETE FROM dav_credentials WHERE volume_id = ?', [volumeId]);
   }
 
   public async pruneExpired(now: number, limit: number): Promise<number> {
-    return this.deleteRowsOlderThan('dav_credentials', 'expires_at', now, limit, 'credential_id');
+    return BaseDAO.deleteOlderThan(this.database, 'dav_credentials', 'expires_at', now, limit, 'credential_id');
   }
 
   private toMetadata(row: DavCredentialInternal): DavCredentialMetadata {

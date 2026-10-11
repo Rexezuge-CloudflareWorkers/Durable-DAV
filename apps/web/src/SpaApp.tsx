@@ -1,9 +1,9 @@
 import { useCallback } from 'react';
 import { useMatch } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { NoticeBar, useNotice } from '@rexezuge/web';
 import { Header } from './components/layout/Header';
-import { NoticeBar } from './components/layout/NoticeBar';
 import { SpaViewRouter } from './components/layout/SpaViewRouter';
-import { useNotice } from './hooks/useNotice';
 import { useCurrentUser } from './hooks/useCurrentUser';
 import { useSpaLanguage } from './hooks/useSpaLanguage';
 
@@ -15,6 +15,7 @@ function TopHeader({ userEmail, username }: { userEmail: string | null; username
 }
 
 export default function SpaApp() {
+  const { t } = useTranslation();
   const { notice, showNotice } = useNotice();
   // `useCallback` here is belt-and-braces, not the fix: `useCurrentUser` reads
   // `onError` through a ref so an unstable callback cannot re-arm its fetch.
@@ -38,7 +39,7 @@ export default function SpaApp() {
   return (
     <div className="min-h-screen bg-[var(--color-surface-base)] text-[var(--color-text-primary)]">
       <TopHeader userEmail={user?.email ?? null} username={user?.username ?? null} />
-      {notice && <NoticeBar notice={notice} />}
+      <NoticeBar notice={notice} statusLabels={{ success: t('common.success', 'Success'), error: t('common.error', 'Error') }} />
 
       <SpaViewRouter
         user={user}

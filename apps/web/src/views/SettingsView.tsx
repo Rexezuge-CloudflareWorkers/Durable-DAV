@@ -1,11 +1,11 @@
 import { useTranslation } from 'react-i18next';
+import { Link } from 'react-router-dom';
 import { UserRound } from 'lucide-react';
 import type { CurrentUser } from '../types';
 import { LanguageSettingsCard } from '../components/settings/LanguageSettingsCard';
 import { ProfileSettingsCard } from '../components/settings/ProfileSettingsCard';
-import { ContextBar } from '../components/layout/ContextBar';
-import { AppPage } from '../components/layout/AppPage';
-import { PageHeaderCard } from '../components/layout/PageHeaderCard';
+import { AppPage, ContextBar, PageHeaderCard } from '@rexezuge/web';
+import { Logo } from '../components/layout/Logo';
 
 export function SettingsView({
   user,
@@ -26,6 +26,11 @@ export function SettingsView({
   return (
     <div>
       <ContextBar
+        home={
+          <Link to="/" aria-label={t('header.home', 'Durable-DAV Home')} className="shrink-0">
+            <Logo />
+          </Link>
+        }
         crumb={
           <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">
             {t('settings.userSettings', 'User Settings')}

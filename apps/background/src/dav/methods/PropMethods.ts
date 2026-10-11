@@ -1,18 +1,7 @@
 import type { DurableSqlStorage } from '@durable-dav/dav-store';
 import { upsertDeadProperty } from '@durable-dav/dav-store';
-import { ErrorSanitizationUtil } from '@durable-dav/shared/utils';
-import {
-  MAX_XML_BODY_BYTES,
-  escapeXml,
-  generatePropfindResponse,
-  isProtectedProperty,
-  parsePropfindRequest,
-  parseProppatchRequest,
-  readCappedText,
-  renderEmptyPropertyElement,
-  renderPropstat,
-  type DeadProperty,
-} from '@durable-dav/webdav';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
+import { MAX_XML_BODY_BYTES, escapeXml, generatePropfindResponse, isProtectedProperty, parsePropfindRequest, parseProppatchRequest, readCappedText, renderEmptyPropertyElement, renderPropstat, type DeadProperty } from '@durable-dav/webdav';
 
 /**
  * Read a request body as UTF-8 XML, refusing anything over the cap.

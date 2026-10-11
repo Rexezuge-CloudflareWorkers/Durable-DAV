@@ -1,12 +1,14 @@
 import { DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
-import type { UserRow } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { BadRequestError, NotFoundError } from '@durable-dav/backend-errors';
+import { newAnchor } from '@rexezuge/identity';
+import type { UserRow } from '@rexezuge/identity';
+import { isMissingSchemaError } from '@rexezuge/d1';
+import type { D1Queryable } from '@rexezuge/d1';
+import { BadRequestError, NotFoundError } from '@rexezuge/errors';
 import { isReservedNamespaceName, isValidUsername } from '@durable-dav/shared/constants';
-import { isMissingSchemaError, TimestampUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil } from '@rexezuge/shared';
 import { cascadeOwnerVolumes } from './volumeRenameCascade';
-import { registerAccount, resolveAccount } from './accountLookup';
-import type { AccountLookupDeps, AccountSummary, ResolvedAccount } from './accountLookup';
+import { registerAccount, resolveAccount } from '@rexezuge/identity';
+import type { AccountLookupDeps, AccountSummary, ResolvedAccount } from '@rexezuge/identity';
 import { deriveUsernameCandidate, namespaceBelongsTo, userBelongsTo } from './usernameRules';
 
 interface UserServiceEnv {
@@ -81,7 +83,7 @@ class UserService {
       // previous holder moved off it — so a released address stays claimable by
       // a later holder instead of being stranded forever.
       account = await registerAccount(this.deps, normalized, normalized, now);
-      if (!account) account = await registerAccount(this.deps, normalized, UserDAO.newAnchor(), now);
+      if (!account) account = await registerAccount(this.deps, normalized, newAnchor(), now);
     }
     if (!account) throw new NotFoundError('Could not resolve or provision an account for this address');
     await this.bootstrapUsername(account, now);
@@ -123,7 +125,7 @@ class UserService {
         // `namespaces` absent — keep the reserved-derived value.
       }
       if (!taken) {
-        const userMatch = await dao.getByUsernameCi(ci).catch(() => null);
+        const userMatch = await dao.getByUsernameCi(ci).catch(() => undefined);
         taken = Boolean(userMatch);
       }
       if (!taken) return candidate;
@@ -276,8 +278,11 @@ class UserService {
     const userMatch = await this.deps
       .userDAO()
       .then((dao) => dao.getByUsernameCi(handleCi))
-      .catch(() => null);
-    return userMatch !== null && !userBelongsTo(userMatch, account);
+      .catch(() => undefined);
+    // `!= null` rather than `!== undefined`: the kit's DAO answers absence with
+    // `null`, and a test-injected stub may return either — both mean "no such
+    // row".
+    return userMatch != null && !userBelongsTo(userMatch, account);
   }
 }
 

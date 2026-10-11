@@ -1,7 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { VolumeReplicationService } from '@durable-dav/backend-services/dav';
 import { sealableSecret, optionalSecret } from '@durable-dav/backend-services/dav';
-import { encryptReplicationSecret, decryptReplicationSecret, generateReplicationKey } from '@durable-dav/backend-data/crypto';
+import { decryptSecret, encryptSecret } from '@rexezuge/d1';
+import { generateReplicationKey } from '@durable-dav/backend-data/crypto';
 import type { DavReplicationRow } from '@durable-dav/backend-data/dao';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 
@@ -78,7 +79,7 @@ function serviceWith(dao: ReturnType<typeof fakeDAO>): VolumeReplicationService 
 }
 
 async function openStoredBasic(ciphertext: string, iv: string): Promise<string> {
-  return decryptReplicationSecret({ ciphertext, iv }, KEY);
+  return decryptSecret({ ciphertext, iv }, KEY);
 }
 
 describe('a basic credential round-trips through the real service', () => {
@@ -230,8 +231,8 @@ describe('a malformed stored credential is still refused, readably', () => {
       { targetKind: 'dav', remoteUrl: 'https://dav.example.com/f', authKind: 'basic', username: 'alice', secret: 'hunter2' },
       'alice@example.com',
     );
-    const legacy = await encryptReplicationSecret('no-colon-here', KEY);
-    const plaintext = await decryptReplicationSecret(legacy, KEY);
+    const legacy = await encryptSecret('no-colon-here', KEY);
+    const plaintext = await decryptSecret(legacy, KEY);
     expect(plaintext.indexOf(':')).toBe(-1);
   });
 });

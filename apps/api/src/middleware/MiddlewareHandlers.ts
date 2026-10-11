@@ -1,8 +1,8 @@
 import type { Context, Next } from 'hono';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import type { AccessIdentityContext } from '@durable-dav/backend-services/auth';
-import { UnauthorizedError, ForbiddenError, DefaultInternalServerError } from '@durable-dav/backend-errors';
-import { ErrorSanitizationUtil } from '@durable-dav/shared/utils';
+import { UnauthorizedError, ForbiddenError, DefaultInternalServerError } from '@rexezuge/errors';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 import { BaseRoute } from '../endpoints/IBaseRoute';
 
 type RequestContext = Context<{
@@ -44,8 +44,8 @@ async function userAuthenticationHandler(c: RequestContext, next: Next): Promise
       return c.json(
         {
           Exception: {
-            Type: DefaultInternalServerError.getErrorType(),
-            Message: DefaultInternalServerError.getErrorMessage(),
+            Type: DefaultInternalServerError.type,
+            Message: DefaultInternalServerError.message,
           },
         },
         500,

@@ -1,5 +1,5 @@
-import { RemoteUrlRejectedError } from '@durable-dav/shared/net';
-import { bytesToBase64 } from '@durable-dav/shared/utils';
+import { RemoteUrlRejectedError } from '@rexezuge/shared';
+import { bytesToBase64 } from '@rexezuge/shared';
 import { stripSlashes as trimSlashes } from '@durable-dav/webdav';
 
 /**

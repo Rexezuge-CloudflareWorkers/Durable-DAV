@@ -1,4 +1,4 @@
-import { createLogger } from '@durable-dav/backend-runtime/logger';
+import { createLogger } from '@rexezuge/runtime';
 import type { LocalReplicaStub } from './collectSlice';
 import type { RemoteVolume } from '@durable-dav/backend-services/replication';
 import type { Slice } from './collectSlice';

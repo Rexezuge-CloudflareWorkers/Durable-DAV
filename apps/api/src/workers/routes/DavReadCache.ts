@@ -1,7 +1,8 @@
-import type { KvCache } from '@durable-dav/backend-runtime/kv';
-import { digest128, invalidateDavVolumeCaches } from '@durable-dav/backend-runtime/kv';
+import type { KvCache } from '@rexezuge/runtime';
+import { digest128 } from '@rexezuge/runtime';
+import { invalidateDavVolumeCaches } from '@durable-dav/backend-runtime/kv';
 import { normalizeVolumeKey, weakEtagValue } from '@durable-dav/webdav';
-import { base64ToBytes } from '@durable-dav/shared/utils';
+import { base64ToBytes } from '@rexezuge/shared';
 
 // KV-backed read cache for DAV RPCs (Git `RepoReadCache` pattern).
 // D1/DO stay authoritative; KV is loss-tolerant. All keys use the canonical
@@ -180,7 +181,7 @@ async function getCachedPropfind(
 ): Promise<CachedPropfind | null> {
   if (!isCacheablePath(innerPath)) return null;
   try {
-    return await cache.getJson<CachedPropfind>('davProp', propfindCacheParts(cacheKeyForVolume(owner, volume), innerPath, depth, body));
+    return await cache.getJson<CachedPropfind>('metadata', propfindCacheParts(cacheKeyForVolume(owner, volume), innerPath, depth, body));
   } catch {
     return null;
   }
@@ -198,7 +199,7 @@ async function putCachedPropfind(
 ): Promise<void> {
   if (!isCacheablePath(innerPath)) return;
   try {
-    await cache.putJson('davProp', propfindCacheParts(cacheKeyForVolume(owner, volume), innerPath, depth, body), entry, {
+    await cache.putJson('metadata', propfindCacheParts(cacheKeyForVolume(owner, volume), innerPath, depth, body), entry, {
       ttlSeconds,
     });
   } catch {
@@ -209,7 +210,7 @@ async function putCachedPropfind(
 async function getCachedFile(cache: KvCache, owner: string, volume: string, innerPath: string): Promise<CachedFile | null> {
   if (!isCacheablePath(innerPath)) return null;
   try {
-    const hit = await cache.getBinary('davFile', fileCacheParts(cacheKeyForVolume(owner, volume), innerPath));
+    const hit = await cache.getBinary('asset', fileCacheParts(cacheKeyForVolume(owner, volume), innerPath));
     if (hit) return { bytes: hit.bytes, contentType: hit.metadata.contentType, etag: hit.metadata.etag };
   } catch {
     return null;
@@ -217,7 +218,7 @@ async function getCachedFile(cache: KvCache, owner: string, volume: string, inne
   // Fallback for pre-binary base64-JSON entries still within their TTL.
   // No metadata on those rows, so `getBinary` above reads them as a miss.
   try {
-    const legacy = await cache.getJson<LegacyCachedFile>('davFile', fileCacheParts(cacheKeyForVolume(owner, volume), innerPath));
+    const legacy = await cache.getJson<LegacyCachedFile>('asset', fileCacheParts(cacheKeyForVolume(owner, volume), innerPath));
     if (!legacy || typeof legacy.etag !== 'string' || legacy.etag === '' || typeof legacy.b64 !== 'string') return null;
     let bytes: Uint8Array;
     try {
@@ -252,7 +253,7 @@ async function putCachedFile(
   if (typeof etag !== 'string' || etag === '') return;
   try {
     await cache.putBinary(
-      'davFile',
+      'asset',
       fileCacheParts(cacheKeyForVolume(owner, volume), innerPath),
       bytes,
       { etag, contentType },

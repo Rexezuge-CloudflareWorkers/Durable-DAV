@@ -15,9 +15,9 @@
 // `invalidateVolumeListCache`. Sweeping it here would cost a delete against
 // every owner on the deployment on every replicated write.
 
-import type { KvCache } from './KvCache';
+import type { KvCache } from '@rexezuge/runtime';
 
-const DAV_CONTENT_DOMAINS = ['davProp', 'davFile'] as const;
+const DAV_CONTENT_DOMAINS = ['metadata', 'asset'] as const;
 
 /**
  * Drop every cached read for one volume. Best-effort by design: KV is a

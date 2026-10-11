@@ -14,6 +14,7 @@
   "dependencies": {
     "@durable-dav/shared": "workspace:*",
     "@durable-dav/webdav": "workspace:*",
+    "@rexezuge/shared": "^1.2.0",
     "dofs": "^0.1.0"
   },
   "devDependencies": {

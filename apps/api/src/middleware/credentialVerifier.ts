@@ -1,4 +1,6 @@
-import { DavCredentialUtil, credentialShardOf, passwordFingerprint } from '@durable-dav/shared/utils';
+import { passwordFingerprint } from '@rexezuge/shared';
+import { credentialShardOf } from '@durable-dav/shared/utils/CredentialShardUtil';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 import { lookupCredentialMemo, rememberCredential } from './credentialMemo';
 
 /**

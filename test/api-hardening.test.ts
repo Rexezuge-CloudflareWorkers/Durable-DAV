@@ -2,7 +2,6 @@ import { describe, expect, it, beforeEach } from 'vitest';
 import { Hono } from 'hono';
 import {
   RATE_LIMIT_DEFS,
-  getRateLimitBucketCountForTests,
   registerRateLimits,
   resetRateLimitForTests,
   clientIp,
@@ -75,8 +74,9 @@ describe('rate limiting is actually wired', () => {
       expect((await app.request('https://x/user/volumes', { method: 'POST' }, env)).status).toBe(200);
     }
     expect((await app.request('https://x/user/volumes', { method: 'POST' }, env)).status).toBe(429);
-    // The webdav bucket must still be untouched.
-    expect(getRateLimitBucketCountForTests()).toBe(1);
+    // The webdav bucket must still be untouched: a volume read is not charged
+    // to the volumes bucket it merely shares a path prefix with.
+    expect((await app.request('https://x/alice/photos/f.txt', { method: 'GET' }, env)).status).toBe(200);
   });
 
   it('still rate-limits genuine volume paths', async () => {
@@ -157,8 +157,7 @@ describe('rate limiting is actually wired', () => {
   });
 
   it('groups anonymous callers without a trusted CF-Connecting-IP', () => {
-    const ctx = { req: { header: () => undefined } } as never;
-    expect(clientIp(ctx)).toBe('unknown');
+    expect(clientIp(() => undefined)).toBe('unknown');
   });
 });
 

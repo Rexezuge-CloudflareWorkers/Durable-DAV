@@ -4,7 +4,7 @@
    `unicorn/prefer-https`'s autofix rewrites them to `https://`, which silently turns
    three assertions into "accepts a valid URL" and leaves the suite green. */
 import { describe, expect, it } from 'vitest';
-import { normalizeRemoteUrl, resolveRedirectUrl, parseAllowedHosts, RemoteUrlRejectedError } from '@durable-dav/shared/net';
+import { normalizeRemoteUrl, resolveRedirectUrl, parseAllowedHosts, RemoteUrlRejectedError } from '@rexezuge/shared';
 
 /**
  * The egress policy.

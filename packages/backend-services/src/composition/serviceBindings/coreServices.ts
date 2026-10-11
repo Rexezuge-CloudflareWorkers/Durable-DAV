@@ -14,7 +14,7 @@ import { VolumeCredentialService } from '../../dav/VolumeCredentialService';
 import { VolumeReplicationService } from '../../dav/VolumeReplicationService';
 import { UserService } from '../../user/UserService';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
-import type { Container } from '@durable-dav/backend-runtime/di';
+import type { Container } from '@rexezuge/runtime';
 import { Tokens } from '../tokens';
 import { createService } from '../serviceFactory';
 import type { ServiceGroupContext } from './daoThunks';

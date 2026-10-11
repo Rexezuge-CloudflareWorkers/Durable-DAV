@@ -1,9 +1,10 @@
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { DavCredentialDAO } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { BadRequestError, InternalServerError, NotFoundError } from '@durable-dav/backend-errors';
+import type { D1Queryable } from '@rexezuge/d1';
+import { BadRequestError, InternalServerError, NotFoundError } from '@rexezuge/errors';
 import type { DavCredentialMetadata } from '@durable-dav/shared/model';
-import { DavCredentialUtil, TimestampUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil } from '@rexezuge/shared';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 
 interface VolumeCredentialServiceEnv {
   DB: D1Queryable;

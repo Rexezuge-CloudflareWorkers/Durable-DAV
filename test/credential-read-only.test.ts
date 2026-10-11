@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import { Container, setRequestScope } from '@durable-dav/backend-runtime/di';
+import { Container, setRequestScope } from '@rexezuge/runtime';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import type { DavPermissionService, VolumeService } from '@durable-dav/backend-services/dav';
 import type { UserIdentityService } from '@durable-dav/backend-services/identity';
 import { DavCredentialDAO } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
+import type { D1Queryable } from '@rexezuge/d1';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import { davAuthForVolume } from '../apps/api/src/middleware/DavAuth';
 import { davErrorResponse, requiresWrite } from '@durable-dav/webdav';
@@ -111,7 +111,7 @@ function buildApp(volume: DavVolumeRow, row: Record<string, unknown> | null): { 
   app.use('*', async (c, next) => {
     const scope = new Container();
     // Structural stubs, not the real services: only `getVolume` /
-    // `resolveUserById` are on the credential path, and building a real
+    // `resolveAccountById` are on the credential path, and building a real
     // `VolumeService` would drag a D1 and the whole DAO graph into a test whose
     // subject is one `if`.
     scope.bindValue(Tokens.VolumeService, { getVolume: () => Promise.resolve(volume) } as unknown as VolumeService);
@@ -119,7 +119,7 @@ function buildApp(volume: DavVolumeRow, row: Record<string, unknown> | null): { 
     // The anonymous-read branch is never taken when a credential is present,
     // but the token has to resolve or the container throws.
     scope.bindValue(Tokens.DavPermissionService, { getRole: () => 'read' as const } as unknown as DavPermissionService);
-    scope.bindValue(Tokens.UserIdentityService, { resolveUserById: () => Promise.resolve(null) } as unknown as UserIdentityService);
+    scope.bindValue(Tokens.UserIdentityService, { resolveAccountById: () => Promise.resolve(null) } as unknown as UserIdentityService);
     setRequestScope(c, scope);
     await next();
   });

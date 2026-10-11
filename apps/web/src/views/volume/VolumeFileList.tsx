@@ -3,7 +3,7 @@ import { Download, File as FileIcon, Folder as FolderIcon, Pencil, Trash2 } from
 import type { DavEntry } from '../../types';
 import { formatBytes } from '../../lib/format';
 import { downloadUrl } from '../../services/davClient';
-import { EmptyState, LoadingSpinner } from '../../components/layout/PageState';
+import { EmptyState, LoadingSpinner } from '@rexezuge/web';
 
 function VolumeFileList({
   owner,

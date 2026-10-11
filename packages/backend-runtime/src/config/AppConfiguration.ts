@@ -1,5 +1,4 @@
-import { EnvParser } from './EnvParser';
-import { DEFAULT_SITE_URL } from './ConfigurationDefaults';
+import { AppConfiguration as BaseAppConfiguration, EnvParser } from '@rexezuge/runtime';
 
 import { AuthConfig } from './sections/AuthConfig';
 import { DavLimits } from './sections/DavLimits';
@@ -17,22 +16,25 @@ import { VolumeLimits } from './sections/VolumeLimits';
  * the section objects are deliberately **not** exposed as getters. They were, and
  * nothing used them: a caller holding a section bypasses the facade and reaches
  * `EnvParser` on its own, which is the coupling the facade exists to prevent.
+ *
+ * It extends the kit's prototype (`@rexezuge/runtime`): the two cross-cutting
+ * getters this class used to carry itself — the public origin and the deployment
+ * stage — are the kit's now, so they cannot drift from every sibling repo's.
+ * The domain getters below stay this repo's, composed from its own sections.
  */
-class AppConfiguration {
+class AppConfiguration extends BaseAppConfiguration {
   private readonly volumes: VolumeLimits;
   private readonly dav: DavLimits;
   private readonly auth: AuthConfig;
   private readonly replication: ReplicationConfig;
 
-  constructor(private readonly env: unknown) {
+  constructor(env: unknown) {
+    // The base holds the environment; this class composes the sections over it.
+    super(env);
     this.volumes = new VolumeLimits(env);
     this.dav = new DavLimits(env);
     this.auth = new AuthConfig(env);
     this.replication = new ReplicationConfig(env);
-  }
-
-  public static fromEnv(env: unknown): AppConfiguration {
-    return new AppConfiguration(env);
   }
 
   public getReplicationSweepLimit(): number {
@@ -83,12 +85,6 @@ class AppConfiguration {
     return this.replication.isReplicationHashOnAmbiguous();
   }
 
-  public getSiteUrl(): string {
-    let url = EnvParser.string(this.env, 'SITE_URL', DEFAULT_SITE_URL);
-    while (url.endsWith('/')) url = url.slice(0, -1);
-    return url;
-  }
-
   public getMaxVolumesPerUser(): number {
     return this.volumes.getMaxVolumesPerUser();
   }
@@ -119,10 +115,6 @@ class AppConfiguration {
 
   public isDemoMode(): boolean {
     return this.auth.isDemoMode();
-  }
-
-  public getEnvironment(): string {
-    return this.auth.getEnvironment();
   }
 
   public isBypassAllowed(): boolean {

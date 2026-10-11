@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DavPermissionService, VolumeService, VolumeCredentialService, checkVolumeQuota } from '@durable-dav/backend-services/dav';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 
 function fakeVolumeDb(opts: { ownedCount?: number; username?: string | null; existing?: unknown } = {}) {

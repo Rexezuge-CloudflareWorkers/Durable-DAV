@@ -46,7 +46,7 @@ import { parse } from 'jsonc-parser';
 // against: base64 of exactly 32 bytes. Imported rather than reimplemented
 // because a second definition of "what a replication key looks like" is the
 // failure mode this whole file is about.
-import { generateReplicationKey } from '@durable-dav/backend-data/crypto/aes-gcm';
+import { generateReplicationKey } from '@durable-dav/backend-data/crypto';
 
 interface WranglerConfig {
   secrets_store_secrets?: Array<{

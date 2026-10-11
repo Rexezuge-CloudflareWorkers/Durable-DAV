@@ -1,4 +1,7 @@
-import { decryptReplicationSecret, resolveReplicationKey } from '@durable-dav/backend-data/crypto';
+// The local `decryptSecret(env, row)` below reads the envelope off the row;
+// the kit's decryptSecret opens it, so it lands under its own name.
+import { decryptSecret as openSealedEnvelope } from '@rexezuge/d1';
+import { resolveReplicationKey } from '@durable-dav/backend-data/crypto';
 import type { DavReplicationRow } from '@durable-dav/backend-data/dao';
 import { RemoteUnavailableError } from '@durable-dav/backend-services/replication';
 import type { RemoteVolume } from '@durable-dav/backend-services/replication';
@@ -70,7 +73,23 @@ async function decryptSecret(env: Env, row: DavReplicationRow): Promise<string> 
     rawVar: env.REPLICATION_ENCRYPTION_KEY,
     isProduction: env.ENVIRONMENT === 'production',
   })();
-  return decryptReplicationSecret({ ciphertext: row.encrypted_secret, iv: row.secret_iv }, key);
+  try {
+    return await openSealedEnvelope({ ciphertext: row.encrypted_secret, iv: row.secret_iv }, key);
+  } catch (error) {
+    // Named for the owner, not for the platform. A wrong key and a tampered
+    // value are one failure to GCM, and depending on the kit version it
+    // arrives as `AesGcmKeyError` or as the raw `OperationError` the cipher
+    // used to let through — "The operation failed for an operation-specific
+    // reason", which names neither the key nor the row. The run records this
+    // string verbatim, so it is the only diagnostic the owner gets: it has to
+    // say *decrypt*, and say re-enter, because only re-entering the credential
+    // can fix a key that changed under a stored envelope.
+    throw new RemoteUnavailableError(
+      `stored replication credential could not be decrypted (wrong key or tampered value); re-enter the username and password for this target: ${
+        error instanceof Error ? error.message : String(error)
+      }`,
+    );
+  }
 }
 
 /**

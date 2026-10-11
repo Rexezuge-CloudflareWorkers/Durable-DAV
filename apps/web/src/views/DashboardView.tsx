@@ -7,12 +7,8 @@ import { toLocalizedErrorMessage } from '../lib/backendErrors';
 import { listMyVolumes } from '../services/volumeService';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
-import { AppPage } from '../components/layout/AppPage';
-import { PageHeaderCard } from '../components/layout/PageHeaderCard';
-import { EmptyState } from '../components/layout/PageState';
+import { AppPage, EmptyState, PageHeaderCard, ReadOnlyField, RefreshButton } from '@rexezuge/web';
 import { VisibilityBadge } from '../components/ui/Badge';
-import { ReadOnlyField } from '../components/shared/ReadOnlyField';
-import { RefreshButton } from '../components/shared/RefreshButton';
 
 export function DashboardView({ showNotice }: { showNotice: (type: 'success' | 'error', text: string) => void }) {
   const { t } = useTranslation();
@@ -58,9 +54,10 @@ export function DashboardView({ showNotice }: { showNotice: (type: 'success' | '
     <AppPage>
       <PageHeaderCard
         title={t('dashboard.title', 'Dashboard')}
+        description={<></>}
         actions={
           <>
-            <RefreshButton onRefresh={refresh} loading={loading} />
+            <RefreshButton onRefresh={refresh} loading={loading} label={t('common.refresh', 'Refresh')} />
             <Button variant="primary" size="sm" onClick={() => void navigate('/new')}>
               <Plus className="h-3.5 w-3.5" />
               {t('dashboard.new', 'New')}
@@ -78,6 +75,7 @@ export function DashboardView({ showNotice }: { showNotice: (type: 'success' | '
             label={t('dashboard.mountAnyVolume', 'Mount Any Volume')}
             value={`${globalThis.location?.origin ?? ''}/<owner>/<volume>/`}
             showCopy
+            copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')}
           />
           <p className="text-sm text-[var(--color-text-secondary)]">
             {t(

@@ -1,26 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import { Container, setRequestScope } from '@durable-dav/backend-runtime/di';
+import { Container, setRequestScope } from '@rexezuge/runtime';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import type { DavPermissionService, VolumeService } from '@durable-dav/backend-services/dav';
 import type { UserIdentityService } from '@durable-dav/backend-services/identity';
 import { DavCredentialDAO, DavVolumeDAO } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { DatabaseError } from '@durable-dav/backend-errors';
-import { DavCredentialUtil, passwordFingerprint } from '@durable-dav/shared/utils';
+import type { D1Queryable } from '@rexezuge/d1';
+import { DatabaseError } from '@rexezuge/errors';
+import { passwordFingerprint } from '@rexezuge/shared';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 import { requiresWrite } from '@durable-dav/webdav';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import { davAuthForVolume } from '../apps/api/src/middleware/DavAuth';
-import {
-  lookupCredentialMemo,
-  rememberCredential,
-  forgetCredential,
-  resetCredentialMemoForTests,
-  setCredentialMemoClockForTests,
-  credentialMemoSizeForTests,
-  DEFAULT_TTL_MS,
-  MAX_ENTRIES,
-} from '../apps/api/src/middleware/credentialMemo';
+import { lookupCredentialMemo, rememberCredential, forgetCredential, resetCredentialMemoForTests, setCredentialMemoClockForTests, credentialMemoSizeForTests, DEFAULT_TTL_MS, MAX_ENTRIES } from '../apps/api/src/middleware/credentialMemo';
 import { verifyCredential } from '../apps/api/src/middleware/credentialVerifier';
 import { CredentialVerifierDO, VerificationCache } from '../apps/background/src/dav/CredentialVerifierDO';
 import { credentialShardOf, CREDENTIAL_SHARD_COUNT } from '../packages/shared/src/utils/CredentialShardUtil';
@@ -116,7 +108,7 @@ function buildApp(volume: DavVolumeRow, row: Record<string, unknown> | null): Te
     scope.bindValue(Tokens.VolumeService, { getVolume: () => Promise.resolve(volume) } as unknown as VolumeService);
     scope.bindValue(Tokens.DavCredentialDAO, () => Promise.resolve(new DavCredentialDAO(db)));
     scope.bindValue(Tokens.DavPermissionService, { getRole: () => 'read' as const } as unknown as DavPermissionService);
-    scope.bindValue(Tokens.UserIdentityService, { resolveUserById: () => Promise.resolve(null) } as unknown as UserIdentityService);
+    scope.bindValue(Tokens.UserIdentityService, { resolveAccountById: () => Promise.resolve(null) } as unknown as UserIdentityService);
     setRequestScope(c, scope);
     await next();
   });
@@ -492,7 +484,7 @@ describe('a D1 failure on the auth hot path is a typed DatabaseError', () => {
       scope.bindValue(Tokens.VolumeService, { getVolume: () => Promise.resolve(volumeRow()) } as unknown as VolumeService);
       scope.bindValue(Tokens.DavCredentialDAO, () => Promise.resolve(new DavCredentialDAO(failing)));
       scope.bindValue(Tokens.DavPermissionService, { getRole: () => 'read' as const } as unknown as DavPermissionService);
-      scope.bindValue(Tokens.UserIdentityService, { resolveUserById: () => Promise.resolve(null) } as unknown as UserIdentityService);
+      scope.bindValue(Tokens.UserIdentityService, { resolveAccountById: () => Promise.resolve(null) } as unknown as UserIdentityService);
       setRequestScope(c, scope);
       await next();
     });

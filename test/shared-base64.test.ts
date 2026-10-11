@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bytesToBase64, base64ToBytes } from '@durable-dav/shared/utils';
+import { bytesToBase64, base64ToBytes } from '@rexezuge/shared';
 
 describe('base64 codec', () => {
   // Known vectors, including every padding length and both alphabet edges.

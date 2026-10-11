@@ -1,4 +1,4 @@
-import { BadRequestError } from '@durable-dav/backend-errors';
+import { BadRequestError } from '@rexezuge/errors';
 import { MAX_NAME_LENGTH, optionalSecret, optionalString, sealableSecret } from './replicationInput';
 import type { ReplicationAuthKind } from './replicationInput';
 

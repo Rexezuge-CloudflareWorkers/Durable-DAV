@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { AppConfiguration } from '../packages/backend-runtime/src/config/AppConfiguration';
-import { EnvParser } from '../packages/backend-runtime/src/config/EnvParser';
+import { EnvParser } from '@rexezuge/runtime';
 import { checkVolumeQuota, parseVolumePatch } from '../packages/backend-services/src/dav/VolumeCreatePolicy';
 
 describe('AppConfiguration hardening', () => {

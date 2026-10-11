@@ -6,8 +6,7 @@ import { loadVolume, updateVolume, deleteVolume } from '../../services/volumeSer
 import { Button } from '../ui/Button';
 import { Card, CardHeader, CardTitle } from '../ui/Card';
 import { Label, Textarea } from '../ui/Input';
-import { RefreshButton } from '../shared/RefreshButton';
-import { TypeToConfirmModal } from '../modals/TypeToConfirmModal';
+import { RefreshButton, TypeToConfirmModal } from '@rexezuge/web';
 import { VolumeCredentialsCard } from './VolumeCredentialsCard';
 import { VolumeReplicationCard } from './VolumeReplicationCard';
 import { HrefPrefixModeCard } from './HrefPrefixModeCard';
@@ -118,7 +117,7 @@ export function VolumeSettingsTab({
       <Card>
         <CardHeader>
           <CardTitle>{t('volumes.general', 'General')}</CardTitle>
-          <RefreshButton onRefresh={reset} loading={saving || loading} />
+          <RefreshButton onRefresh={reset} loading={saving || loading} label={t('common.refresh', 'Refresh')} />
         </CardHeader>
         <form onSubmit={submit} className="space-y-4">
           <div className="space-y-1.5">
@@ -205,6 +204,9 @@ export function VolumeSettingsTab({
           )}
           expectedName={fullName}
           confirmLabel={detail.isPrivate ? t('volumes.makePublic', 'Make Public') : t('volumes.makePrivate', 'Make Private')}
+          cancelLabel={t('common.cancel', 'Cancel')}
+          copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')}
+          promptLabel={t('common.typeToConfirm', 'Type {{name}} To Confirm', { name: fullName })}
           loading={savingVisibility}
           onConfirm={() => void confirmVisibility()}
           onCancel={() => setConfirmingVisibility(false)}
@@ -220,6 +222,9 @@ export function VolumeSettingsTab({
           )}
           expectedName={fullName}
           confirmLabel={t('volumes.deleteBucket', 'Delete Bucket')}
+          cancelLabel={t('common.cancel', 'Cancel')}
+          copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')}
+          promptLabel={t('common.typeToConfirm', 'Type {{name}} To Confirm', { name: fullName })}
           loading={deleting}
           onConfirm={() => void confirmDelete()}
           onCancel={() => setConfirmingDelete(false)}

@@ -1,9 +1,8 @@
 import { Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { CurrentUser } from '../../types';
-import Unauthorized from './Unauthorized';
 import { Card } from '../ui/Card';
-import { AppPage } from './AppPage';
+import { AppPage, Unauthorized } from '@rexezuge/web';
 import { LandingView } from '../../views/LandingView';
 import { DashboardView } from '../../views/DashboardView';
 import { NewVolumeView } from '../../views/NewVolumeView';
@@ -78,7 +77,11 @@ function SpaViewRouter({
             <NewVolumeView defaultOwner={defaultOwner} showNotice={showNotice} />
           ) : (
             <AppPage>
-              <Unauthorized message={t('errors.signInToCreate', 'Sign In To Create Volumes.')} />
+              <Unauthorized
+                title={t('unauthorized.title', 'Access Required')}
+                message={t('errors.signInToCreate', 'Sign In To Create Volumes.')}
+                actionLabel={t('unauthorized.action', 'Sign In With Cloudflare Access')}
+              />
             </AppPage>
           )
         }
@@ -99,7 +102,11 @@ function SpaViewRouter({
             />
           ) : (
             <AppPage>
-              <Unauthorized message={t('errors.signInToManage', 'Sign In To Manage Settings.')} />
+              <Unauthorized
+                title={t('unauthorized.title', 'Access Required')}
+                message={t('errors.signInToManage', 'Sign In To Manage Settings.')}
+                actionLabel={t('unauthorized.action', 'Sign In With Cloudflare Access')}
+              />
             </AppPage>
           )
         }

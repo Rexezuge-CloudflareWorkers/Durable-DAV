@@ -1,6 +1,6 @@
 import type { NamespaceRow, UserRow } from '@durable-dav/backend-data/dao';
 import { USERNAME_MAX_LENGTH, isValidUsername } from '@durable-dav/shared/constants';
-import type { ResolvedAccount } from './accountLookup';
+import type { ResolvedAccount } from '.';
 
 /**
  * Username derivation and the two ownership predicates.

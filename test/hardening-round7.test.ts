@@ -1,8 +1,9 @@
+import { DavCredentialUtil } from '../packages/shared/src/utils/DavCredentialUtil';
 import { describe, expect, it } from 'vitest';
 import { parseVolumePatch } from '../packages/backend-services/src/dav/VolumeCreatePolicy';
-import { isD1ErrorRetryable } from '../packages/backend-data/src/utils/D1ErrorClassifier';
-import { isMissingSchemaError } from '@durable-dav/shared/utils';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
+import { isD1ErrorRetryable } from '@rexezuge/d1';
+import { isMissingSchemaError } from '@rexezuge/d1';
+
 import { getDeadProperties } from '../packages/dav-store/src/meta';
 import { generatePropfindResponse } from '@durable-dav/webdav';
 import type { DavNodeInfo } from '@durable-dav/webdav';

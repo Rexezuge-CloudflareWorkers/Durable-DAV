@@ -146,7 +146,7 @@ describe('resolveAccount fails closed on a registry read error', () => {
     await expect(resolveAccount(deps, 'bob@x.co')).resolves.toMatchObject({ id: 'usr_bob', username: 'bob' });
   });
 
-  it('returns null for a blank address without touching the database', async () => {
+  it('reports nothing for a blank address without touching the database', async () => {
     const { deps, seen } = fixture();
     await expect(resolveAccount(deps, ' '.repeat(3))).resolves.toBeNull();
     expect(seen).toEqual([]);

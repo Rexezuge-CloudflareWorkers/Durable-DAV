@@ -1,5 +1,5 @@
 import type { Next } from 'hono';
-import { setRequestScope, asScopedContext } from '@durable-dav/backend-runtime/di';
+import { setRequestScope, asScopedContext } from '@rexezuge/runtime';
 import { createRequestScope } from '@durable-dav/backend-services/composition';
 import type { ApiContext } from '@/types/ApiContext';
 

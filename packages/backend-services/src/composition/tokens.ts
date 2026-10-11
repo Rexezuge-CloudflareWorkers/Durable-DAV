@@ -1,11 +1,11 @@
 import type { DavCredentialDAO, DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import type { Token } from '@durable-dav/backend-runtime/di';
+import type { D1Queryable } from '@rexezuge/d1';
+import type { Token } from '@rexezuge/runtime';
 import type { AppConfiguration } from '@durable-dav/backend-runtime/config';
-import type { KvCache } from '@durable-dav/backend-runtime/kv';
+import type { KvCache } from '@rexezuge/runtime';
 import type { AccessAuthService } from '../auth/AccessAuthService';
 import type { UserService } from '../user/UserService';
-import type { UserIdentityService } from '../identity/UserIdentityService';
+import type { UserIdentityService } from '../identity';
 import type { DavPermissionService } from '../dav/DavPermissionService';
 import type { VolumeService } from '../dav/VolumeService';
 import type { VolumeCredentialService } from '../dav/VolumeCredentialService';

@@ -1,8 +1,10 @@
 import { describe, expect, it, vi } from 'vitest';
 import { Hono } from 'hono';
 import { readPageParams, stripPageParams } from '../apps/api/src/workers/routes/davPageParams';
-import { applySecurityHeaders, isSensitiveJsonPath, SECURITY_HEADERS, securityHeaders } from '../apps/api/src/middleware/securityHeaders';
+import { SECURITY_HEADERS, securityHeaders, sensitivePaths } from '@rexezuge/http';
+import { isSensitiveJsonPath } from '../apps/api/src/middleware/index';
 import { BaseRoute } from '../apps/api/src/endpoints/IBaseRoute';
+import type { ApiContext } from '../apps/api/src/types/ApiContext';
 
 /**
  * The API front door's pure routing/response layer.
@@ -14,7 +16,7 @@ import { BaseRoute } from '../apps/api/src/endpoints/IBaseRoute';
  * themselves, which an end-to-end test can only observe indirectly.
  */
 
-type Ctx = Parameters<typeof applySecurityHeaders>[0];
+type Ctx = ApiContext;
 
 describe('browser-plane paging params', () => {
   it('does not opt in when neither parameter is present', () => {
@@ -71,7 +73,7 @@ describe('browser-plane paging params', () => {
 describe('security headers', () => {
   function runApp(build: (app: Hono) => void, url: string): Promise<Response> {
     const app = new Hono();
-    app.use('*', securityHeaders());
+    app.use('*', securityHeaders(sensitivePaths('/user/')));
     build(app);
     return Promise.resolve(app.request(url, {} as never));
   }
@@ -154,7 +156,9 @@ describe('BaseRoute error mapping', () => {
     } as unknown as Ctx;
   }
 
-  it('maps status codes to AWS Exception.Type through the registry', () => {
+  it('maps status codes to AWS Exception.Type from the kit catalog', () => {
+    // Derived from the kit's CATALOG, so a direct return and a thrown
+    // `ServiceError` spell the same fault the same way in the same field.
     expect(BaseRoute.toErrorType(400)).toBe('BadRequest');
     expect(BaseRoute.toErrorType(401)).toBe('Unauthorized');
     expect(BaseRoute.toErrorType(403)).toBe('Forbidden');
@@ -180,8 +184,33 @@ describe('BaseRoute error mapping', () => {
     expect(res.status).toBe(400);
   });
 
-  it('answers 413 for an oversized body and 400 for a malformed one', () => {
-    // Six call sites wrote this pair by hand and had drifted from the registry
+  it('reads a capped JSON body without trusting Content-Length alone', async () => {
+    // The cap is enforced on the stream, not just the declared header: a
+    // chunked request omits it, so a header probe alone lets an unbounded body
+    // through to `req.json()`.
+    const reader = (body: string | undefined, contentLength?: string) =>
+      ({
+        req: {
+          header: (name: string) => (name === 'content-length' ? contentLength : undefined),
+          raw: new Request('https://h/user/volumes', { method: 'POST', body }),
+        },
+        json: () => new Response(),
+      }) as unknown as Ctx;
+
+    const oversized = await BaseRoute.readJson(reader('{}', '2097152'));
+    expect(oversized.oversized).toBe(true);
+
+    const malformed = await BaseRoute.readJson(reader('{nope', '6'));
+    expect(malformed.malformed).toBe(true);
+
+    const empty = await BaseRoute.readJson<{ a?: number }>(reader('', '0'));
+    expect(empty).toEqual({ malformed: false, oversized: false, body: {} });
+
+    const valid = await BaseRoute.readJson<{ a: number }>(reader('{"a":1}'));
+    expect(valid).toEqual({ malformed: false, oversized: false, body: { a: 1 } });
+  });
+
+  it('answers 413 for an oversized body and 400 for a malformed one', () => {    // Six call sites wrote this pair by hand and had drifted from the registry
     // that decides the Type, so it is centralised in `rejectUnreadableBody`.
     const json = vi.fn((_body: unknown, status: number) => new Response('{}', { status }));
     const c = { json } as unknown as Ctx;

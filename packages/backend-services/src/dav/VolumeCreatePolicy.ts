@@ -1,4 +1,4 @@
-import { BadRequestError } from '@durable-dav/backend-errors';
+import { BadRequestError } from '@rexezuge/errors';
 import { DAV_HREF_PREFIX_MODES, isDavHrefPrefixMode } from '@durable-dav/shared/constants';
 import type { DavHrefPrefixMode } from '@durable-dav/shared/constants';
 
