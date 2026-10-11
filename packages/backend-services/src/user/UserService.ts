@@ -1,13 +1,14 @@
 import { DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
-import type { UserRow } from '@durable-dav/backend-data/dao';
+import { newAnchor } from '@rexezuge/identity';
+import type { UserRow } from '@rexezuge/identity';
 import { isMissingSchemaError } from '@rexezuge/d1';
 import type { D1Queryable } from '@rexezuge/d1';
 import { BadRequestError, NotFoundError } from '@rexezuge/errors';
 import { isReservedNamespaceName, isValidUsername } from '@durable-dav/shared/constants';
 import { TimestampUtil } from '@rexezuge/shared';
 import { cascadeOwnerVolumes } from './volumeRenameCascade';
-import { registerAccount, resolveAccount } from './accountLookup';
-import type { AccountLookupDeps, AccountSummary, ResolvedAccount } from './accountLookup';
+import { registerAccount, resolveAccount } from '@rexezuge/identity';
+import type { AccountLookupDeps, AccountSummary, ResolvedAccount } from '@rexezuge/identity';
 import { deriveUsernameCandidate, namespaceBelongsTo, userBelongsTo } from './usernameRules';
 
 interface UserServiceEnv {
@@ -82,7 +83,7 @@ class UserService {
       // previous holder moved off it — so a released address stays claimable by
       // a later holder instead of being stranded forever.
       account = await registerAccount(this.deps, normalized, normalized, now);
-      if (!account) account = await registerAccount(this.deps, normalized, UserDAO.newAnchor(), now);
+      if (!account) account = await registerAccount(this.deps, normalized, newAnchor(), now);
     }
     if (!account) throw new NotFoundError('Could not resolve or provision an account for this address');
     await this.bootstrapUsername(account, now);
@@ -148,7 +149,7 @@ class UserService {
    * blip would have looked like a definitive "taken, pick another" answer.
    * A `null` return now means exactly one thing: no such row.
    */
-  public async getByUsername(username: string): Promise<UserRow | undefined> {
+  public async getByUsername(username: string): Promise<UserRow | null> {
     const dao = await this.deps.userDAO();
     return dao.getByUsernameCi(username.toLowerCase());
   }
@@ -278,9 +279,9 @@ class UserService {
       .userDAO()
       .then((dao) => dao.getByUsernameCi(handleCi))
       .catch(() => undefined);
-    // `!= null` rather than `!== undefined`: the DAO answers absence with
-    // undefined (the kit's first()), but a test-injected stub may return null,
-    // and both mean "no such row".
+    // `!= null` rather than `!== undefined`: the kit's DAO answers absence with
+    // `null`, and a test-injected stub may return either — both mean "no such
+    // row".
     return userMatch != null && !userBelongsTo(userMatch, account);
   }
 }

@@ -51,9 +51,9 @@ returned 404.
 */
 type NotOwnerStatus = 403 | 404;
 
-const UNAUTHORIZED_BODY = { Exception: { Type: 'unauthorized', Message: 'Unauthorized' } } as const;
-const NOT_FOUND_BODY = { Exception: { Type: 'notFound', Message: 'Volume not found' } } as const;
-const FORBIDDEN_BODY = { Exception: { Type: 'forbidden', Message: 'Forbidden' } } as const;
+const UNAUTHORIZED_BODY = { Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } } as const;
+const NOT_FOUND_BODY = { Exception: { Type: 'NotFound', Message: 'Volume not found' } } as const;
+const FORBIDDEN_BODY = { Exception: { Type: 'Forbidden', Message: 'Forbidden' } } as const;
 
 /**
  * Resolve the authenticated caller, or answer 401.

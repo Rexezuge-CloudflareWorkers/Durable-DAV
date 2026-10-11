@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { UserRound } from 'lucide-react';
+import { ContextBar } from '@rexezuge/web';
 import type { UserProfile } from '../types';
 import { loadProfile } from '../services/profileService';
 import { toLocalizedErrorMessage } from '../lib/backendErrors';
 import { Card } from '../components/ui/Card';
-import { ContextBar } from '../components/layout/ContextBar';
-import { LoadingSpinner } from '../components/layout/PageState';
+import { Logo } from '../components/layout/Logo';
+import { LoadingSpinner } from '@rexezuge/web';
 
 export function ProfileView({ showNotice }: { showNotice: (type: 'success' | 'error', text: string) => void }) {
   const { username = '' } = useParams<{ username: string }>();
@@ -56,6 +57,11 @@ export function ProfileView({ showNotice }: { showNotice: (type: 'success' | 'er
   return (
     <div>
       <ContextBar
+        home={
+          <Link to="/" aria-label={t('header.home', 'Durable-DAV Home')} className="shrink-0">
+            <Logo />
+          </Link>
+        }
         crumb={
           <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">
             {profile.username}

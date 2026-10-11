@@ -145,7 +145,7 @@ async function ownerIdentity(scope: ReturnType<typeof getScope>, volume: DavVolu
   const ownerUserId = volume.owner_user_id;
   if (!ownerUserId) return { userEmail: volume.owner_email, userId: null };
   try {
-    const account = await scope.get(Tokens.UserIdentityService).resolveUserById(ownerUserId);
+    const account = await scope.get(Tokens.UserIdentityService).resolveAccountById(ownerUserId);
     return { userEmail: account?.email ?? volume.owner_email, userId: account?.id ?? ownerUserId };
   } catch {
     return { userEmail: volume.owner_email, userId: ownerUserId };

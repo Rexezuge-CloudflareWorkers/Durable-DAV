@@ -1,7 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
-import { AccessAuthService, DEFAULT_ACCESS_AUTH_STRATEGIES } from '../packages/backend-services/src/auth/AccessAuthService';
-import { UserIdentityService } from '../packages/backend-services/src/identity/UserIdentityService';
-import type { UserRow } from '../packages/backend-data/src/dao/UserDAO';
+import { AccessAuthService } from '../packages/backend-services/src/auth/AccessAuthService';
+import { UserIdentityService } from '@rexezuge/identity';
+import type { UserRow } from '@rexezuge/identity';
 
 /**
  * The two paths the migration left uncovered.
@@ -83,7 +83,7 @@ describe('AccessAuthService — the platform-identity fallback', () => {
   it('fails closed on an unverified platform identity', async () => {
     // Access bindings are trusted, but an unverified identity must never
     // authenticate — the same rule the JWT path applies to `email_verified`.
-    const service = new AccessAuthService({}, DEFAULT_ACCESS_AUTH_STRATEGIES);
+    const service = new AccessAuthService({});
 
     await expect(
       service.getAuthenticatedUserEmail(new Request('https://dav.example.com/'), {
@@ -93,7 +93,7 @@ describe('AccessAuthService — the platform-identity fallback', () => {
   });
 
   it('never trusts the spoofed Cf-Access-Authenticated-User-Email header', async () => {
-    const service = new AccessAuthService({}, DEFAULT_ACCESS_AUTH_STRATEGIES);
+    const service = new AccessAuthService({});
     const spoofed = new Request('https://dav.example.com/', {
       headers: { 'Cf-Access-Authenticated-User-Email': 'owner@example.com' },
     });
@@ -116,9 +116,10 @@ describe('UserIdentityService — error normalisation and address claims', () =>
     await expect(service.resolveAccount('someone@example.com')).rejects.toThrow();
   });
 
-  it('wraps a raw lookup failure as a DatabaseError, naming the read', async () => {
+  it('lets a raw lookup failure propagate instead of reading as "no such account"', async () => {
     // A failed read is an outage and must not read as "no such account": the
-    // caller sees a typed 503-able error carrying which read failed.
+    // kit's service does not wrap DAO errors, so the caller sees the failure
+    // itself rather than a typed message naming the read.
     const service = identityService({
       userDAO: () =>
         Promise.resolve({
@@ -128,10 +129,10 @@ describe('UserIdentityService — error normalisation and address claims', () =>
         } as never),
     });
 
-    await expect(service.resolveUserById('usr_1')).rejects.toThrow(/Failed to resolve account: .*locked/s);
+    await expect(service.resolveAccountById('usr_1')).rejects.toThrow(/database is locked/s);
   });
 
-  it('wraps a failed address resolution the same way', async () => {
+  it('lets a failed address resolution propagate the same way', async () => {
     const service = identityService({
       userEmailDAO: () =>
         Promise.resolve({
@@ -143,7 +144,7 @@ describe('UserIdentityService — error normalisation and address claims', () =>
         } as never),
     });
 
-    await expect(service.resolveAccount('someone@example.com')).rejects.toThrow(/Failed to load identity/s);
+    await expect(service.resolveAccount('someone@example.com')).rejects.toThrow(/database is locked/s);
   });
 
   it('refuses to link an address another account already holds verified', async () => {
@@ -173,20 +174,19 @@ describe('UserIdentityService — error normalisation and address claims', () =>
   });
 });
 
-describe('UserIdentityService.resolveUserId', () => {
-  it('answers nothing for an unknown address', async () => {
-    // `?? undefined` rather than `?? null`: the kit's sql-first DAO answers
-    // absence with `undefined`, and the two spellings mixed across the family
-    // is exactly what the migration removed.
+describe('UserIdentityService.resolveAccountId', () => {
+  it('answers null for an unknown address', async () => {
+    // Absence is `null`: the kit's DAO answers "no row" the way `D1Result`
+    // and `KVNamespace` do, and the service preserves that spelling.
     const service = new UserIdentityService({ DB: {} as never }, {
-      userEmailDAO: () => Promise.resolve({ get: async () => undefined } as never),
+      userEmailDAO: () => Promise.resolve({ get: async () => null } as never),
       userDAO: () =>
         Promise.resolve({
-          getByCurrentEmail: async (): Promise<UserRow | undefined> => undefined,
-          getByEmail: async (): Promise<UserRow | undefined> => undefined,
+          getByCurrentEmail: async (): Promise<UserRow | null> => null,
+          getByEmail: async (): Promise<UserRow | null> => null,
         } as never),
     } as never);
 
-    await expect(service.resolveUserId('nobody@example.com')).resolves.toBeUndefined();
+    await expect(service.resolveAccountId('nobody@example.com')).resolves.toBeNull();
   });
 });

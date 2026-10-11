@@ -23,14 +23,14 @@ class NamespaceDAO extends BaseDAO {
     super(database);
   }
 
-  public async get(usernameCi: string): Promise<NamespaceRow | undefined> {
+  public async get(usernameCi: string): Promise<NamespaceRow | null> {
     return this.first<NamespaceRow>('SELECT * FROM namespaces WHERE username_ci = ? LIMIT 1', [usernameCi]);
   }
 
   public async isTaken(usernameCi: string): Promise<boolean> {
     const row = await this.get(usernameCi);
-    // The kit's first() answers absence with undefined, not null.
-    return row !== undefined;
+    // The kit's `first` answers absence with `null`.
+    return row !== null;
   }
 
   public async claim(input: { usernameCi: string; kind: NamespaceKind; userEmail?: string | null; userId?: string | null; now: number }): Promise<void> {

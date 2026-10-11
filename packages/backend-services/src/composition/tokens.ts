@@ -5,7 +5,7 @@ import type { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import type { KvCache } from '@rexezuge/runtime';
 import type { AccessAuthService } from '../auth/AccessAuthService';
 import type { UserService } from '../user/UserService';
-import type { UserIdentityService } from '../identity/UserIdentityService';
+import type { UserIdentityService } from '../identity';
 import type { DavPermissionService } from '../dav/DavPermissionService';
 import type { VolumeService } from '../dav/VolumeService';
 import type { VolumeCredentialService } from '../dav/VolumeCredentialService';

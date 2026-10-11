@@ -52,7 +52,7 @@ describe('GET /users/:username', () => {
     const res = await api('/users/definitely-not-a-real-handle-xyz');
     expect(res.status).toBe(404);
     const body = (await res.json()) as { Exception?: { Type?: string } };
-    expect(body.Exception?.Type).toBe('notFound');
+    expect(body.Exception?.Type).toBe('NotFound');
   });
 
   it('resolves a real handle', async () => {

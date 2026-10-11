@@ -41,7 +41,7 @@ describe('BaseRoute.toErrorResponse', () => {
 
   it('keeps the AWS Exception envelope on a client error', async () => {
     await expect(bodyFor(new NotFoundError('gone'))).resolves.toEqual({
-      Exception: { Type: 'notFound', Message: 'gone' },
+      Exception: { Type: 'NotFound', Message: 'gone' },
     });
   });
 
@@ -61,7 +61,7 @@ describe('BaseRoute.toErrorResponse', () => {
     const response = BaseRoute.toErrorResponse(context(), new Error('internal detail: db password hunter2'));
     const body = (await response.json()) as { Exception: { Type: string; Message: string } };
     expect(response.status).toBe(500);
-    expect(body.Exception.Type).toBe('internalServerError');
+    expect(body.Exception.Type).toBe('InternalServerError');
     expect(body.Exception.Message).not.toContain('hunter2');
   });
 

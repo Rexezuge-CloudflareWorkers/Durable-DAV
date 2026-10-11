@@ -10,8 +10,8 @@ import { checkVolumeQuota, parseVolumePatch } from './VolumeCreatePolicy';
 import type { VolumePatchInput } from './VolumeCreatePolicy';
 import { isVolumeOwner } from './volumeOwnership';
 import type { ViewerIdentity } from './volumeOwnership';
-import { UserIdentityService } from '../identity/UserIdentityService';
-import type { ResolvedAccount } from '../user/accountLookup';
+import { UserIdentityService } from '../identity';
+import type { ResolvedAccount } from '../user';
 
 interface VolumeServiceEnv {
   DB: D1Queryable;
@@ -88,7 +88,7 @@ class VolumeService {
     }
   }
 
-  public async getVolume(owner: string, name: string): Promise<DavVolumeRow | undefined> {
+  public async getVolume(owner: string, name: string): Promise<DavVolumeRow | null> {
     const dao = await this.deps.volumeDAO();
     // No `.catch(() => null)`: that made a D1 outage indistinguishable from a
     // missing bucket, so `davAuthForVolume`'s `DatabaseError -> 503` branch was

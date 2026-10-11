@@ -66,8 +66,8 @@ class BrowserVolumeRoute extends VolumeScopedRoute {
       // §10.3: a destination on another server cannot be satisfied. Any other
       // unmappable destination is a plain 400, as on the DAV plane.
       return destination.reason === 'cross-origin'
-        ? c.json({ Exception: { Type: 'badGateway', Message: 'Cross-origin Destination' } }, 502)
-        : c.json({ Exception: { Type: 'badRequest', Message: 'Invalid Destination' } }, 400);
+        ? c.json({ Exception: { Type: 'BadGateway', Message: 'Cross-origin Destination' } }, 502)
+        : c.json({ Exception: { Type: 'BadRequest', Message: 'Invalid Destination' } }, 400);
     }
     // Forward to the DAV-base URL (not the browser URL): the DO falls back to
     // pathname parsing when X-Dav-Path is empty (root), and the browser prefix

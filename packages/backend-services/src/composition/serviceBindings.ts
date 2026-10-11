@@ -1,7 +1,7 @@
 // Service bindings for the per-request composition root.
 import type { DavCredentialDAO, DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
 import type { Container, Token } from '@rexezuge/runtime';
-import { UserIdentityService } from '../identity/UserIdentityService';
+import { UserIdentityService } from '../identity';
 import { Tokens } from './tokens';
 import type { RequestScopeEnv } from './serviceFactory';
 import type { DaoThunks } from './serviceBindings/daoThunks';

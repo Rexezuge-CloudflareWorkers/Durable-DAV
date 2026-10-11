@@ -1,6 +1,7 @@
 import type { Hono } from 'hono';
 import { RESERVED_NAMESPACE_NAMES } from '@durable-dav/shared';
-import { rateLimit } from './rateLimit';
+import { rateLimit } from '@rexezuge/http';
+import type { RateLimitHandler } from '@rexezuge/http';
 
 interface RateLimitDef {
   path: string;
@@ -60,12 +61,37 @@ const RATE_LIMIT_DEFS: readonly RateLimitDef[] = [
 
 function registerRateLimits(app: Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId?: string } }>): void {
   for (const def of RATE_LIMIT_DEFS) {
-    const middleware = rateLimit({ windowMs: def.windowMs, max: def.max, keyPrefix: def.keyPrefix });
     app.use(def.path, async (c, next) => {
-      return def.exclude?.(new URL(c.req.url).pathname) ? next() : middleware(c, next);
+      return def.exclude?.(new URL(c.req.url).pathname) ? next() : limiterFor(def)(c, next);
     });
   }
 }
 
-export { RATE_LIMIT_DEFS, registerRateLimits };
+/**
+ * The live limiter per bucket, created lazily and shared isolate-wide.
+ *
+ * The kit's limiter holds its buckets in a closure with no reset handle —
+ * which is the right shape for production (one app per isolate, so one
+ * limiter per bucket per isolate) but leaves the suites with no isolation:
+ * `registerRateLimits` runs once per worker while a test file makes hundreds
+ * of requests, so the 60/min `volumes` bucket trips mid-file for reasons that
+ * have nothing to do with what is under test. Clearing this map drops every
+ * bucket without touching the kit's fixed internals (per-request cap,
+ * deferred sweep, `Retry-After`).
+ */
+const liveLimiters = new Map<string, RateLimitHandler>();
+
+function limiterFor(def: RateLimitDef): RateLimitHandler {
+  const existing = liveLimiters.get(def.keyPrefix);
+  if (existing) return existing;
+  const created = rateLimit({ windowMs: def.windowMs, max: def.max, keyPrefix: def.keyPrefix });
+  liveLimiters.set(def.keyPrefix, created);
+  return created;
+}
+
+function resetRateLimitForTests(): void {
+  liveLimiters.clear();
+}
+
+export { RATE_LIMIT_DEFS, registerRateLimits, resetRateLimitForTests };
 export type { RateLimitDef };

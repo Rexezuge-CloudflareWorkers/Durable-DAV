@@ -1,6 +1,6 @@
 // Shared DAO thunk bundle for service bindings.
 import type { DavCredentialDAO, DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
-import type { UserIdentityService } from '../../identity/UserIdentityService';
+import type { UserIdentityService } from '../../identity';
 import type { RequestScopeEnv } from '../serviceFactory';
 
 interface DaoThunks {

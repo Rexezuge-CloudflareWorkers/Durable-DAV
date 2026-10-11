@@ -108,7 +108,7 @@ function buildApp(volume: DavVolumeRow, row: Record<string, unknown> | null): Te
     scope.bindValue(Tokens.VolumeService, { getVolume: () => Promise.resolve(volume) } as unknown as VolumeService);
     scope.bindValue(Tokens.DavCredentialDAO, () => Promise.resolve(new DavCredentialDAO(db)));
     scope.bindValue(Tokens.DavPermissionService, { getRole: () => 'read' as const } as unknown as DavPermissionService);
-    scope.bindValue(Tokens.UserIdentityService, { resolveUserById: () => Promise.resolve(null) } as unknown as UserIdentityService);
+    scope.bindValue(Tokens.UserIdentityService, { resolveAccountById: () => Promise.resolve(null) } as unknown as UserIdentityService);
     setRequestScope(c, scope);
     await next();
   });
@@ -439,7 +439,7 @@ describe('a D1 failure on the auth hot path is a typed DatabaseError', () => {
     // The point of retrying a read at all: a transient blip must not surface.
     const { db, calls } = failingDb('D1_ERROR: database is locked', 2);
     const dao = new DavVolumeDAO(db);
-    await expect(dao.getByOwnerName('alice', 'photos')).resolves.toBeUndefined();
+    await expect(dao.getByOwnerName('alice', 'photos')).resolves.toBeNull();
     expect(calls()).toBe(3);
   });
 
@@ -484,7 +484,7 @@ describe('a D1 failure on the auth hot path is a typed DatabaseError', () => {
       scope.bindValue(Tokens.VolumeService, { getVolume: () => Promise.resolve(volumeRow()) } as unknown as VolumeService);
       scope.bindValue(Tokens.DavCredentialDAO, () => Promise.resolve(new DavCredentialDAO(failing)));
       scope.bindValue(Tokens.DavPermissionService, { getRole: () => 'read' as const } as unknown as DavPermissionService);
-      scope.bindValue(Tokens.UserIdentityService, { resolveUserById: () => Promise.resolve(null) } as unknown as UserIdentityService);
+      scope.bindValue(Tokens.UserIdentityService, { resolveAccountById: () => Promise.resolve(null) } as unknown as UserIdentityService);
       setRequestScope(c, scope);
       await next();
     });

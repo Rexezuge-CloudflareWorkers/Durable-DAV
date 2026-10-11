@@ -74,7 +74,7 @@ class DavVolumeDAO extends BaseDAO {
             nameCi,]);
   }
 
-  public async getByOwnerName(owner: string, name: string): Promise<DavVolumeRow | undefined> {
+  public async getByOwnerName(owner: string, name: string): Promise<DavVolumeRow | null> {
     // `firstWithRetry`, not a bare `.first()`: this is the first query on every
     // DAV request, and `DavAuth` documents a `DatabaseError` -> 503 contract for
     // exactly this lookup. A bare `.first()` rejects with a raw `D1_ERROR`,
@@ -91,7 +91,7 @@ class DavVolumeDAO extends BaseDAO {
    * to would be unreachable and a D1 blip would surface as an opaque 500 on the
    * "Sync Now" button.
    */
-  public async getById(id: string): Promise<DavVolumeRow | undefined> {
+  public async getById(id: string): Promise<DavVolumeRow | null> {
     return this.first<DavVolumeRow>('SELECT * FROM dav_volumes WHERE id = ? LIMIT 1', [id]);
   }
 

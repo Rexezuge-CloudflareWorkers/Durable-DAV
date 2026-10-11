@@ -7,9 +7,8 @@ import { parentDavPath, stripSlashes } from '../lib/davXml';
 import { clampPage, hasPendingPageCorrection, readStoredPageSize, storePageSize } from '../lib/davPage';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
-import { ContextBar } from '../components/layout/ContextBar';
-import { AppPage } from '../components/layout/AppPage';
-import { RefreshButton } from '../components/shared/RefreshButton';
+import { AppPage, ContextBar, RefreshButton } from '@rexezuge/web';
+import { Logo } from '../components/layout/Logo';
 import { VolumeSettingsTab } from '../components/volume/VolumeSettingsTab';
 import { VisibilityBadge } from '../components/ui/Badge';
 import { useVolumeFiles } from './volume/useVolumeFiles';
@@ -147,6 +146,11 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
   return (
     <div>
       <ContextBar
+        home={
+          <Link to="/" aria-label={t('header.home', 'Durable-DAV Home')} className="shrink-0">
+            <Logo />
+          </Link>
+        }
         crumb={
           <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">
             <Link
@@ -187,7 +191,7 @@ function VolumeView({ showNotice }: { showNotice: (type: 'success' | 'error', te
             )}
           </span>
         }
-        actions={<RefreshButton onRefresh={refresh} loading={status === 'loading'} />}
+        actions={<RefreshButton onRefresh={refresh} loading={status === 'loading'} label={t('common.refresh', 'Refresh')} />}
       />
       <div className="max-w-7xl mx-auto px-6 pt-4 flex gap-2">
         <Button variant={activeTab === 'files' ? 'primary' : 'secondary'} size="sm" onClick={() => setTab('files')}>

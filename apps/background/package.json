@@ -20,8 +20,8 @@
     "@durable-dav/dav-store": "workspace:*",
     "@durable-dav/shared": "workspace:*",
     "@durable-dav/webdav": "workspace:*",
-    "@rexezuge/runtime": "^1.0.2",
-    "@rexezuge/shared": "^1.0.2"
+    "@rexezuge/runtime": "^1.2.0",
+    "@rexezuge/shared": "^1.2.0"
   },
   "devDependencies": {
     "@types/node": "26.6.4",

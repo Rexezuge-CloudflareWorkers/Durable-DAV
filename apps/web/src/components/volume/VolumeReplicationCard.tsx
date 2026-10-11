@@ -13,7 +13,7 @@ import {
 } from '../../services/replicationService';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
 import { Card, CardHeader, CardTitle } from '../ui/Card';
-import { RefreshButton } from '../shared/RefreshButton';
+import { RefreshButton } from '@rexezuge/web';
 import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal';
 import { VolumeReplicationRow } from './VolumeReplicationRow';
 import { VolumeReplicationForm } from './VolumeReplicationForm';
@@ -183,7 +183,7 @@ export function VolumeReplicationCard({
             {t('replication.title', 'Replication')}
           </span>
         </CardTitle>
-        <RefreshButton onRefresh={refresh} loading={loading} />
+        <RefreshButton onRefresh={refresh} loading={loading} label={t('common.refresh', 'Refresh')} />
       </CardHeader>
 
       <div className="space-y-4">

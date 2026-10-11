@@ -105,7 +105,7 @@ abstract class BaseRoute {
   );
 
   public static toErrorType(status: number): string {
-    return this.TYPE_BY_STATUS.get(status) ?? 'internalServerError';
+    return this.TYPE_BY_STATUS.get(status) ?? 'InternalServerError';
   }
 
   public static jsonError(c: HonoContext, message: string, status: number): Response {

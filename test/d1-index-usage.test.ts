@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { UserDAO } from '@durable-dav/backend-data/dao';
+import { newAccountId, newAnchor } from '@rexezuge/identity';
 import { DavVolumeDAO } from '@durable-dav/backend-data/dao';
 
 /**
@@ -37,32 +38,35 @@ describe('D1 predicates do not wrap an indexed column in lower()', () => {
     // the mutable sign-in address. Omitting any one produces a row that cannot be
     // resolved, since login goes through the key.
     const { db, queries, bindings } = recordingDatabase();
-    await new UserDAO(db).createUser({ id: 'usr_ab12', anchor: 'a@x.co', loginEmail: 'a@x.co', now: 1 });
+    await new UserDAO(db).createUser({ anchor: 'a@x.co', loginEmail: 'a@x.co', now: 1 });
     expect(queries[0]).toMatch(/INSERT INTO users \(email, created_at, id, current_email\)/u);
-    expect(bindings).toEqual(['a@x.co', 1, 'usr_ab12', 'a@x.co']);
+    expect(bindings[0]).toBe('a@x.co');
+    expect(bindings[1]).toBe(1);
+    expect(bindings[2]).toMatch(/^usr_[0-9a-f]{32}$/u);
+    expect(bindings[3]).toBe('a@x.co');
   });
 
-  it('UserDAO anchors a new account on the login address when it is free', async () => {
+  it('UserDAO lowercases the create parameters, so the anchor stays index-usable', async () => {
+    // The anchor is the `users.email` primary key: storing it mixed-case would
+    // make the same address unfindable under a different casing.
     const { db, bindings } = recordingDatabase();
-    await new UserDAO(db).upsertUser('Alice@Example.com', 1);
-    // Keeping new rows shaped like the pre-0004 ones means ops reads stay intuitive.
+    await new UserDAO(db).createUser({ anchor: 'Alice@Example.com', loginEmail: 'New@Example.com', now: 1 });
     expect(bindings[0]).toBe('alice@example.com');
-    // Same address as the sign-in address, so the row resolves immediately.
-    expect(bindings[3]).toBe('alice@example.com');
+    expect(bindings[3]).toBe('new@example.com');
   });
 
-  it('UserDAO newId and newAnchor produce distinct, non-address values', async () => {
+  it('newAccountId and newAnchor produce distinct, non-address values', async () => {
     // An anchor must never be a real address: `users.email` is the primary key
     // every legacy `*_email` FK resolves against, so a real address parked there
     // could never be re-registered by a different person.
-    const id = UserDAO.newId();
-    const anchor = UserDAO.newAnchor();
+    const id = newAccountId();
+    const anchor = newAnchor();
     expect(id).toMatch(/^usr_[0-9a-f]{32}$/u);
     // `.invalid` is RFC 2606 and can never be delivered to, so it can never
     // authenticate either.
     expect(anchor).toMatch(/^anchor-[0-9a-f]{32}@users\.invalid$/u);
-    expect(UserDAO.newId()).not.toBe(id);
-    expect(UserDAO.newAnchor()).not.toBe(anchor);
+    expect(newAccountId()).not.toBe(id);
+    expect(newAnchor()).not.toBe(anchor);
   });
 
   it('UserDAO setCurrentEmail moves the address and never the anchor', async () => {

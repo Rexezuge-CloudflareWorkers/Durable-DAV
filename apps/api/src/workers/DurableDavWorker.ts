@@ -5,7 +5,8 @@ import { Hono } from 'hono';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { ErrorSanitizationUtil } from '@rexezuge/shared';
 import type { Next } from 'hono';
-import { MiddlewareHandlers, registerRateLimits, securityHeaders } from '@/middleware';
+import { MiddlewareHandlers, registerRateLimits } from '@/middleware';
+import { securityHeaders, sensitivePaths } from '@rexezuge/http';
 import type { ApiContext, ApiEnv } from '@/types/ApiContext';
 import { scopeMiddleware } from '@/middleware/scopeMiddleware';
 import { RESERVED_NAMESPACE_NAMES_LIST } from '@durable-dav/shared/constants';
@@ -40,10 +41,10 @@ class DurableDavWorker extends AbstractEntrypointWorker {
 
     const app = new Hono<ApiEnv>();
 
-    app.use('*', securityHeaders());
+    app.use('*', securityHeaders(sensitivePaths('/user/')));
     app.onError((error, c) => {
       console.error('Unhandled worker error', ErrorSanitizationUtil.stackForLog(error));
-      return c.json({ Exception: { Type: 'internalServerError', Message: 'Internal Server Error.' } }, 500);
+      return c.json({ Exception: { Type: 'InternalServerError', Message: 'Internal Server Error.' } }, 500);
     });
 
     app.get('/health', (c) => c.json({ ok: true, service: 'durable-dav' }));

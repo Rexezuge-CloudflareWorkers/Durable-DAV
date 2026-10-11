@@ -24,7 +24,7 @@ vi.mock('../apps/background/src/scheduled/ExpiredCredentialPruningTask', () => (
   ExpiredCredentialPruningTask: class {
     public readonly name = 'ExpiredCredentialPruningTask';
     public readonly phase = 1 as const;
-    public async run(): Promise<void> {
+    public async handle(): Promise<void> {
       await runPrune();
     }
   },
@@ -34,7 +34,7 @@ vi.mock('../apps/background/src/scheduled/ReplicationSyncTask', () => ({
   ReplicationSyncTask: class {
     public readonly name = 'ReplicationSyncTask';
     public readonly phase = 2 as const;
-    public async run(): Promise<void> {
+    public async handle(): Promise<void> {
       await runReplication();
     }
   },

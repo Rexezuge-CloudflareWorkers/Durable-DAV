@@ -8,10 +8,10 @@ import { UserService } from '../packages/backend-services/src/user/UserService';
  * Every case runs against fake DAOs rather than a fake D1, because what is
  * under test is the *service's* ordering — which account an address resolves
  * to, and what a failed bootstrap is allowed to cost — and a fake D1 would
- * re-test the DAOs the other suites already cover. The kit's sql-first
- * `first()` answering `undefined` rather than `null` is load-bearing here:
- * `resolveAccount` treats "no row" as absent either way, and these tests pin
- * that a still-absent account is *created*, not mistaken for a lookup failure.
+ * re-test the DAOs the other suites already cover. The kit's `first()`
+ * answering `null` for "no row" is load-bearing here: `resolveAccount` treats
+ * a missing row as absent, and these tests pin that a still-absent account is
+ * *created*, not mistaken for a lookup failure.
  */
 
 interface FakeUserRow {
@@ -40,21 +40,27 @@ function daosFor(store: Store, failEnsureUsername = false) {
   return {
     userDAO: () =>
       Promise.resolve({
-        createUser: async (input: { id: string; anchor: string; loginEmail: string; now: number }) => {
+        createUser: async (input: { anchor: string; loginEmail: string; now: number }) => {
+          // Mirrors the kit's `ON CONFLICT DO NOTHING` plus read-back: a taken
+          // anchor reports `null` so the caller retries under an opaque anchor,
+          // and a fresh insert reports its id.
+          if (store.users.some((u) => u.email === input.anchor)) return null;
+          const id = `usr_test_${store.users.length + 1}`;
           store.users.push({
-            id: input.id,
+            id,
             email: input.anchor,
             current_email: input.loginEmail,
             username: null,
             created_at: input.now,
             updated_at: input.now,
           });
+          return id;
         },
         getByEmail: async (anchor: string) => store.users.find((u) => u.email === anchor),
         getById: async (id: string) => store.users.find((u) => u.id === id),
         getByCurrentEmail: async (address: string) =>
           store.users.find((u) => (u.current_email ?? '').toLowerCase() === address.toLowerCase()),
-        getByUsernameCi: async (handleCi: string) => store.users.find((u) => (u.username ?? '').toLowerCase() === handleCi),
+        getByUsernameCi: async (handleCi: string) => store.users.find((u) => (u.username ?? '').toLowerCase() === handleCi) ?? null,
         ensureUsername: async (id: string, handle: string, now: number) => {
           // The bootstrap is best-effort; a failure here must not fail sign-in,
           // which is exactly what the "still signs in" case below pins.
@@ -146,7 +152,7 @@ describe('UserService.upsertUser — resolve-then-create', () => {
     // which still has no handle. A freshly registered caller therefore reads
     // `username: null` here and takes the handle from the store it just wrote.
     // Pinned so a change on either side is deliberate.
-    expect(summary).toMatchObject({ id: store.users[0]?.id, email: 'bob.smith@example.com', username: undefined });
+    expect(summary).toMatchObject({ id: store.users[0]?.id, email: 'bob.smith@example.com', username: null });
   });
 
   it('falls back to an opaque anchor when the address is still another account\'s', async () => {
@@ -229,7 +235,7 @@ describe('UserService lookups', () => {
     });
 
     await expect(serviceFor(store).getByUsername('ALICE')).resolves.toMatchObject({ id: 'usr_alice' });
-    await expect(serviceFor(store).getByUsername('nobody')).resolves.toBeUndefined();
+    await expect(serviceFor(store).getByUsername('nobody')).resolves.toBeNull();
   });
 
   it('propagates a database failure rather than reporting the handle free', async () => {

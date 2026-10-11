@@ -12,7 +12,7 @@ import { DatabaseError, NotFoundError } from '@rexezuge/errors';
 import { VerificationCache } from '../apps/background/src/dav/CredentialVerifierDO';
 
 import { VolumeService } from '../packages/backend-services/src/dav/VolumeService';
-import type { UserIdentityService } from '../packages/backend-services/src/identity/UserIdentityService';
+import type { UserIdentityService } from '@rexezuge/identity';
 
 // `KvCache` logs through a module-level logger rather than an injected one, so
 // the purge-cap warning is asserted through this spy.

@@ -1,11 +1,11 @@
 import { TimestampUtil } from '@rexezuge/shared';
 import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
-import { createLogger } from '@rexezuge/runtime';
+import { AbstractScheduledTask, createLogger } from '@rexezuge/runtime';
+import type { ScheduledTaskEnv } from '@rexezuge/runtime';
 import { normalizeVolumeKey } from '@durable-dav/webdav';
 import type { DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO } from '@durable-dav/backend-data/dao';
 import { ReplicationRunner } from '../replication/ReplicationRunner';
 import type { LocalReplicaStub, RunResult } from '../replication/ReplicationRunner';
-import { BaseScheduledTask } from './IScheduledTask';
 
 const logger = createLogger('CronTasks');
 
@@ -26,12 +26,27 @@ const logger = createLogger('CronTasks');
  * - A slice budget inside each runner, because a full two-way sync does not fit in
  *   one Durable Object invocation and pretending otherwise produces a timeout with
  *   no record of what was transferred.
+ *
+ * Runs unrecorded (`getTaskType` stays null): this repo keeps no task-runs
+ * table, so there is no recorder to bind. Per-target outcomes already land on
+ * the replication rows, which is where the owner and the auto-disable counter
+ * both see them. Must never throw for the same reason — a throw here would be
+ * attributed to the *task*, not to the target, and would take the credential
+ * prune down with it. The kit template's own catch is the second net.
  */
-class ReplicationSyncTask extends BaseScheduledTask {
+class ReplicationSyncTask extends AbstractScheduledTask {
   public readonly name = 'ReplicationSyncTask';
   public readonly phase: 1 | 2 = 2;
 
-  protected async handleScheduledTask(env: Env): Promise<void> {
+  protected getTaskType(): string | null {
+    return null;
+  }
+
+  protected async handleScheduledTask(
+    _event: { cron: string; scheduledTime: number },
+    env: Env & ScheduledTaskEnv,
+    _ctx: { waitUntil(promise: Promise<unknown>): void },
+  ): Promise<void> {
     // One scope for the whole sweep. A scheduled task has no Hono context, so this
     // is the composition root rather than `BaseRoute.getScope` — and reusing it
     // means the DAOs are constructed once per tick instead of once per row.

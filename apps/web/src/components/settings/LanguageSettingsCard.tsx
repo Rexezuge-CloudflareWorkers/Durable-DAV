@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { LanguageSelector } from '../shared/LanguageSelector';
+import { LanguageSelector } from '@rexezuge/web';
+import { SUPPORTED_LANGUAGES } from '../../i18n';
 import { Card, CardHeader, CardTitle } from '../ui/Card';
 
 export function LanguageSettingsCard({
@@ -21,7 +22,14 @@ export function LanguageSettingsCard({
         <span id="user-language-label" className="block text-sm text-[var(--color-text-secondary)]">
           {t('settings.language', 'Language')}
         </span>
-        <LanguageSelector value={language} onChange={onLanguageChange} disabled={disabled} />
+        <LanguageSelector
+          value={language}
+          onChange={onLanguageChange}
+          label={t('settings.selectLanguage', 'Select Language')}
+          unknownLabel={t('settings.unknownLanguage', 'Unknown Language')}
+          supported={[...SUPPORTED_LANGUAGES]}
+          disabled={disabled}
+        />
         <p className="text-xs text-[var(--color-text-muted)]">
           {t('settings.languageDescription', 'Choose Your Preferred Display Language.')}
         </p>

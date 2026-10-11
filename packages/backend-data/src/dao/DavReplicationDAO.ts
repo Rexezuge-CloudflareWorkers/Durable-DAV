@@ -118,11 +118,11 @@ class DavReplicationDAO extends BaseDAO {
             input.createdBy,]);
   }
 
-  public async getById(replicationId: string): Promise<DavReplicationRow | undefined> {
+  public async getById(replicationId: string): Promise<DavReplicationRow | null> {
     return this.first<DavReplicationRow>('SELECT * FROM dav_replications WHERE replication_id = ? LIMIT 1', [replicationId]);
   }
 
-  public async getByVolumeAndTarget(volumeId: string, target: ReplicationTarget): Promise<DavReplicationRow | undefined> {
+  public async getByVolumeAndTarget(volumeId: string, target: ReplicationTarget): Promise<DavReplicationRow | null> {
     return this.first<DavReplicationRow>('SELECT * FROM dav_replications WHERE volume_id = ? AND target_kind = ? AND remote_url = ? AND remote_owner = ? AND remote_volume = ? AND remote_path = ? LIMIT 1', [volumeId, target.targetKind, target.remoteUrl, target.remoteOwner, target.remoteVolume, target.remotePath]);
   }
 

@@ -1,13 +1,13 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { createVolume } from '../services/volumeService';
 import { toLocalizedErrorMessage } from '../lib/backendErrors';
 import { Button } from '../components/ui/Button';
 import { Card, CardHeader, CardTitle } from '../components/ui/Card';
 import { Input, Label } from '../components/ui/Input';
-import { ContextBar } from '../components/layout/ContextBar';
-import { AppPage } from '../components/layout/AppPage';
+import { AppPage, ContextBar } from '@rexezuge/web';
+import { Logo } from '../components/layout/Logo';
 
 export function NewVolumeView({
   defaultOwner,
@@ -44,6 +44,11 @@ export function NewVolumeView({
   return (
     <div>
       <ContextBar
+        home={
+          <Link to="/" aria-label={t('header.home', 'Durable-DAV Home')} className="shrink-0">
+            <Logo />
+          </Link>
+        }
         crumb={
           <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">{t('volumes.newVolume', 'New Volume')}</span>
         }

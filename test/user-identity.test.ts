@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { UserIdentityService } from '@durable-dav/backend-services/identity';
 import { resolveAccount, registerAccount } from '@durable-dav/backend-services/user';
 import type { AccountLookupDeps } from '@durable-dav/backend-services/user';
-import { UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
+import { UserEmailDAO } from '@durable-dav/backend-data/dao';
+import { newAnchor } from '@rexezuge/identity';
 import { isVolumeOwner } from '@durable-dav/backend-services/dav';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 
@@ -32,13 +33,15 @@ function fakeIdentityDb(seed: Array<{ id: string; anchor: string; current: strin
       const row = users.find((u) => u.id === id);
       if (row) row.current_email = email.toLowerCase();
     },
-    // Mirrors `ON CONFLICT(email) DO NOTHING`: a taken anchor is a silent no-op,
+    // Mirrors `ON CONFLICT(email) DO NOTHING` plus the read-back: a taken anchor
+    // is a silent no-op that reports `null`, and a fresh insert reports its id,
     // which is exactly the case `registerAccount` must detect by reading back.
-    createUser: async (input: { id?: string | null; anchor: string; loginEmail: string }) => {
-      if (users.some((u) => u.email === input.anchor.toLowerCase())) return;
+    createUser: async (input: { anchor: string; loginEmail: string }) => {
+      if (users.some((u) => u.email === input.anchor.toLowerCase())) return null;
       anchorSeq += 1;
-      const id = input.id ?? `usr_gen_${anchorSeq}`;
+      const id = `usr_gen_${anchorSeq}`;
       users.push({ id, email: input.anchor.toLowerCase(), current_email: input.loginEmail.toLowerCase(), created_at: 1, username: null, updated_at: 1 });
+      return id;
     },
   };
 
@@ -205,18 +208,18 @@ describe('address -> account resolution', () => {
     // authenticating, or a later holder inherits the previous owner's buckets.
     const db = fakeIdentityDb([{ id: 'usr_a', anchor: 'old@x.co', current: 'new@x.co' }]);
     db.userEmails[0]!.is_verified = 0;
-    expect(await resolveAccount(db.deps, 'old@x.co')).toBeUndefined();
+    expect(await resolveAccount(db.deps, 'old@x.co')).toBeNull();
   });
 
   it('an unknown address resolves to null rather than throwing', async () => {
     const db = fakeIdentityDb();
-    expect(await resolveAccount(db.deps, 'nobody@x.co')).toBeUndefined();
+    expect(await resolveAccount(db.deps, 'nobody@x.co')).toBeNull();
   });
 
   it('an empty or malformed address resolves to null', async () => {
     const db = fakeIdentityDb();
-    expect(await resolveAccount(db.deps, '')).toBeUndefined();
-    expect(await resolveAccount(db.deps, 'not-an-email')).toBeUndefined();
+    expect(await resolveAccount(db.deps, '')).toBeNull();
+    expect(await resolveAccount(db.deps, 'not-an-email')).toBeNull();
   });
 });
 
@@ -233,7 +236,7 @@ describe('registerAccount', () => {
     // `old@x.co` is the previous holder's anchor; their registry row is revoked.
     const db = fakeIdentityDb([{ id: 'usr_old', anchor: 'shared@x.co', current: 'moved@x.co' }]);
     db.userEmails[0]!.is_verified = 0;
-    expect(await registerAccount(db.deps, 'shared@x.co', 'shared@x.co', 2)).toBeUndefined();
+    expect(await registerAccount(db.deps, 'shared@x.co', 'shared@x.co', 2)).toBeNull();
   });
 
   it('the retry under an opaque anchor yields a genuinely new account', async () => {
@@ -243,7 +246,7 @@ describe('registerAccount', () => {
     const db = fakeIdentityDb([{ id: 'usr_old', anchor: 'shared@x.co', current: 'moved@x.co' }]);
     db.userEmails[0]!.is_verified = 0;
 
-    const retry = await registerAccount(db.deps, 'shared@x.co', UserDAO.newAnchor(), 2);
+    const retry = await registerAccount(db.deps, 'shared@x.co', newAnchor(), 2);
     expect(retry).not.toBeNull();
     expect(retry?.id).not.toBe('usr_old');
     // And it is a *new* account, so the previous holder keeps their own.
@@ -270,7 +273,7 @@ describe('UserIdentityService', () => {
     expect((await memoized.resolveAccount('a@x.co'))?.id).toBe('usr_a');
     expect((await memoized.resolveAccount('a@x.co'))?.id).toBe('usr_a');
     expect(calls).toBe(1);
-    expect(await svc.resolveUserId('a@x.co')).toBe('usr_a');
+    expect(await svc.resolveAccountId('a@x.co')).toBe('usr_a');
   });
 
   it('setPrimaryEmail moves the login address and revokes the old one', async () => {
@@ -340,16 +343,16 @@ describe('UserIdentityService', () => {
     ]);
   });
 
-  it('resolveUserById is the inverse direction, reporting the current address', async () => {
+  it('resolveAccountById is the inverse direction, reporting the current address', async () => {
     const db = fakeIdentityDb([{ id: 'usr_a', anchor: 'old@x.co', current: 'new@x.co' }]);
     const svc = new UserIdentityService({ DB: {} as never }, db.deps);
-    await expect(svc.resolveUserById('usr_a')).resolves.toEqual({
+    await expect(svc.resolveAccountById('usr_a')).resolves.toEqual({
       id: 'usr_a',
       email: 'new@x.co',
       anchorEmail: 'old@x.co',
-      username: undefined,
+      username: null,
     });
-    expect(await svc.resolveUserById('usr_ghost')).toBeUndefined();
+    expect(await svc.resolveAccountById('usr_ghost')).toBeNull();
   });
 });
 

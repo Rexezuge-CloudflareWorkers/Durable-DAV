@@ -111,7 +111,7 @@ function buildApp(volume: DavVolumeRow, row: Record<string, unknown> | null): { 
   app.use('*', async (c, next) => {
     const scope = new Container();
     // Structural stubs, not the real services: only `getVolume` /
-    // `resolveUserById` are on the credential path, and building a real
+    // `resolveAccountById` are on the credential path, and building a real
     // `VolumeService` would drag a D1 and the whole DAO graph into a test whose
     // subject is one `if`.
     scope.bindValue(Tokens.VolumeService, { getVolume: () => Promise.resolve(volume) } as unknown as VolumeService);
@@ -119,7 +119,7 @@ function buildApp(volume: DavVolumeRow, row: Record<string, unknown> | null): { 
     // The anonymous-read branch is never taken when a credential is present,
     // but the token has to resolve or the container throws.
     scope.bindValue(Tokens.DavPermissionService, { getRole: () => 'read' as const } as unknown as DavPermissionService);
-    scope.bindValue(Tokens.UserIdentityService, { resolveUserById: () => Promise.resolve(null) } as unknown as UserIdentityService);
+    scope.bindValue(Tokens.UserIdentityService, { resolveAccountById: () => Promise.resolve(null) } as unknown as UserIdentityService);
     setRequestScope(c, scope);
     await next();
   });
