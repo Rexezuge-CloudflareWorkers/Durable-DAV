@@ -866,3 +866,64 @@ describe('ReplicationRunner — configuration and credentials', () => {
     await expect(runner.runSlice()).resolves.toMatchObject({ status: 'ok' });
   });
 });
+
+describe('ReplicationRunner — trailing-slash collection hrefs', () => {
+  const BASE = 'https://dav.example.com/remote.php/dav/files/me';
+
+  function ms(entries: string[]): string {
+    return `<?xml version="1.0" encoding="utf-8"?><D:multistatus xmlns:D="DAV:">${entries.join('')}</D:multistatus>`;
+  }
+
+  function coll(href: string): string {
+    return (
+      `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop>` +
+      `<D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`
+    );
+  }
+
+  function file(href: string): string {
+    return (
+      `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype/><D:getetag>"r1"</D:getetag>` +
+      `<D:getcontentlength>12</D:getcontentlength></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`
+    );
+  }
+
+  it('completes a clean pass against a remote that slash-terminates collections', async () => {
+    // End to end through the real `DavHttpRemote` over an injected fetch. Every
+    // real server ends a collection href with `/`; the unstripped path queued a
+    // walk the local volume could never complete, so each hourly tick went dirty
+    // with no named error until the auto-disable paused the target.
+    const puts: string[] = [];
+    const fetchImpl = async (input: string, init?: RequestInit): Promise<Response> => {
+      const method = init?.method ?? 'GET';
+      if (method === 'PROPFIND') {
+        const entries = input.endsWith('/docs') ? [coll(`${BASE}/docs/`), file(`${BASE}/docs/b.txt`)] : [coll(`${BASE}/`), coll(`${BASE}/docs/`)];
+        return new Response(ms(entries), { status: 207 });
+      }
+      if (method === 'PUT') {
+        puts.push(input);
+        return new Response(null, { status: 201 });
+      }
+      return new Response('remote bytes', { status: 200 });
+    };
+    const { runner, dao, stub } = build({
+      fetchImpl,
+      stub: localStub({
+        listReplicaChildren: async (path: string) =>
+          listing(path === '' ? [{ path: 'a.txt', isCollection: false, etag: '"l1"', mtime: 1000, size: 11, contentType: 'text/plain' }] : []),
+        readReplicaStream: async () => new Response('local bytes').body,
+      }),
+      row: { target_kind: 'dav', remote_url: BASE, remote_path: '', auth_kind: 'none' },
+    });
+    const result = await runner.runSlice();
+    expect(result.status).toBe('ok');
+    expect(result.error).toBeNull();
+    expect(dao.runs).toEqual([{ status: 'ok', error: null, remaining: 0 }]);
+    // The new local file went up and the new remote tree came down, under the
+    // slash-free paths both sides agree on.
+    expect(puts).toEqual([`${BASE}/a.txt`]);
+    expect(stub.applied.some((operation) => operation.op === 'mkdir' && operation.path === 'docs')).toBe(true);
+    expect(stub.applied.some((operation) => operation.op === 'write' && operation.path === 'docs/b.txt')).toBe(true);
+    expect(stub.applied.some((operation) => operation.op === 'unlink')).toBe(false);
+  });
+});

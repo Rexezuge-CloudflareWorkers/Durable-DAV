@@ -2,6 +2,7 @@ import { createLogger } from '@durable-dav/backend-runtime/logger';
 import type { RemoteEntry, RemoteListing, RemoteVolume } from '@durable-dav/backend-services/replication';
 import type { PlanBase } from '@durable-dav/backend-services/replication';
 import type { ReplicaStateRow } from '@durable-dav/dav-store';
+import { isValidInnerPath } from '../dav/DavContext';
 
 const logger = createLogger('Replication');
 
@@ -113,6 +114,17 @@ async function collectSlice(options: CollectSliceOptions): Promise<Slice> {
     // a pull — which can overwrite a good local copy with a stale remote one.
     if (!localListing.complete) complete = false;
     for (const entry of localListing.entries) {
+      // An entry no side can address must not enter the plan. Queueing it would
+      // walk a path the local volume answers `complete: false` to, poisoning the
+      // pass with no named error — the shape that used to surface as the generic
+      // "could not be synchronised" fallback. It is dropped and the listing is
+      // marked incomplete instead, so the gate closes *and* the run record says why.
+      if (!isValidInnerPath(entry.path)) {
+        complete = false;
+        if (firstError === null) firstError = `listing ${current} locally: entry ${JSON.stringify(entry.path)} is not a usable path`;
+        logger.warn(`listing ${current} locally returned an unusable path`, entry.path);
+        continue;
+      }
       localByPath.set(entry.path, entry);
       if (!entry.isCollection || queued.has(entry.path) || visited.has(entry.path)) {
         continue;
@@ -140,6 +152,16 @@ async function collectSlice(options: CollectSliceOptions): Promise<Slice> {
     // individual missing path belonged to.
     if (!listing.complete) complete = false;
     for (const entry of listing.entries) {
+      // Symmetric with the local check above: a remote href that does not map to
+      // an addressable path (a trailing slash the transport failed to strip, a
+      // doubled separator) would otherwise be queued for a local walk that can
+      // never complete it.
+      if (!isValidInnerPath(entry.path)) {
+        complete = false;
+        if (firstError === null) firstError = `listing ${current} remotely: entry ${JSON.stringify(entry.path)} is not a usable path`;
+        logger.warn(`listing ${current} on the remote returned an unusable path`, entry.path);
+        continue;
+      }
       remoteByPath.set(entry.path, entry);
       if (!entry.isCollection || queued.has(entry.path) || visited.has(entry.path)) {
         continue;

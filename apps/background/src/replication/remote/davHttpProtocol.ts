@@ -61,12 +61,19 @@ function joinUrl(base: string, ...segments: string[]): string {
  */
 function toInnerEntry(pathname: string, rootPathname: string): { inner: string; href: string } | null {
   if (!pathname.startsWith(rootPathname)) return null;
-  const remainder = pathname.slice(rootPathname.length).replace(/^\/+/, '');
+  const remainder = trimSlashes(pathname.slice(rootPathname.length));
   if (remainder === '') return null;
   // Reject a path that climbed above the root via `..` or an encoded separator.
   // `decodeURIComponent` already ran per segment, so a `%2F` is a literal character
   // in a name here and cannot produce this — but `..` can, and a replication that
   // writes outside its configured subdirectory is exactly the failure this guards.
+  //
+  // The trailing-slash strip above is load-bearing, not cosmetic: servers report a
+  // collection's href with a trailing `/` by convention, and without it the inner
+  // path kept the slash (`docs/`). That path is not a valid inner path, so the
+  // collector queued it for a walk the local volume could never complete — every
+  // pass went dirty with no named error while the slice budget burned walking each
+  // collection twice.
   return remainder.split('/').some((segment) => segment === '..' || segment === '.') ? null : { inner: remainder, href: pathname };
 }
 

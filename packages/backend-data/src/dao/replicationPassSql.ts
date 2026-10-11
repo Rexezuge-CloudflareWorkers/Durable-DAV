@@ -71,8 +71,11 @@ function recordRunStatement(
   const failed = status !== 'ok';
   // A pass is closed when it failed, or when it finished with nothing left to visit. A
   // clean pass that still has queued collections leaves the gate shut — that is the
-  // entire mechanism.
-  const closePass = !failed || remaining === 0;
+  // entire mechanism. (`!failed || remaining === 0` was the previous spelling, and
+  // it inverted both halves: a failed pass with work left stayed open, while a
+  // clean partial pass closed the gate and the next tick's `beginPass` cleared the
+  // cursor, restarting the sweep from the root on every tick.)
+  const closePass = failed || remaining === 0;
   const trimmedError = error === null ? null : error.slice(0, MAX_STORED_ERROR_LENGTH);
   return database
     .prepare(

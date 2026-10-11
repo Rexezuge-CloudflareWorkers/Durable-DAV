@@ -42,6 +42,17 @@ function fileResponse(href: string, etag = '"v1"'): string {
     `<D:getcontentlength>5</D:getcontentlength></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`;
 }
 
+function collectionResponse(href: string): string {
+  return `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop>` +
+    `<D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`;
+}
+
+function bareResponse(href: string): string {
+  // Listed but undescribed: the server answered the resource with no 2xx propstat.
+  return `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:getetag>"v1"</D:getetag></D:prop>` +
+    `<D:status>HTTP/1.1 404 Not Found</D:status></D:propstat></D:response>`;
+}
+
 describe('joinUrl', () => {
   it('encodes each segment rather than the whole path', () => {
     // One encode over the whole string would turn a `%2F` inside a filename into
@@ -65,6 +76,14 @@ describe('toInnerEntry', () => {
     // it would report the directory as a new file to push on every pass.
     expect(toInnerEntry('/root', '/root')).toBeNull();
     expect(toInnerEntry('/root/', '/root')).toBeNull();
+  });
+
+  it('strips a trailing slash from a collection href', () => {
+    // Servers report a collection with a trailing `/` by convention. Without the
+    // strip the inner path kept it (`docs/`), which is not a valid inner path —
+    // the collector queued it for a walk the local volume could never complete,
+    // and every pass went dirty with no named error.
+    expect(toInnerEntry('/root/docs/', '/root')).toEqual({ inner: 'docs', href: '/root/docs/' });
   });
 
   it('rejects a path that climbed above the root', () => {
@@ -188,6 +207,26 @@ describe('DavHttpRemote.list', () => {
     const { impl } = fakeFetch(() => new Response(null, { status: 404 }));
     const listing = await remote({ fetchImpl: impl }).list('');
     expect(listing).toEqual({ entries: [], complete: true });
+  });
+
+  it('maps a trailing-slash collection href onto a slash-free inner path', async () => {
+    // The regression test for the paused-target failure: every real server ends
+    // a collection href with `/`, and the unstripped path poisoned the pass.
+    const body = multistatus([collectionResponse('/remote.php/dav/files/me/docs/')]);
+    const { impl } = fakeFetch(() => new Response(body, { status: 207 }));
+    const listing = await remote({ fetchImpl: impl }).list('');
+    expect(listing.complete).toBe(true);
+    expect(listing.entries.map((entry) => entry.path)).toEqual(['docs']);
+  });
+
+  it('marks the listing incomplete when a response carries no usable propstat', async () => {
+    // Presence without evidence: the planner would decide on validators that do
+    // not exist, so the listing must not be trusted for absences.
+    const body = multistatus([fileResponse('/remote.php/dav/files/me/a.txt'), bareResponse('/remote.php/dav/files/me/b.txt')]);
+    const { impl } = fakeFetch(() => new Response(body, { status: 207 }));
+    const listing = await remote({ fetchImpl: impl }).list('');
+    expect(listing.complete).toBe(false);
+    expect(listing.entries.map((entry) => entry.path)).toEqual(['a.txt', 'b.txt']);
   });
 
   it('throws on 403 rather than reporting an empty collection', async () => {

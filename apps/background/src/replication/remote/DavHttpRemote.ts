@@ -178,9 +178,16 @@ class DavHttpRemote implements RemoteVolume {
         throw new RemoteUnavailableError(`PROPFIND ${path} returned a body that is not a usable multistatus`, 207);
       }
       const entries: RemoteEntry[] = [];
+      // A response the server returned but described with no usable 2xx `propstat`
+      // is presence without evidence: the planner would decide on validators that
+      // do not exist. That is an incomplete listing, not a complete one — the
+      // sibling adapter propagates its volume's own answer for the same reason,
+      // and a hardcoded `true` here laundered a degraded answer into a trusted one.
+      let complete = true;
       for (const resource of parsed) {
         const mapped = toInnerEntry(resource.pathname, this.rootPathname);
         if (mapped === null) continue;
+        if (!resource.propsComplete) complete = false;
         entries.push({
           path: mapped.inner,
           isCollection: resource.isCollection,
@@ -190,7 +197,7 @@ class DavHttpRemote implements RemoteVolume {
           contentType: resource.contentType,
         });
       }
-      return { entries, complete: true };
+      return { entries, complete };
     }
     if (response.status === 401 || response.status === 403) {
       throw new RemoteUnavailableError(classifyStatus(response.status, 'PROPFIND', path), response.status);
