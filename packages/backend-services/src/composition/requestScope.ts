@@ -1,6 +1,6 @@
-import { Container } from '@durable-dav/backend-runtime/di';
-import { KvCache } from '@durable-dav/backend-runtime/kv';
-import type { KvNamespaceLike } from '@durable-dav/backend-runtime/kv';
+import { Container } from '@rexezuge/runtime';
+import { KvCache } from '@rexezuge/runtime';
+import type { KvNamespaceLike } from '@rexezuge/runtime';
 import { Tokens } from './tokens';
 import type { RequestScopeEnv } from './serviceFactory';
 import { bindDaoBindings } from './daoBindings';

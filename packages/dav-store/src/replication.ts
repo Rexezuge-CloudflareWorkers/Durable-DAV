@@ -26,7 +26,7 @@
  * `meta.ts`, so a client `MOVE`/`DELETE` keeps this in step with `dav_nodes`.
  */
 
-import { isMissingSchemaError } from '@durable-dav/shared/utils';
+import { isMissingSchemaError } from '@rexezuge/d1';
 
 import type { DurableSqlStorage } from './meta';
 

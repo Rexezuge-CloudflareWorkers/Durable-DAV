@@ -1,4 +1,4 @@
-import type { KvCache } from '@durable-dav/backend-runtime/kv';
+import type { KvCache } from '@rexezuge/runtime';
 
 /**
  * The per-owner volume-list cache.
@@ -43,7 +43,7 @@ function ownerKeySegment(ownerKey: string): string {
 
 async function invalidateVolumeListCache(cache: KvCache, ownerKey: string): Promise<void> {
   try {
-    await cache.del('davMeta', ['volumes', ownerKeySegment(ownerKey)]);
+    await cache.del('metadata', ['volumes', ownerKeySegment(ownerKey)]);
   } catch {
     // Best-effort invalidation.
   }
@@ -51,7 +51,7 @@ async function invalidateVolumeListCache(cache: KvCache, ownerKey: string): Prom
 
 async function getCachedVolumeList<T>(cache: KvCache, ownerKey: string): Promise<T | null> {
   try {
-    return await cache.getJson<T>('davMeta', ['volumes', ownerKeySegment(ownerKey)]);
+    return await cache.getJson<T>('metadata', ['volumes', ownerKeySegment(ownerKey)]);
   } catch {
     return null;
   }
@@ -59,7 +59,7 @@ async function getCachedVolumeList<T>(cache: KvCache, ownerKey: string): Promise
 
 async function putCachedVolumeList(cache: KvCache, ownerKey: string, value: unknown): Promise<void> {
   try {
-    await cache.putJson('davMeta', ['volumes', ownerKeySegment(ownerKey)], value, { ttlSeconds: DAV_META_TTL_SECONDS });
+    await cache.putJson('metadata', ['volumes', ownerKeySegment(ownerKey)], value, { ttlSeconds: DAV_META_TTL_SECONDS });
   } catch {
     // Best-effort cache population.
   }

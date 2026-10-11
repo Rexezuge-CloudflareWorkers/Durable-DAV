@@ -1,4 +1,4 @@
-import { createLogger } from '@durable-dav/backend-runtime/logger';
+import { createLogger } from '@rexezuge/runtime';
 import type { ScheduledTask } from './IScheduledTask';
 import { ExpiredCredentialPruningTask } from './ExpiredCredentialPruningTask';
 import { ReplicationSyncTask } from './ReplicationSyncTask';

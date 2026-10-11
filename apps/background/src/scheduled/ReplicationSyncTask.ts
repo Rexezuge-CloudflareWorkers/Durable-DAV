@@ -1,6 +1,6 @@
-import { TimestampUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil } from '@rexezuge/shared';
 import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
-import { createLogger } from '@durable-dav/backend-runtime/logger';
+import { createLogger } from '@rexezuge/runtime';
 import { normalizeVolumeKey } from '@durable-dav/webdav';
 import type { DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO } from '@durable-dav/backend-data/dao';
 import { ReplicationRunner } from '../replication/ReplicationRunner';

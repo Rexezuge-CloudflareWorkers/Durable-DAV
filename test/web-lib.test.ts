@@ -7,9 +7,9 @@ describe('backend error extraction', () => {
   const json = (body: unknown, status = 400): Response => Response.json(body, { status, headers: { 'Content-Type': 'application/json' } });
 
   it('reads the AWS envelope', async () => {
-    const error = await readJson(json({ Exception: { Type: 'NotFound', Message: 'gone' } }, 404)).catch((e: unknown) => e);
+    const error = await readJson(json({ Exception: { Type: 'notFound', Message: 'gone' } }, 404)).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(BackendError);
-    expect(getBackendErrorType(error)).toBe('NotFound');
+    expect(getBackendErrorType(error)).toBe('notFound');
     expect(getBackendErrorStatus(error)).toBe(404);
     expect((error as BackendError).message).toBe('gone');
   });

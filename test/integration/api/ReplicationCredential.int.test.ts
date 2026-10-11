@@ -1,7 +1,7 @@
 import { describe, expect, it, beforeAll } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import { setupIntegrationTest, ensureUser } from '../helpers/setup';
-import { decryptReplicationSecret } from '../../../packages/backend-data/src/crypto/aes-gcm';
+import { decryptSecret } from '@rexezuge/d1';
 
 /**
  * The stored credential, through the real HTTP route and the real D1 row.
@@ -61,7 +61,7 @@ async function storedSecret(replicationId: string): Promise<string | null> {
     .prepare('SELECT encrypted_secret, secret_iv FROM dav_replications WHERE replication_id = ?')
     .bind(replicationId)
     .first<{ encrypted_secret: string | null; secret_iv: string | null }>();
-  return row === null || row.encrypted_secret === null || row.secret_iv === null ? null : decryptReplicationSecret({ ciphertext: row.encrypted_secret, iv: row.secret_iv }, KEY);
+  return row === null || row.encrypted_secret === null || row.secret_iv === null ? null : decryptSecret({ ciphertext: row.encrypted_secret, iv: row.secret_iv }, KEY);
 }
 
 async function createBasic(input: { label: string; username?: string; secret?: string }): Promise<Response> {

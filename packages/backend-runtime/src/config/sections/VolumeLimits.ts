@@ -1,4 +1,4 @@
-import { EnvParser } from '../EnvParser';
+import { EnvParser } from '@rexezuge/runtime';
 import {
   DEFAULT_DO_DEVICE_BYTES,
   DEFAULT_DEFAULT_CREDENTIAL_EXPIRY_DAYS,

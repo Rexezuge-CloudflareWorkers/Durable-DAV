@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { DavCredentialDAO, DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
-import { DatabaseError } from '@durable-dav/backend-errors';
+import { DatabaseError } from '@rexezuge/errors';
 
 /**
  * Every DAO read normalizes a failure to `DatabaseError`, and every read that
@@ -174,7 +174,13 @@ describe('every DAO read normalizes a failure to DatabaseError', () => {
 
   it('reports the failing read in the message, so a 500 is diagnosable', async () => {
     // `BaseRoute.toErrorResponse` surfaces this to the client as the AWS envelope's
-    // Message, so "D1_ERROR" alone names neither the table nor the operation.
-    await expect(READS[0]!.run(failingDatabase(PERMANENT) as never)).rejects.toThrow(/get user by email anchor/);
+    // Message, so "D1_ERROR" alone names neither the table nor the operation. The
+    // kit's sql-first BaseDAO carries the operation kind ("read a row") and the
+    // underlying D1 message; the per-call context string the family's
+    // closure-first DAOs passed is a kit follow-up — the kit's `first` holds the
+    // SQL and can name the statement instead of a caller-supplied context.
+    await expect(READS[0]!.run(failingDatabase(PERMANENT) as never)).rejects.toThrow(
+      /Failed to read a row: D1_ERROR: no such table: users/,
+    );
   });
 });

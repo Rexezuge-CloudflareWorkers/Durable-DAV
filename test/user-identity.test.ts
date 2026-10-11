@@ -205,18 +205,18 @@ describe('address -> account resolution', () => {
     // authenticating, or a later holder inherits the previous owner's buckets.
     const db = fakeIdentityDb([{ id: 'usr_a', anchor: 'old@x.co', current: 'new@x.co' }]);
     db.userEmails[0]!.is_verified = 0;
-    expect(await resolveAccount(db.deps, 'old@x.co')).toBeNull();
+    expect(await resolveAccount(db.deps, 'old@x.co')).toBeUndefined();
   });
 
   it('an unknown address resolves to null rather than throwing', async () => {
     const db = fakeIdentityDb();
-    expect(await resolveAccount(db.deps, 'nobody@x.co')).toBeNull();
+    expect(await resolveAccount(db.deps, 'nobody@x.co')).toBeUndefined();
   });
 
   it('an empty or malformed address resolves to null', async () => {
     const db = fakeIdentityDb();
-    expect(await resolveAccount(db.deps, '')).toBeNull();
-    expect(await resolveAccount(db.deps, 'not-an-email')).toBeNull();
+    expect(await resolveAccount(db.deps, '')).toBeUndefined();
+    expect(await resolveAccount(db.deps, 'not-an-email')).toBeUndefined();
   });
 });
 
@@ -233,7 +233,7 @@ describe('registerAccount', () => {
     // `old@x.co` is the previous holder's anchor; their registry row is revoked.
     const db = fakeIdentityDb([{ id: 'usr_old', anchor: 'shared@x.co', current: 'moved@x.co' }]);
     db.userEmails[0]!.is_verified = 0;
-    expect(await registerAccount(db.deps, 'shared@x.co', 'shared@x.co', 2)).toBeNull();
+    expect(await registerAccount(db.deps, 'shared@x.co', 'shared@x.co', 2)).toBeUndefined();
   });
 
   it('the retry under an opaque anchor yields a genuinely new account', async () => {
@@ -347,9 +347,9 @@ describe('UserIdentityService', () => {
       id: 'usr_a',
       email: 'new@x.co',
       anchorEmail: 'old@x.co',
-      username: null,
+      username: undefined,
     });
-    expect(await svc.resolveUserById('usr_ghost')).toBeNull();
+    expect(await svc.resolveUserById('usr_ghost')).toBeUndefined();
   });
 });
 

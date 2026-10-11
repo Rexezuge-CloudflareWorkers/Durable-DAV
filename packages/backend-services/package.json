@@ -27,9 +27,12 @@
   },
   "dependencies": {
     "@durable-dav/backend-data": "workspace:*",
-    "@durable-dav/backend-errors": "workspace:*",
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/shared": "workspace:*",
+    "@rexezuge/d1": "^1.0.2",
+    "@rexezuge/errors": "^1.0.2",
+    "@rexezuge/runtime": "^1.0.2",
+    "@rexezuge/shared": "^1.0.2",
     "jose": "6.2.12"
   },
   "devDependencies": {

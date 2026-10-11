@@ -18,6 +18,21 @@ importers:
       '@cloudflare/vitest-pool-workers':
         specifier: 0.22.0
         version: 0.22.0(@cloudflare/workers-types@5.20261005.1)(@vitest/runner@4.1.11)(@vitest/snapshot@4.1.11)(vitest@4.1.11)
+      '@rexezuge/d1':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/errors':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/i18n':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/runtime':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/shared':
+        specifier: ^1.0.2
+        version: 1.0.2
       '@testing-library/jest-dom':
         specifier: 7.0.1
         version: 7.0.1(@testing-library/dom@10.4.2)(vitest@4.1.11)
@@ -111,9 +126,6 @@ importers:
       '@durable-dav/backend-data':
         specifier: workspace:*
         version: link:../../packages/backend-data
-      '@durable-dav/backend-errors':
-        specifier: workspace:*
-        version: link:../../packages/backend-errors
       '@durable-dav/backend-runtime':
         specifier: workspace:*
         version: link:../../packages/backend-runtime
@@ -129,6 +141,21 @@ importers:
       '@durable-dav/webdav':
         specifier: workspace:*
         version: link:../../packages/webdav
+      '@rexezuge/d1':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/errors':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/i18n':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/runtime':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/shared':
+        specifier: ^1.0.2
+        version: 1.0.2
       chanfana:
         specifier: 3.4.0
         version: 3.4.0
@@ -148,9 +175,6 @@ importers:
       '@durable-dav/backend-data':
         specifier: workspace:*
         version: link:../../packages/backend-data
-      '@durable-dav/backend-errors':
-        specifier: workspace:*
-        version: link:../../packages/backend-errors
       '@durable-dav/backend-runtime':
         specifier: workspace:*
         version: link:../../packages/backend-runtime
@@ -166,6 +190,12 @@ importers:
       '@durable-dav/webdav':
         specifier: workspace:*
         version: link:../../packages/webdav
+      '@rexezuge/runtime':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/shared':
+        specifier: ^1.0.2
+        version: 1.0.2
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -231,12 +261,15 @@ importers:
 
   packages/backend-data:
     dependencies:
-      '@durable-dav/backend-errors':
-        specifier: workspace:*
-        version: link:../backend-errors
       '@durable-dav/shared':
         specifier: workspace:*
         version: link:../shared
+      '@rexezuge/d1':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/shared':
+        specifier: ^1.0.2
+        version: 1.0.2
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261005.1
@@ -248,16 +281,11 @@ importers:
         specifier: 6.0.3
         version: 6.0.3
 
-  packages/backend-errors:
-    devDependencies:
-      '@types/node':
-        specifier: 26.6.4
-        version: 26.6.4
-      typescript:
-        specifier: 6.0.3
-        version: 6.0.3
-
   packages/backend-runtime:
+    dependencies:
+      '@rexezuge/runtime':
+        specifier: ^1.0.2
+        version: 1.0.2
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -271,15 +299,24 @@ importers:
       '@durable-dav/backend-data':
         specifier: workspace:*
         version: link:../backend-data
-      '@durable-dav/backend-errors':
-        specifier: workspace:*
-        version: link:../backend-errors
       '@durable-dav/backend-runtime':
         specifier: workspace:*
         version: link:../backend-runtime
       '@durable-dav/shared':
         specifier: workspace:*
         version: link:../shared
+      '@rexezuge/d1':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/errors':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/runtime':
+        specifier: ^1.0.2
+        version: 1.0.2
+      '@rexezuge/shared':
+        specifier: ^1.0.2
+        version: 1.0.2
       jose:
         specifier: 6.2.12
         version: 6.2.12
@@ -299,6 +336,9 @@ importers:
       '@durable-dav/webdav':
         specifier: workspace:*
         version: link:../webdav
+      '@rexezuge/shared':
+        specifier: ^1.0.2
+        version: 1.0.2
       dofs:
         specifier: ^0.1.0
         version: 0.1.0(patch_hash=21317a197333fa14d1e33c5c82818bc9f9fc846edb558c4a608bf8f83fbcaf64)(hono@4.13.10)
@@ -311,6 +351,10 @@ importers:
         version: 6.0.3
 
   packages/shared:
+    dependencies:
+      '@rexezuge/shared':
+        specifier: ^1.0.2
+        version: 1.0.2
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -340,9 +384,6 @@ importers:
       '@durable-dav/backend-data':
         specifier: workspace:*
         version: link:../packages/backend-data
-      '@durable-dav/backend-errors':
-        specifier: workspace:*
-        version: link:../packages/backend-errors
       '@durable-dav/backend-runtime':
         specifier: workspace:*
         version: link:../packages/backend-runtime
@@ -1375,6 +1416,21 @@ packages:
 
   '@poppinss/exception@1.2.3':
     resolution: {integrity: sha512-dCED+QRChTVatE9ibtoaxc+WkdzOSjYTKi/+uacHWIsfodVfpsueo3+DKpgU5Px8qXjgmXkSvhXvSCz3fnP9lw==}
+
+  '@rexezuge/d1@1.0.2':
+    resolution: {integrity: sha512-phV6Pe/FxW3BBYW8gIeXMLxmRJn4vz+bqoEQ2Ve2Dtv7inmFeN3UkWM/CaKIx3AOoNq60lDp6WcMrqHZixDKSA==}
+
+  '@rexezuge/errors@1.0.2':
+    resolution: {integrity: sha512-7Hkoz/0vZqOxc45nl9b/aCgAxK5H5TrtbFMscKMrKfNb8numnncVoRXqeZ5m765SJOFq5SBl8H+780BWO1pP9Q==}
+
+  '@rexezuge/i18n@1.0.2':
+    resolution: {integrity: sha512-XfhuiN79gTic1Tvi3QLPuxcffltNncXlHNpNdiZKRB/rxOUDwE4SZJb5BH5AYRZn8EJc20UPPLjNlx/ms9AhiQ==}
+
+  '@rexezuge/runtime@1.0.2':
+    resolution: {integrity: sha512-7tx4l3zhrSY2KZ+1KlA+SH+N9D4vY5/QkEfvfNqMmpXfRO/riamFOlPi10j6UrwWBkTdfg6M5wVQaeBTqtY9gw==}
+
+  '@rexezuge/shared@1.0.2':
+    resolution: {integrity: sha512-Nnh6WlpXY8fdHZrXkoPeh15Il86TaFt7QuTB+Wi9/GMQ9unJOHdrOEmd1tSUJ/TKfgo4CVWpHoCrYR7dWF+imQ==}
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     resolution: {integrity: sha512-dB/a1214qKfHMXCpgqR4OZT+jS4kTyEXbQGJPqzobt5EwH5rX080pxE37alt3RzvR1bf1Yz/yGqRfrYAxuPw0A==}
@@ -3771,6 +3827,19 @@ snapshots:
       supports-color: 10.2.2
 
   '@poppinss/exception@1.2.3': {}
+
+  '@rexezuge/d1@1.0.2':
+    dependencies:
+      '@rexezuge/errors': 1.0.2
+      '@rexezuge/shared': 1.0.2
+
+  '@rexezuge/errors@1.0.2': {}
+
+  '@rexezuge/i18n@1.0.2': {}
+
+  '@rexezuge/runtime@1.0.2': {}
+
+  '@rexezuge/shared@1.0.2': {}
 
   '@rolldown/binding-android-arm-eabi@1.2.12':
     optional: true

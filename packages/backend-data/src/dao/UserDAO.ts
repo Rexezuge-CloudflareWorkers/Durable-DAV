@@ -1,5 +1,5 @@
-import { BaseDAO } from './BaseDAO';
-import type { D1Queryable } from '../utils/D1Types';
+import { BaseDAO } from '@rexezuge/d1';
+import type { D1Queryable } from '@rexezuge/d1';
 
 /**
  * The stored form of a handle: lowercase.
@@ -95,14 +95,7 @@ class UserDAO extends BaseDAO {
     // accounts — and `ON CONFLICT(email)` would not catch the second.
     const anchor = input.anchor.toLowerCase();
     const loginEmail = input.loginEmail.toLowerCase();
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('INSERT INTO users (email, created_at, id, current_email) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING')
-          .bind(anchor, input.now, input.id ?? UserDAO.newId(), loginEmail)
-          .run(),
-      'create user',
-    );
+    await this.run('INSERT INTO users (email, created_at, id, current_email) VALUES (?, ?, ?, ?) ON CONFLICT DO NOTHING', [anchor, input.now, input.id ?? UserDAO.newId(), loginEmail]);
   }
 
   /**
@@ -125,28 +118,14 @@ class UserDAO extends BaseDAO {
    *   `UserIdentityService` instead.
    */
   public async ensureUsername(idOrEmail: string, username: string, now: number): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE users SET username = COALESCE(username, ?), updated_at = COALESCE(updated_at, ?) WHERE id = ? OR email = ?')
-          .bind(normalizeUsername(username), now, idOrEmail, idOrEmail)
-          .run(),
-      'ensure username',
-    );
+    await this.run('UPDATE users SET username = COALESCE(username, ?), updated_at = COALESCE(updated_at, ?) WHERE id = ? OR email = ?', [normalizeUsername(username), now, idOrEmail, idOrEmail]);
   }
 
   /**
   @param idOrEmail The stable account key, or an anchor address.
    */
   public async setUsername(idOrEmail: string, username: string, now: number): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE users SET username = ?, updated_at = ? WHERE id = ? OR email = ?')
-          .bind(normalizeUsername(username), now, idOrEmail, idOrEmail)
-          .run(),
-      'set username',
-    );
+    await this.run('UPDATE users SET username = ?, updated_at = ? WHERE id = ? OR email = ?', [normalizeUsername(username), now, idOrEmail, idOrEmail]);
   }
 
   /**
@@ -156,31 +135,25 @@ class UserDAO extends BaseDAO {
    * findable here by its new one. It is the pre-0004 floor and the attribution
    * read.
    */
-  public async getByEmail(email: string): Promise<UserRow | null> {
+  public async getByEmail(email: string): Promise<UserRow | undefined> {
     // Lowercase the *parameter*: every writer stores the anchor lowercased, so
     // `lower(email) = lower(?)` matched identically while making the primary
     // key unusable.
-    return this.firstWithRetry(
-      () => this.database.prepare('SELECT * FROM users WHERE email = ? LIMIT 1').bind(email.toLowerCase()).first<UserRow>(),
-      'get user by email anchor',
-    );
+    return this.first<UserRow>('SELECT * FROM users WHERE email = ? LIMIT 1', [email.toLowerCase()]);
   }
 
   /**
   The account behind a stable key. Null on a pre-0004 database.
   */
-  public async getById(id: string): Promise<UserRow | null> {
-    return this.firstWithRetry(() => this.database.prepare('SELECT * FROM users WHERE id = ? LIMIT 1').bind(id).first<UserRow>(), 'get user by id');
+  public async getById(id: string): Promise<UserRow | undefined> {
+    return this.first<UserRow>('SELECT * FROM users WHERE id = ? LIMIT 1', [id]);
   }
 
   /**
   The account currently signing in with this address. 0004-only.
   */
-  public async getByCurrentEmail(email: string): Promise<UserRow | null> {
-    return this.firstWithRetry(
-      () => this.database.prepare('SELECT * FROM users WHERE current_email = ? LIMIT 1').bind(email.toLowerCase()).first<UserRow>(),
-      'get user by current email',
-    );
+  public async getByCurrentEmail(email: string): Promise<UserRow | undefined> {
+    return this.first<UserRow>('SELECT * FROM users WHERE current_email = ? LIMIT 1', [email.toLowerCase()]);
   }
 
   /**
@@ -190,10 +163,7 @@ class UserDAO extends BaseDAO {
    * `*_email` column and foreign key resolves against.
    */
   public async setCurrentEmail(id: string, email: string, now: number): Promise<void> {
-    await this.withRetry(
-      () => this.database.prepare('UPDATE users SET current_email = ?, updated_at = ? WHERE id = ?').bind(email.toLowerCase(), now, id).run(),
-      'set current email',
-    );
+    await this.run('UPDATE users SET current_email = ?, updated_at = ? WHERE id = ?', [email.toLowerCase(), now, id]);
   }
 
   /**
@@ -214,11 +184,8 @@ class UserDAO extends BaseDAO {
  * full scan either way — the parameter-side lowercase is kept because it is the
  * rule that makes the *semantics* correct, not the performance.)
  */
-public async getByUsernameCi(usernameCi: string): Promise<UserRow | null> {
-    return this.firstWithRetry(
-      () => this.database.prepare('SELECT * FROM users WHERE username = ? LIMIT 1').bind(usernameCi.toLowerCase()).first<UserRow>(),
-      'get user by username',
-    );
+public async getByUsernameCi(usernameCi: string): Promise<UserRow | undefined> {
+    return this.first<UserRow>('SELECT * FROM users WHERE username = ? LIMIT 1', [usernameCi.toLowerCase()]);
   }
 }
 

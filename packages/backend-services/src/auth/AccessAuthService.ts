@@ -1,8 +1,8 @@
 import { jwtVerify, createRemoteJWKSet } from 'jose';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
-import { UnauthorizedError } from '@durable-dav/backend-errors';
+import { UnauthorizedError } from '@rexezuge/errors';
 import { DEMO_USER_EMAIL } from '@durable-dav/shared/constants';
-import { isValidEmailFormat } from '@durable-dav/shared/utils';
+import { isValidEmailFormat } from '@rexezuge/shared';
 
 interface AccessAuthEnv {
   TEAM_DOMAIN?: string;

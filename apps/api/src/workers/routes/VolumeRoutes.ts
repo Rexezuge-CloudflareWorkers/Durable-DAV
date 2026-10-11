@@ -2,7 +2,7 @@ import { Tokens } from '@durable-dav/backend-services/composition';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import { readDavHrefPrefixMode } from '@durable-dav/shared/constants';
 import type { DavHrefPrefixMode } from '@durable-dav/shared/constants';
-import { ErrorSanitizationUtil } from '@durable-dav/shared/utils';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 import type { ApiApp, ApiContext } from '@/types/ApiContext';
 import { getVolumeStub } from '../doStubs';

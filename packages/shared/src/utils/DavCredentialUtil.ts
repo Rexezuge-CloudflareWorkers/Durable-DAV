@@ -1,4 +1,4 @@
-import { CryptoUtil } from './CryptoUtil';
+import { CryptoUtil } from '@rexezuge/shared';
 
 const CREDENTIAL_ANIMALS = [
   'alpaca',

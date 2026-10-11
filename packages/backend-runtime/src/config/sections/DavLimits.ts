@@ -1,4 +1,4 @@
-import { EnvParser } from '../EnvParser';
+import { EnvParser } from '@rexezuge/runtime';
 import { DEFAULT_DAV_CACHE_TTL_SECONDS, DEFAULT_MAX_FILE_BYTES } from '../ConfigurationDefaults';
 
 // WebDAV transfer + front read-cache limits (Strategy: one section per

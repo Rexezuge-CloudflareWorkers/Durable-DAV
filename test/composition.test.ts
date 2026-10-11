@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { Container } from '@durable-dav/backend-runtime/di';
+import { Container } from '@rexezuge/runtime';
 import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
 import { VolumeService } from '@durable-dav/backend-services/dav';
 import { UserService } from '@durable-dav/backend-services/user';

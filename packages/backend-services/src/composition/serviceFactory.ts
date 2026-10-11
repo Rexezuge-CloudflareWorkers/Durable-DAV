@@ -1,4 +1,4 @@
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
+import type { D1Queryable } from '@rexezuge/d1';
 
 // Minimal structural env for scope creation.
 interface RequestScopeEnv {

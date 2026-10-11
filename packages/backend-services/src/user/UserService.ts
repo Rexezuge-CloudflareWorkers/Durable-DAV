@@ -1,9 +1,10 @@
 import { DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
 import type { UserRow } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { BadRequestError, NotFoundError } from '@durable-dav/backend-errors';
+import { isMissingSchemaError } from '@rexezuge/d1';
+import type { D1Queryable } from '@rexezuge/d1';
+import { BadRequestError, NotFoundError } from '@rexezuge/errors';
 import { isReservedNamespaceName, isValidUsername } from '@durable-dav/shared/constants';
-import { isMissingSchemaError, TimestampUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil } from '@rexezuge/shared';
 import { cascadeOwnerVolumes } from './volumeRenameCascade';
 import { registerAccount, resolveAccount } from './accountLookup';
 import type { AccountLookupDeps, AccountSummary, ResolvedAccount } from './accountLookup';
@@ -123,7 +124,7 @@ class UserService {
         // `namespaces` absent — keep the reserved-derived value.
       }
       if (!taken) {
-        const userMatch = await dao.getByUsernameCi(ci).catch(() => null);
+        const userMatch = await dao.getByUsernameCi(ci).catch(() => undefined);
         taken = Boolean(userMatch);
       }
       if (!taken) return candidate;
@@ -147,7 +148,7 @@ class UserService {
    * blip would have looked like a definitive "taken, pick another" answer.
    * A `null` return now means exactly one thing: no such row.
    */
-  public async getByUsername(username: string): Promise<UserRow | null> {
+  public async getByUsername(username: string): Promise<UserRow | undefined> {
     const dao = await this.deps.userDAO();
     return dao.getByUsernameCi(username.toLowerCase());
   }
@@ -276,8 +277,11 @@ class UserService {
     const userMatch = await this.deps
       .userDAO()
       .then((dao) => dao.getByUsernameCi(handleCi))
-      .catch(() => null);
-    return userMatch !== null && !userBelongsTo(userMatch, account);
+      .catch(() => undefined);
+    // `!= null` rather than `!== undefined`: the DAO answers absence with
+    // undefined (the kit's first()), but a test-injected stub may return null,
+    // and both mean "no such row".
+    return userMatch != null && !userBelongsTo(userMatch, account);
   }
 }
 

@@ -1,5 +1,5 @@
-import { BaseDAO } from './BaseDAO';
-import type { D1Queryable } from '../utils/D1Types';
+import { BaseDAO } from '@rexezuge/d1';
+import type { D1Queryable } from '@rexezuge/d1';
 import type { DavHrefPrefixMode } from '@durable-dav/shared/constants';
 import { DEFAULT_DAV_HREF_PREFIX_MODE } from '@durable-dav/shared/constants';
 
@@ -60,14 +60,7 @@ class DavVolumeDAO extends BaseDAO {
   }): Promise<void> {
     const ownerCi = input.owner.toLowerCase();
     const nameCi = input.name.toLowerCase();
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare(
-            'INSERT INTO dav_volumes (id, owner_email, owner_user_id, owner, name, description, is_private, href_prefix_mode, created_at, updated_at, owner_ci, name_ci) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-          )
-          .bind(
-            input.id,
+    await this.run('INSERT INTO dav_volumes (id, owner_email, owner_user_id, owner, name, description, is_private, href_prefix_mode, created_at, updated_at, owner_ci, name_ci) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [input.id,
             input.ownerEmail,
             input.ownerUserId,
             input.owner,
@@ -78,26 +71,15 @@ class DavVolumeDAO extends BaseDAO {
             input.now,
             input.now,
             ownerCi,
-            nameCi,
-          )
-          .run(),
-      'create dav volume',
-    );
+            nameCi,]);
   }
 
-  public async getByOwnerName(owner: string, name: string): Promise<DavVolumeRow | null> {
+  public async getByOwnerName(owner: string, name: string): Promise<DavVolumeRow | undefined> {
     // `firstWithRetry`, not a bare `.first()`: this is the first query on every
     // DAV request, and `DavAuth` documents a `DatabaseError` -> 503 contract for
     // exactly this lookup. A bare `.first()` rejects with a raw `D1_ERROR`,
     // which is not a `DatabaseError`, so that branch could never fire.
-    return this.firstWithRetry(
-      () =>
-        this.database
-          .prepare('SELECT * FROM dav_volumes WHERE owner_ci = ? AND name_ci = ? LIMIT 1')
-          .bind(owner.toLowerCase(), name.toLowerCase())
-          .first<DavVolumeRow>(),
-      'get dav volume by owner and name',
-    );
+    return this.first<DavVolumeRow>('SELECT * FROM dav_volumes WHERE owner_ci = ? AND name_ci = ? LIMIT 1', [owner.toLowerCase(), name.toLowerCase()]);
   }
 
   /**
@@ -109,11 +91,8 @@ class DavVolumeDAO extends BaseDAO {
    * to would be unreachable and a D1 blip would surface as an opaque 500 on the
    * "Sync Now" button.
    */
-  public async getById(id: string): Promise<DavVolumeRow | null> {
-    return this.firstWithRetry(
-      () => this.database.prepare('SELECT * FROM dav_volumes WHERE id = ? LIMIT 1').bind(id).first<DavVolumeRow>(),
-      'get dav volume by id',
-    );
+  public async getById(id: string): Promise<DavVolumeRow | undefined> {
+    return this.first<DavVolumeRow>('SELECT * FROM dav_volumes WHERE id = ? LIMIT 1', [id]);
   }
 
   public async update(
@@ -135,14 +114,7 @@ class DavVolumeDAO extends BaseDAO {
       bindings.push(patch.hrefPrefixMode);
     }
     bindings.push(id);
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare(`UPDATE dav_volumes SET ${sets.join(', ')} WHERE id = ?`)
-          .bind(...bindings)
-          .run(),
-      'update dav volume',
-    );
+    await this.run(`UPDATE dav_volumes SET ${sets.join(', ')} WHERE id = ?`, [...bindings]);
   }
 
   /**
@@ -153,14 +125,7 @@ class DavVolumeDAO extends BaseDAO {
    * findable by its old one.
    */
   public async listByOwnerUserId(ownerUserId: string, limit = 1000): Promise<DavVolumeRow[]> {
-    return this.allWithRetry<DavVolumeRow>(
-      () =>
-        this.database
-          .prepare('SELECT * FROM dav_volumes WHERE owner_user_id = ? ORDER BY updated_at DESC LIMIT ?')
-          .bind(ownerUserId, limit)
-          .all<DavVolumeRow>(),
-      'list dav volumes by owner user id',
-    );
+    return this.all<DavVolumeRow>('SELECT * FROM dav_volumes WHERE owner_user_id = ? ORDER BY updated_at DESC LIMIT ?', [ownerUserId, limit]);
   }
 
   /**
@@ -173,14 +138,7 @@ class DavVolumeDAO extends BaseDAO {
    * `DatabaseError` the caller turns into a 503.
    */
   public async countByOwnerUserId(ownerUserId: string): Promise<number> {
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE owner_user_id = ?')
-          .bind(ownerUserId)
-          .first<{ cnt: number }>(),
-      'count dav volumes by owner user id',
-    );
+    const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE owner_user_id = ?', [ownerUserId]);
     return row?.cnt ?? 0;
   }
 
@@ -188,47 +146,29 @@ class DavVolumeDAO extends BaseDAO {
   @deprecated Pre-0004 fallback; prefer `listByOwnerUserId`.
   */
   public async listByOwnerEmail(ownerEmail: string, limit = 1000): Promise<DavVolumeRow[]> {
-    return this.allWithRetry<DavVolumeRow>(
-      () =>
-        this.database
-          // `owner_email` is stored lowercased (`VolumeService.createVolume`), so
-          // the function call defeated `idx_dav_volumes_owner_email` on a hot path.
-          // Lowercase the parameter instead to keep the index usable.
-          .prepare('SELECT * FROM dav_volumes WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ?')
-          .bind(ownerEmail.toLowerCase(), limit)
-          .all<DavVolumeRow>(),
-      'list dav volumes by owner email',
-    );
+    // `owner_email` is stored lowercased (`VolumeService.createVolume`), so the
+    // function call defeated `idx_dav_volumes_owner_email` on a hot path.
+    // Lowercase the parameter instead to keep the index usable.
+    return this.all<DavVolumeRow>('SELECT * FROM dav_volumes WHERE owner_email = ? ORDER BY updated_at DESC LIMIT ?', [
+      ownerEmail.toLowerCase(),
+      limit,
+    ]);
   }
 
   public async renameOwner(oldOwnerCi: string, newOwner: string, now: number): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE dav_volumes SET owner = ?, owner_ci = ?, updated_at = ? WHERE owner_ci = ?')
-          .bind(newOwner, newOwner.toLowerCase(), now, oldOwnerCi.toLowerCase())
-          .run(),
-      'rename volume owner',
-    );
+    await this.run('UPDATE dav_volumes SET owner = ?, owner_ci = ?, updated_at = ? WHERE owner_ci = ?', [newOwner, newOwner.toLowerCase(), now, oldOwnerCi.toLowerCase()]);
   }
 
   /**
   @deprecated Pre-0004 fallback; prefer `countByOwnerUserId`.
   */
   public async countByOwnerEmail(ownerEmail: string): Promise<number> {
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE owner_email = ?')
-          .bind(ownerEmail.toLowerCase())
-          .first<{ cnt: number }>(),
-      'count dav volumes by owner email',
-    );
+    const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE owner_email = ?', [ownerEmail.toLowerCase()]);
     return row?.cnt ?? 0;
   }
 
   public async deleteById(id: string): Promise<void> {
-    await this.withRetry(() => this.database.prepare('DELETE FROM dav_volumes WHERE id = ?').bind(id).run(), 'delete dav volume');
+    await this.run('DELETE FROM dav_volumes WHERE id = ?', [id]);
   }
 }
 

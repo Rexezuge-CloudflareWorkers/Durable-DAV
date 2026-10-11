@@ -1,8 +1,8 @@
 import { UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { BadRequestError, DatabaseError } from '@durable-dav/backend-errors';
-import { isValidEmailFormat } from '@durable-dav/shared/utils';
-import { TimestampUtil } from '@durable-dav/shared/utils';
+import type { D1Queryable } from '@rexezuge/d1';
+import { BadRequestError, DatabaseError } from '@rexezuge/errors';
+import { isValidEmailFormat } from '@rexezuge/shared';
+import { TimestampUtil } from '@rexezuge/shared';
 import { resolveAccount, summarize } from '../user/accountLookup';
 import type { AccountLookupDeps, ResolvedAccount } from '../user/accountLookup';
 
@@ -27,7 +27,7 @@ type UserIdentityDeps = Partial<AccountLookupDeps>;
  */
 class UserIdentityService {
   private readonly deps: Required<AccountLookupDeps>;
-  private readonly byEmail = new Map<string, ResolvedAccount | null>();
+  private readonly byEmail = new Map<string, ResolvedAccount | undefined>();
 
   constructor(
     env: UserIdentityEnv,
@@ -48,10 +48,10 @@ class UserIdentityService {
    * authenticate, otherwise a reassigned address would inherit the previous
    * holder's account.
    */
-  public async resolveAccount(email: string): Promise<ResolvedAccount | null> {
+  public async resolveAccount(email: string): Promise<ResolvedAccount | undefined> {
     const key = email.trim().toLowerCase();
-    if (!isValidEmailFormat(key)) return null;
-    if (this.byEmail.has(key)) return this.byEmail.get(key) ?? null;
+    if (!isValidEmailFormat(key)) return undefined;
+    if (this.byEmail.has(key)) return this.byEmail.get(key) ?? undefined;
     const resolved = await this.load(key);
     this.byEmail.set(key, resolved);
     return resolved;
@@ -60,16 +60,16 @@ class UserIdentityService {
   /**
    * Account id for a sign-in address, or null when unknown.
    */
-  public async resolveUserId(email: string): Promise<string | null> {
+  public async resolveUserId(email: string): Promise<string | undefined> {
     const account = await this.resolveAccount(email);
-    return account?.id ?? null;
+    return account?.id ?? undefined;
   }
 
   /**
    * Account behind a stable key. The inverse direction, for a caller that
    * already holds one (a volume owner) and needs the current address.
    */
-  public async resolveUserById(userId: string): Promise<ResolvedAccount | null> {
+  public async resolveUserById(userId: string): Promise<ResolvedAccount | undefined> {
     const userDAO = await this.deps.userDAO();
     const row = await userDAO.getById(userId).catch((error: unknown) => {
       throw error instanceof DatabaseError
@@ -79,7 +79,7 @@ class UserIdentityService {
     return summarize(row);
   }
 
-  private async load(email: string): Promise<ResolvedAccount | null> {
+  private async load(email: string): Promise<ResolvedAccount | undefined> {
     return resolveAccount(this.deps, email).catch((error: unknown) => {
       throw error instanceof DatabaseError
         ? error
@@ -126,7 +126,7 @@ class UserIdentityService {
     if (!row?.id) throw new BadRequestError('User not found');
     const current = (row.current_email ?? row.email).toLowerCase();
     if (current === email) {
-      return { id: row.id, email, anchorEmail: row.email, username: row.username ?? null };
+      return { id: row.id, email, anchorEmail: row.email, username: row.username ?? undefined };
     }
     const holder = await emailDAO.resolveVerified(email);
     if (holder && holder.user_id !== row.id) throw new BadRequestError('Email is already in use');
@@ -146,8 +146,8 @@ class UserIdentityService {
     // Revoke every other verified address, so only the new one authenticates.
     await emailDAO.revokeAllVerified(row.id, email);
     this.byEmail.delete(current);
-    this.byEmail.set(email, { id: row.id, email, anchorEmail: row.email, username: row.username ?? null });
-    return { id: row.id, email, anchorEmail: row.email, username: row.username ?? null };
+    this.byEmail.set(email, { id: row.id, email, anchorEmail: row.email, username: row.username ?? undefined });
+    return { id: row.id, email, anchorEmail: row.email, username: row.username ?? undefined };
   }
 
   /**

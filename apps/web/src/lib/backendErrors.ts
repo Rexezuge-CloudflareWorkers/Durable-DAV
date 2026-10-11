@@ -3,29 +3,29 @@ import { getBackendErrorType } from './api';
 type TranslateFn = (key: string, fallback: string) => string;
 
 const BACKEND_TYPE_TO_I18N_KEY: Record<string, string> = {
-  BadRequest: 'errors.backend.badRequest',
-  Unauthorized: 'errors.backend.unauthorized',
-  Forbidden: 'errors.backend.forbidden',
-  NotFound: 'errors.backend.notFound',
+  badRequest: 'errors.backend.badRequest',
+  unauthorized: 'errors.backend.unauthorized',
+  forbidden: 'errors.backend.forbidden',
+  notFound: 'errors.backend.notFound',
   Conflict: 'errors.backend.conflict',
-  PayloadTooLarge: 'errors.backend.payloadTooLarge',
-  RateLimited: 'errors.backend.rateLimited',
-  MethodNotAllowed: 'errors.backend.methodNotAllowed',
+  payloadTooLarge: 'errors.backend.payloadTooLarge',
+  rateLimited: 'errors.backend.rateLimited',
+  methodNotAllowed: 'errors.backend.methodNotAllowed',
   DatabaseError: 'errors.backend.databaseError',
-  InternalServerError: 'errors.backend.internalError',
+  internalServerError: 'errors.backend.internalError',
 };
 
 const BACKEND_TYPE_TO_FALLBACK: Record<string, string> = {
-  BadRequest: 'Bad Request.',
-  Unauthorized: 'Authentication Required.',
-  Forbidden: 'Access Denied.',
-  NotFound: 'Not Found.',
+  badRequest: 'Bad Request.',
+  unauthorized: 'Authentication Required.',
+  forbidden: 'Access Denied.',
+  notFound: 'Not Found.',
   Conflict: 'Conflict.',
-  PayloadTooLarge: 'Payload Too Large.',
-  RateLimited: 'Too Many Requests. Try Again Later.',
-  MethodNotAllowed: 'Method Not Allowed.',
+  payloadTooLarge: 'Payload Too Large.',
+  rateLimited: 'Too Many Requests. Try Again Later.',
+  methodNotAllowed: 'Method Not Allowed.',
   DatabaseError: 'Service Temporarily Unavailable.',
-  InternalServerError: 'Internal Server Error.',
+  internalServerError: 'Internal Server Error.',
 };
 
 /**

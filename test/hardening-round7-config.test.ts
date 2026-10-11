@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { AbstractEntrypointWorker } from '../packages/backend-runtime/src/base/AbstractEntrypointWorker';
+import { AbstractEntrypointWorker } from '@rexezuge/runtime';
 import { AccessAuthService } from '@durable-dav/backend-services/auth';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 

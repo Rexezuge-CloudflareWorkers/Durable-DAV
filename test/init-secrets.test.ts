@@ -30,7 +30,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'jsonc-parser';
-import { decryptReplicationSecret, encryptReplicationSecret } from '../packages/backend-data/src/crypto/aes-gcm';
+import { decryptSecret, encryptSecret } from '@rexezuge/d1';
 import {
   canProvisionSecret,
   parseSecretNames,
@@ -95,8 +95,8 @@ describe('provisionSecretValue', () => {
     // the Worker wrote. A generator that drifted to a different length or a
     // different alphabet would still pass a length check and strand every
     // stored remote credential.
-    const envelope = await encryptReplicationSecret('remote-password', value);
-    await expect(decryptReplicationSecret(envelope, value)).resolves.toBe('remote-password');
+    const envelope = await encryptSecret('remote-password', value);
+    await expect(decryptSecret(envelope, value)).resolves.toBe('remote-password');
   });
 
   it('generates a different value each time', () => {

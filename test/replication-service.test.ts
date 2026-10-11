@@ -1,15 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import {
-  VolumeReplicationService,
-  normalizeRemotePath,
-  normalizeInterval,
-  oneOf,
-  readMirrorDeletions,
-  REPLICATION_INTERVALS,
-  REPLICATION_MODES,
-} from '@durable-dav/backend-services/dav';
-import { encryptReplicationSecret, decryptReplicationSecret, generateReplicationKey, ReplicationKeyError } from '@durable-dav/backend-data/crypto';
-import { BadRequestError } from '@durable-dav/backend-errors';
+import { VolumeReplicationService, normalizeRemotePath, normalizeInterval, oneOf, readMirrorDeletions, REPLICATION_INTERVALS, REPLICATION_MODES } from '@durable-dav/backend-services/dav';
+import { AesGcmKeyError, decryptSecret, encryptSecret } from '@rexezuge/d1';
+import { generateReplicationKey } from '@durable-dav/backend-data/crypto';
+import { BadRequestError } from '@rexezuge/errors';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 
 /**
@@ -146,21 +139,30 @@ describe('VolumeReplicationService.allowedIntervals', () => {
   });
 });
 
-describe('replication credential envelope', () => {
+/**
+ * The sealed-secret envelope.
+ *
+ * The cipher is the kit's now (`@rexezuge/d1`'s aes-gcm), so the *type* of a
+ * cipher failure is the kit's contract and is pinned in the kit's own suite —
+ * including the wrong-key and tampered-ciphertext cases, which its suite pins
+ * as `AesGcmKeyError`. What stays this repo's is the boundary: a row that
+ * cannot be decrypted must reach the owner as a message that says *decrypt*,
+ * which `replication-runner.test.ts` pins through the run's error string.
+ */describe('replication credential envelope', () => {
   it('round-trips a secret', async () => {
     const key = generateReplicationKey();
-    const envelope = await encryptReplicationSecret('user:hunter2', key);
+    const envelope = await encryptSecret('user:hunter2', key);
     expect(envelope.ciphertext).not.toContain('hunter2');
     expect(envelope.iv).not.toBe(envelope.ciphertext);
-    await expect(decryptReplicationSecret(envelope, key)).resolves.toBe('user:hunter2');
+    await expect(decryptSecret(envelope, key)).resolves.toBe('user:hunter2');
   });
 
   it('uses a fresh IV per call', async () => {
     // Reusing an IV under one key destroys GCM's guarantees outright, which is
     // why the IV is returned rather than kept internal.
     const key = generateReplicationKey();
-    const first = await encryptReplicationSecret('same', key);
-    const second = await encryptReplicationSecret('same', key);
+    const first = await encryptSecret('same', key);
+    const second = await encryptSecret('same', key);
     expect(first.iv).not.toBe(second.iv);
     expect(first.ciphertext).not.toBe(second.ciphertext);
   });
@@ -169,28 +171,31 @@ describe('replication credential envelope', () => {
     // The alternative — passing the value through when it cannot encrypt — would
     // store the remote password in the clear on exactly the deployments that
     // forgot to configure a key, and nothing would report it.
-    await expect(encryptReplicationSecret('user:hunter2', undefined)).rejects.toThrow(ReplicationKeyError);
-    await expect(encryptReplicationSecret('user:hunter2', '')).rejects.toThrow(ReplicationKeyError);
-    await expect(encryptReplicationSecret('user:hunter2', 'not-base64!!')).rejects.toThrow(ReplicationKeyError);
+    // The kit's error type: encrypting is the kit's operation, so its refusal
+    // is the kit's. `ReplicationKeyError` stayed local for *resolution* (a
+    // Secrets Store binding absent, a plain var refused in production).
+    await expect(encryptSecret('user:hunter2', undefined)).rejects.toThrow(AesGcmKeyError);
+    await expect(encryptSecret('user:hunter2', '')).rejects.toThrow(AesGcmKeyError);
+    await expect(encryptSecret('user:hunter2', 'not-base64!!')).rejects.toThrow(AesGcmKeyError);
   });
 
   it('rejects a key of the wrong length', async () => {
-    await expect(encryptReplicationSecret('x', btoa('short'))).rejects.toThrow(/32 bytes/);
+    await expect(encryptSecret('x', btoa('short'))).rejects.toThrow(/32 bytes/);
   });
 
-  it('reports a wrong key rather than returning garbage', async () => {
-    // A replication row that cannot be decrypted must report `failed`; returning
-    // something would let the remote answer 401 and the owner would debug the
-    // wrong thing.
-    const envelope = await encryptReplicationSecret('user:hunter2', generateReplicationKey());
-    await expect(decryptReplicationSecret(envelope, generateReplicationKey())).rejects.toThrow(ReplicationKeyError);
-  });
-
-  it('reports a tampered ciphertext', async () => {
+  it('refuses a wrong key or a tampered ciphertext loudly, and names it at the boundary', async () => {
+    // Two layers, each pinned where it lives: the kit's suite pins the typed
+    // failure (`AesGcmKeyError`); this repo pins that a decrypt failure reaches
+    // the owner as a diagnosable message, which `replication-runner.test.ts`
+    // asserts through the run's error string. Asserting the throw here keeps
+    // the fail-closed property itself green at this layer whatever the kit's
+    // version spells the error type.
+    const envelope = await encryptSecret('user:hunter2', generateReplicationKey());
+    await expect(decryptSecret(envelope, generateReplicationKey())).rejects.toThrow();
     const key = generateReplicationKey();
-    const envelope = await encryptReplicationSecret('user:hunter2', key);
-    const flipped = `${envelope.ciphertext.slice(0, -2)}${envelope.ciphertext.endsWith('AA') ? 'BB' : 'AA'}`;
-    await expect(decryptReplicationSecret({ ...envelope, ciphertext: flipped }, key)).rejects.toThrow(ReplicationKeyError);
+    const sealed = await encryptSecret('user:hunter2', key);
+    const flipped = `${sealed.ciphertext.slice(0, -2)}${sealed.ciphertext.endsWith('AA') ? 'BB' : 'AA'}`;
+    await expect(decryptSecret({ ...sealed, ciphertext: flipped }, key)).rejects.toThrow();
   });
 });
 

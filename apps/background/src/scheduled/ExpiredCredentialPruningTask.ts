@@ -1,6 +1,6 @@
-import { TimestampUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil } from '@rexezuge/shared';
 import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
-import { createLogger } from '@durable-dav/backend-runtime/logger';
+import { createLogger } from '@rexezuge/runtime';
 import { BaseScheduledTask } from './IScheduledTask';
 
 const logger = createLogger('CronTasks');

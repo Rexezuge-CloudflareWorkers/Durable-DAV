@@ -515,7 +515,7 @@ describe('the API authorizes id-keyed access after an address change', () => {
       .run();
 
     const svc = new UserIdentityService({ DB });
-    expect(await svc.resolveAccount('stale@example.com')).toBeNull();
+    expect(await svc.resolveAccount('stale@example.com')).toBeUndefined();
     expect((await svc.resolveAccount(API_USER))?.id).toBe(userId);
   });
 });

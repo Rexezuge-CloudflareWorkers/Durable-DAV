@@ -13,16 +13,9 @@
  */
 
 import { parseMultiStatus } from '@durable-dav/webdav';
-import { MAX_REDIRECTS, RemoteUrlRejectedError, normalizeRemoteUrl, resolveRedirectUrl } from '@durable-dav/shared/net';
+import { MAX_REDIRECTS, RemoteUrlRejectedError, normalizeRemoteUrl, resolveRedirectUrl } from '@rexezuge/shared';
 import { RemoteUnavailableError } from '@durable-dav/backend-services/replication';
-import {
-  DELETE_SUCCESS,
-  classifyStatus,
-  joinUrl,
-  propfindBody,
-  toInnerEntry,
-  trimSlashes,
-} from './davHttpProtocol';
+import { DELETE_SUCCESS, classifyStatus, joinUrl, propfindBody, toInnerEntry, trimSlashes } from './davHttpProtocol';
 import type { DavAuthHeader, DavHttpFetch } from './davHttpProtocol';
 import { removeRecursive } from './recursiveDelete';
 import type { RemoteEntry, RemoteListing, RemoteVolume } from '@durable-dav/backend-services/replication';

@@ -6,10 +6,11 @@
  * only thing that makes them worth keeping.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { KvCache } from '@rexezuge/runtime';
 import { DavConditionalGuard } from '../apps/background/src/dav/DavConditionalGuard';
-import { DatabaseError, NotFoundError } from '@durable-dav/backend-errors';
+import { DatabaseError, NotFoundError } from '@rexezuge/errors';
 import { VerificationCache } from '../apps/background/src/dav/CredentialVerifierDO';
-import { KvCache } from '../packages/backend-runtime/src/kv/KvCache';
+
 import { VolumeService } from '../packages/backend-services/src/dav/VolumeService';
 import type { UserIdentityService } from '../packages/backend-services/src/identity/UserIdentityService';
 
@@ -266,14 +267,14 @@ describe('KvCache.purgePrefix page cap', () => {
       delete: vi.fn().mockResolvedValue(undefined),
     };
     const cache = new KvCache(namespace as never);
-    await expect(cache.purgePrefix('davMeta')).resolves.toBe(3);
+    await expect(cache.purgePrefix('metadata')).resolves.toBe(3);
     expect(namespace.delete).toHaveBeenCalledTimes(3);
   });
 
   it('reports no deletion when the prefix is already empty', async () => {
     const namespace = { list: vi.fn().mockResolvedValue({ keys: [] }), delete: vi.fn() };
     const cache = new KvCache(namespace as never);
-    await expect(cache.purgePrefix('davFile')).resolves.toBe(0);
+    await expect(cache.purgePrefix('asset')).resolves.toBe(0);
   });
 
   it('does not silently under-purge when the page cap is exhausted', async () => {
@@ -288,7 +289,7 @@ describe('KvCache.purgePrefix page cap', () => {
     const cache = new KvCache(namespace as never);
 
     // The defect: 10 full pages, then a clean-looking return.
-    const deleted = await cache.purgePrefix('davMeta');
+    const deleted = await cache.purgePrefix('metadata');
     expect(deleted).toBe(10_000);
     expect(namespace.list).toHaveBeenCalledTimes(10);
 

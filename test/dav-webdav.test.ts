@@ -1,26 +1,7 @@
+import { DavCredentialUtil } from '../packages/shared/src/utils/DavCredentialUtil';
 import { describe, expect, it } from 'vitest';
-import {
-  escapeXml,
-  getResourceHref,
-  decodeResourcePath,
-  getParentPath,
-  parseDestinationPath,
-  isSameOrDescendantPath,
-  normalizeVolumeKey,
-  splitVolumePath,
-  parsePropfindRequest,
-  parseProppatchRequest,
-  parseTimeout,
-  normalizeLockToken,
-  determineLockDepth,
-  DAV_CLASS,
-  SUPPORT_METHODS,
-  getDeadPropertyKey,
-  isProtectedProperty,
-  generatePropfindResponse,
-  extractLockOwner,
-} from '@durable-dav/webdav';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
+import { escapeXml, getResourceHref, decodeResourcePath, getParentPath, parseDestinationPath, isSameOrDescendantPath, normalizeVolumeKey, splitVolumePath, parsePropfindRequest, parseProppatchRequest, parseTimeout, normalizeLockToken, determineLockDepth, DAV_CLASS, SUPPORT_METHODS, getDeadPropertyKey, isProtectedProperty, generatePropfindResponse, extractLockOwner } from '@durable-dav/webdav';
+
 
 describe('DuraDAV path helpers (RFC 4918)', () => {
   it('escapes XML', () => {

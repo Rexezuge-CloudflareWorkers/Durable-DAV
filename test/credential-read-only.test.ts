@@ -1,12 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import { Container, setRequestScope } from '@durable-dav/backend-runtime/di';
+import { Container, setRequestScope } from '@rexezuge/runtime';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import type { DavPermissionService, VolumeService } from '@durable-dav/backend-services/dav';
 import type { UserIdentityService } from '@durable-dav/backend-services/identity';
 import { DavCredentialDAO } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
+import type { D1Queryable } from '@rexezuge/d1';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import { davAuthForVolume } from '../apps/api/src/middleware/DavAuth';
 import { davErrorResponse, requiresWrite } from '@durable-dav/webdav';

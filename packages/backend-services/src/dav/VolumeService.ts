@@ -1,10 +1,10 @@
 import { DavCredentialDAO, DavVolumeDAO } from '@durable-dav/backend-data/dao';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { BadRequestError, ForbiddenError, NotFoundError } from '@durable-dav/backend-errors';
+import type { D1Queryable } from '@rexezuge/d1';
+import { BadRequestError, ForbiddenError, NotFoundError } from '@rexezuge/errors';
 import { isValidUsername, isValidVolumeName } from '@durable-dav/shared/constants';
 import type { DavHrefPrefixMode } from '@durable-dav/shared/constants';
-import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
+import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { checkVolumeQuota, parseVolumePatch } from './VolumeCreatePolicy';
 import type { VolumePatchInput } from './VolumeCreatePolicy';
@@ -88,7 +88,7 @@ class VolumeService {
     }
   }
 
-  public async getVolume(owner: string, name: string): Promise<DavVolumeRow | null> {
+  public async getVolume(owner: string, name: string): Promise<DavVolumeRow | undefined> {
     const dao = await this.deps.volumeDAO();
     // No `.catch(() => null)`: that made a D1 outage indistinguishable from a
     // missing bucket, so `davAuthForVolume`'s `DatabaseError -> 503` branch was

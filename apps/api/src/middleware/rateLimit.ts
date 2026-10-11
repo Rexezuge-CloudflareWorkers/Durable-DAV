@@ -94,7 +94,7 @@ function rateLimit(opts: {
           return null;
         }
         if (existing.count >= opts.max) {
-          return c.json({ Exception: { Type: 'RateLimited', Message: 'Rate limit exceeded; try again later.' } }, 429, {
+          return c.json({ Exception: { Type: 'rateLimited', Message: 'Rate limit exceeded; try again later.' } }, 429, {
             'Retry-After': String(Math.max(1, Math.ceil((existing.resetAt - now) / 1000))),
           });
         }

@@ -1,7 +1,8 @@
 import { beforeAll, describe, expect, it } from 'vitest';
+import { DavCredentialUtil } from '../../../packages/shared/src/utils/DavCredentialUtil';
 import { SELF, env } from 'cloudflare:test';
 import { setupIntegrationTest, ensureUser } from '../helpers/setup';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
+
 
 /**
  * Password verification offload, end-to-end over real D1 and a real DO.

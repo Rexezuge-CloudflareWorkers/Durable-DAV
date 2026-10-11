@@ -1,5 +1,5 @@
-import { BadRequestError } from '@durable-dav/backend-errors';
-import { normalizeRemoteUrl, RemoteUrlRejectedError } from '@durable-dav/shared/net';
+import { BadRequestError } from '@rexezuge/errors';
+import { normalizeRemoteUrl, RemoteUrlRejectedError } from '@rexezuge/shared';
 
 /**
  * The replication request contract, and the only place it is interpreted.

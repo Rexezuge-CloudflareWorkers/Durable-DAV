@@ -1,4 +1,4 @@
-import { createLogger } from '@durable-dav/backend-runtime/logger';
+import { createLogger } from '@rexezuge/runtime';
 import type { RemoteEntry, RemoteListing, RemoteVolume } from '@durable-dav/backend-services/replication';
 import type { PlanBase } from '@durable-dav/backend-services/replication';
 import type { ReplicaStateRow } from '@durable-dav/dav-store';

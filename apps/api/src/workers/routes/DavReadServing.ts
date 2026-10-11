@@ -1,18 +1,8 @@
-import type { KvCache } from '@durable-dav/backend-runtime/kv';
+import type { KvCache } from '@rexezuge/runtime';
 import type { ApiContext } from '@/types/ApiContext';
 import type { DavAuthResult } from '@/middleware/DavAuth';
 import { applyDavForwardHeaders } from './davForwardHeaders';
-import {
-  MAX_CACHED_FILE_BYTES,
-  cacheControlFor,
-  etagForPropfind,
-  getCachedFile,
-  getCachedPropfind,
-  hashBody,
-  isFresh,
-  putCachedFile,
-  putCachedPropfind,
-} from './DavReadCache';
+import { MAX_CACHED_FILE_BYTES, cacheControlFor, etagForPropfind, getCachedFile, getCachedPropfind, hashBody, isFresh, putCachedFile, putCachedPropfind } from './DavReadCache';
 
 type DavContext = ApiContext;
 

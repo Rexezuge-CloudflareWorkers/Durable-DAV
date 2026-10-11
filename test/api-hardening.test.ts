@@ -62,7 +62,7 @@ describe('rate limiting is actually wired', () => {
     expect(blocked.status).toBe(429);
     expect(blocked.headers.get('Retry-After')).toMatch(/^\d+$/);
     const body = (await blocked.json()) as { Exception: { Type: string } };
-    expect(body.Exception.Type).toBe('RateLimited');
+    expect(body.Exception.Type).toBe('rateLimited');
   });
 
   it('does not double-charge /user/volumes to the webdav bucket', async () => {

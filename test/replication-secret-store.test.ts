@@ -13,7 +13,7 @@
  */
 import { describe, expect, it, vi } from 'vitest';
 import { resolveReplicationKey } from '../packages/backend-data/src/crypto/replicationKey';
-import { ReplicationKeyError } from '../packages/backend-data/src/crypto/aes-gcm';
+import { ReplicationKeyError } from '../packages/backend-data/src/crypto/replicationKey';
 import { AppConfiguration } from '../packages/backend-runtime/src/config/AppConfiguration';
 
 describe('resolveReplicationKey source preference', () => {

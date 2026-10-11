@@ -1,5 +1,5 @@
-import { BaseDAO } from './BaseDAO';
-import type { D1Queryable } from '../utils/D1Types';
+import { BaseDAO } from '@rexezuge/d1';
+import type { D1Queryable } from '@rexezuge/d1';
 
 export interface DavReplicationConflictRow {
   conflict_id: string;
@@ -34,42 +34,17 @@ class DavReplicationConflictDAO extends BaseDAO {
     kind: 'conflict' | 'deletion';
     now: number;
   }): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare(
-            'INSERT INTO dav_replication_conflicts (conflict_id, replication_id, path, winner, kept_path, kind, detected_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-          )
-          .bind(input.conflictId, input.replicationId, input.path, input.winner, input.keptPath, input.kind, input.now)
-          .run(),
-      'record dav replication conflict',
-    );
+    await this.run('INSERT INTO dav_replication_conflicts (conflict_id, replication_id, path, winner, kept_path, kind, detected_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [input.conflictId, input.replicationId, input.path, input.winner, input.keptPath, input.kind, input.now]);
   }
 
   public async listByReplication(replicationId: string, includeResolved: boolean, limit = 200): Promise<DavReplicationConflictRow[]> {
-    return this.allWithRetry<DavReplicationConflictRow>(
-      () =>
-        this.database
-          .prepare(
-            `SELECT * FROM dav_replication_conflicts
+    return this.all<DavReplicationConflictRow>(`SELECT * FROM dav_replication_conflicts
              WHERE replication_id = ? ${includeResolved ? '' : 'AND resolved_at IS NULL'}
-             ORDER BY detected_at DESC LIMIT ?`,
-          )
-          .bind(replicationId, limit)
-          .all<DavReplicationConflictRow>(),
-      'list dav replication conflicts',
-    );
+             ORDER BY detected_at DESC LIMIT ?`, [replicationId, limit]);
   }
 
   public async countUnresolved(replicationId: string): Promise<number> {
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare('SELECT COUNT(*) AS cnt FROM dav_replication_conflicts WHERE replication_id = ? AND resolved_at IS NULL')
-          .bind(replicationId)
-          .first<{ cnt: number }>(),
-      'count unresolved dav replication conflicts',
-    );
+    const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_replication_conflicts WHERE replication_id = ? AND resolved_at IS NULL', [replicationId]);
     return row?.cnt ?? 0;
   }
 
@@ -82,14 +57,7 @@ class DavReplicationConflictDAO extends BaseDAO {
    * the same bytes over a file a user may have edited since.
    */
   public async markResolved(replicationId: string, conflictId: string, now: number): Promise<boolean> {
-    const result = await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE dav_replication_conflicts SET resolved_at = ? WHERE conflict_id = ? AND replication_id = ? AND resolved_at IS NULL')
-          .bind(now, conflictId, replicationId)
-          .run(),
-      'resolve dav replication conflict',
-    );
+    const result = await this.run('UPDATE dav_replication_conflicts SET resolved_at = ? WHERE conflict_id = ? AND replication_id = ? AND resolved_at IS NULL', [now, conflictId, replicationId]);
     return (result.meta?.changes ?? 0) > 0;
   }
 

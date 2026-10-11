@@ -84,7 +84,7 @@ describe('resolveAccount fails closed on a registry read error', () => {
     // The dangerous input: a revoked address that a *different* person now signs
     // in with. With the swallow in place, the code fell through to the anchor
     // lookup, found Alice, and returned her id.
-    await expect(resolveAccount(deps, 'old@x.co')).resolves.toBeNull();
+    await expect(resolveAccount(deps, 'old@x.co')).resolves.toBeUndefined();
     registryFails(TRANSIENT);
     await expect(resolveAccount(deps, 'old@x.co')).rejects.toThrow(/network request failed/);
   });
@@ -121,7 +121,7 @@ describe('resolveAccount fails closed on a registry read error', () => {
     // The revoked case must not consult `getByEmail` even on the happy path —
     // that lookup is the whole hazard.
     const { deps, seen } = fixture();
-    await expect(resolveAccount(deps, 'old@x.co')).resolves.toBeNull();
+    await expect(resolveAccount(deps, 'old@x.co')).resolves.toBeUndefined();
     expect(seen).toEqual([]);
   });
 
@@ -146,9 +146,9 @@ describe('resolveAccount fails closed on a registry read error', () => {
     await expect(resolveAccount(deps, 'bob@x.co')).resolves.toMatchObject({ id: 'usr_bob', username: 'bob' });
   });
 
-  it('returns null for a blank address without touching the database', async () => {
+  it('reports nothing for a blank address without touching the database', async () => {
     const { deps, seen } = fixture();
-    await expect(resolveAccount(deps, ' '.repeat(3))).resolves.toBeNull();
+    await expect(resolveAccount(deps, ' '.repeat(3))).resolves.toBeUndefined();
     expect(seen).toEqual([]);
   });
 });

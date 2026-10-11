@@ -8,7 +8,7 @@
  * *changed* costs one redundant transfer.
  */
 
-import { CryptoUtil } from '@durable-dav/shared/utils';
+import { CryptoUtil } from '@rexezuge/shared';
 import type { PlanSide, ReplicationMode } from './types';
 
 /**

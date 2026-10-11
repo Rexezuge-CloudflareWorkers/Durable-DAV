@@ -1,5 +1,6 @@
+import { isMissingSchemaError } from '@rexezuge/d1';
 import { UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
-import { isMissingSchemaError } from '@durable-dav/shared/utils';
+
 
 /**
  * A resolved account.
@@ -13,7 +14,7 @@ export interface ResolvedAccount {
   id: string;
   email: string;
   anchorEmail: string;
-  username: string | null;
+  username: string | undefined;
 }
 
 /**
@@ -29,7 +30,7 @@ export interface AccountLookupDeps {
 /**
  * Shape every `users` read has, whether or not migration 0004 has run.
  */
-type UserRowLike = { id?: string | null; email: string; current_email?: string | null; username: string | null } | null;
+type UserRowLike = { id?: string | null; email: string; current_email?: string | null; username: string | null | undefined } | undefined;
 
 /**
  * Project a `users` row onto a `ResolvedAccount`.
@@ -42,8 +43,8 @@ type UserRowLike = { id?: string | null; email: string; current_email?: string |
  * Returns `null` for a row with no id — a pre-0004 row read without migration
  * 0004 applied, which is not an account this code can act on.
  */
-function summarize(row: UserRowLike): ResolvedAccount | null {
-  return row?.id ? { id: row.id, email: (row.current_email ?? row.email).toLowerCase(), anchorEmail: row.email, username: row.username ?? null } : null;
+function summarize(row: UserRowLike): ResolvedAccount | undefined {
+  return row?.id ? { id: row.id, email: (row.current_email ?? row.email).toLowerCase(), anchorEmail: row.email, username: row.username ?? undefined } : undefined;
 }
 
 /**
@@ -56,9 +57,9 @@ function summarize(row: UserRowLike): ResolvedAccount | null {
  * Kept as free functions rather than methods so `UserIdentityService` and
  * `UserService` share one implementation instead of re-deriving the query.
  */
-export async function resolveAccount(deps: AccountLookupDeps, email: string): Promise<ResolvedAccount | null> {
+export async function resolveAccount(deps: AccountLookupDeps, email: string): Promise<ResolvedAccount | undefined> {
   const normalized = email.trim().toLowerCase();
-  if (!normalized) return null;
+  if (!normalized) return undefined;
   const userDAO = await deps.userDAO();
   // A known address is authoritative: the registry says which account it belongs
   // to, and a *revoked* row (the account moved off this address) must not
@@ -66,7 +67,7 @@ export async function resolveAccount(deps: AccountLookupDeps, email: string): Pr
   // a reassigned address keep authenticating the previous holder's account.
   //
   // Only a *missing registry* falls through, and "missing" means one specific
-  // thing: migration 0004 has not run. The previous `.catch(() => null)`
+  // thing: migration 0004 has not run. The previous `.catch(() => undefined)`
   // answered that question for **every** failure, so a transient D1 error on this
   // one statement made the code proceed to the anchor lookup below —
   // `getByEmail`, which is documented as an attribution lookup whose key is a
@@ -84,11 +85,11 @@ export async function resolveAccount(deps: AccountLookupDeps, email: string): Pr
     .userEmailDAO()
     .then((dao) => dao.get(normalized))
     .catch((error: unknown) => {
-      if (isMissingSchemaError(error)) return null;
+      if (isMissingSchemaError(error)) return undefined;
       throw error;
     });
   if (registered) {
-    return registered.is_verified === 1 ? summarize(await userDAO.getById(registered.user_id)) : null;
+    return registered.is_verified === 1 ? summarize(await userDAO.getById(registered.user_id)) : undefined;
   }
   // No registry row at all. Safe to fall through: migration 0004 backfilled a
   // verified row for every anchor, so a row-less address is either new or on a
@@ -106,9 +107,9 @@ export async function resolveAccount(deps: AccountLookupDeps, email: string): Pr
 /**
  * Account id for an address, or null when unknown.
  */
-export async function resolveUserId(deps: AccountLookupDeps, email: string): Promise<string | null> {
+export async function resolveUserId(deps: AccountLookupDeps, email: string): Promise<string | undefined> {
   const account = await resolveAccount(deps, email);
-  return account?.id ?? null;
+  return account?.id ?? undefined;
 }
 
 /**
@@ -137,12 +138,12 @@ export async function registerAccount(
   loginEmail: string,
   anchor: string,
   now: number,
-): Promise<ResolvedAccount | null> {
+): Promise<ResolvedAccount | undefined> {
   const userDAO = await deps.userDAO();
   const id = UserDAO.newId();
   await userDAO.createUser({ id, anchor, loginEmail, now });
   const row = await userDAO.getByEmail(anchor);
-  if (row?.id !== id) return null;
+  if (row?.id !== id) return undefined;
   // Claim the sign-in address *before* resolving, otherwise the fresh account is
   // invisible to the registry and registration looks like a failure. An address
   // already verified for another account is left alone by `register`, and the

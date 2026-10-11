@@ -2,7 +2,7 @@ import { Tokens } from '@durable-dav/backend-services/composition';
 import { isVolumeOwner } from '@durable-dav/backend-services/dav';
 import type { ViewerIdentity } from '@durable-dav/backend-services/dav';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
-import type { Container } from '@durable-dav/backend-runtime/di';
+import type { Container } from '@rexezuge/runtime';
 import { BaseRoute } from '@/endpoints/IBaseRoute';
 
 import type { ApiContext } from '@/types/ApiContext';
@@ -51,9 +51,9 @@ returned 404.
 */
 type NotOwnerStatus = 403 | 404;
 
-const UNAUTHORIZED_BODY = { Exception: { Type: 'Unauthorized', Message: 'Unauthorized' } } as const;
-const NOT_FOUND_BODY = { Exception: { Type: 'NotFound', Message: 'Volume not found' } } as const;
-const FORBIDDEN_BODY = { Exception: { Type: 'Forbidden', Message: 'Forbidden' } } as const;
+const UNAUTHORIZED_BODY = { Exception: { Type: 'unauthorized', Message: 'Unauthorized' } } as const;
+const NOT_FOUND_BODY = { Exception: { Type: 'notFound', Message: 'Volume not found' } } as const;
+const FORBIDDEN_BODY = { Exception: { Type: 'forbidden', Message: 'Forbidden' } } as const;
 
 /**
  * Resolve the authenticated caller, or answer 401.

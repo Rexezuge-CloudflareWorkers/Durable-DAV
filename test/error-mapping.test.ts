@@ -9,7 +9,7 @@
  */
 import { describe, expect, it } from 'vitest';
 import { BaseRoute } from '../apps/api/src/endpoints/IBaseRoute';
-import { BadRequestError, DatabaseError, ForbiddenError, NotFoundError, UnauthorizedError } from '@durable-dav/backend-errors';
+import { BadRequestError, DatabaseError, ForbiddenError, NotFoundError, UnauthorizedError } from '@rexezuge/errors';
 
 /**
  * `toErrorResponse` reads `Accept-Language` off the context for the masked-500
@@ -41,7 +41,7 @@ describe('BaseRoute.toErrorResponse', () => {
 
   it('keeps the AWS Exception envelope on a client error', async () => {
     await expect(bodyFor(new NotFoundError('gone'))).resolves.toEqual({
-      Exception: { Type: 'NotFound', Message: 'gone' },
+      Exception: { Type: 'notFound', Message: 'gone' },
     });
   });
 
@@ -61,7 +61,7 @@ describe('BaseRoute.toErrorResponse', () => {
     const response = BaseRoute.toErrorResponse(context(), new Error('internal detail: db password hunter2'));
     const body = (await response.json()) as { Exception: { Type: string; Message: string } };
     expect(response.status).toBe(500);
-    expect(body.Exception.Type).toBe('InternalServerError');
+    expect(body.Exception.Type).toBe('internalServerError');
     expect(body.Exception.Message).not.toContain('hunter2');
   });
 

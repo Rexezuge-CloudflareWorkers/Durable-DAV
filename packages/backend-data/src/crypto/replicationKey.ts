@@ -1,3 +1,5 @@
+import { bytesToBase64 } from '@rexezuge/shared';
+
 /**
  * Resolving the replication encryption key.
  *
@@ -27,7 +29,21 @@
  * rejection — so one failing binding is not re-fetched per lookup.
  */
 
-import { ReplicationKeyError } from './aes-gcm';
+/**
+ * A key problem, as distinct from every other failure mode.
+ *
+ * Kept local rather than taken from the kit's aes-gcm (`AesGcmKeyError`)
+ * because the two describe different layers: the kit's is a cipher contract,
+ * this one is the *resolution* contract — a Secrets Store binding absent, or a
+ * plain var refused in production. Both fail closed; only this one is thrown
+ * by this module.
+ */
+class ReplicationKeyError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'ReplicationKeyError';
+  }
+}
 
 /**
  * The subset of `SecretsStoreSecret` this module uses.
@@ -82,10 +98,24 @@ function resolveReplicationKey({ binding, rawVar, isProduction }: ReplicationKey
 }
 
 /**
+ * Generate a replication encryption key.
+ *
+ * Base64 of exactly 32 cryptographically random bytes — the kit cipher's key
+ * contract, encoded with the kit's shared codec rather than a local
+ * spread-and-`btoa` copy (one of the four implementations the shared codec
+ * exists to replace). It lives here rather than in the kit because generating
+ * a key is an operator action (`scripts/init-secrets.ts`), not a framework
+ * concern.
+ */
+function generateReplicationKey(): string {
+  return bytesToBase64(crypto.getRandomValues(new Uint8Array(32)));
+}
+
+/**
  * A key provider, for injecting into services that must not depend on the
  * environment shape themselves.
  */
 type ReplicationKeyProvider = () => Promise<string>;
 
-export { resolveReplicationKey };
+export { generateReplicationKey, ReplicationKeyError, resolveReplicationKey };
 export type { ReplicationKeyProvider, ReplicationKeySources, SecretsStoreKeyBinding };

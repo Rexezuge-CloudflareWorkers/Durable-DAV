@@ -1,26 +1,14 @@
-import { BadRequestError, NotFoundError } from '@durable-dav/backend-errors';
-import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
+import { BadRequestError, NotFoundError } from '@rexezuge/errors';
+import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
+import type { D1Queryable } from '@rexezuge/d1';
 import { DavReplicationConflictDAO, DavReplicationDAO } from '@durable-dav/backend-data/dao';
 import type { DavReplicationConflictRow, DavReplicationRow, ReplicationTarget } from '@durable-dav/backend-data/dao';
-import { encryptReplicationSecret, resolveReplicationKey } from '@durable-dav/backend-data/crypto';
+import { encryptSecret } from '@rexezuge/d1';
+import { resolveReplicationKey } from '@durable-dav/backend-data/crypto';
 import type { ReplicationKeyProvider, SecretsStoreKeyBinding } from '@durable-dav/backend-data/crypto';
 import type { ReplicationMode } from '../replication/types';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
-import {
-  normalizeInterval,
-  normalizeRemotePath,
-  oneOf,
-  optionalBoolean,
-  optionalString,
-  requireRemoteUrl,
-  MAX_NAME_LENGTH,
-  REPLICATION_AUTH_KINDS,
-  REPLICATION_INTERVALS,
-  REPLICATION_MODES,
-  REPLICATION_TARGET_KINDS,
-  readMirrorDeletions,
-} from './replicationInput';
+import { normalizeInterval, normalizeRemotePath, oneOf, optionalBoolean, optionalString, requireRemoteUrl, MAX_NAME_LENGTH, REPLICATION_AUTH_KINDS, REPLICATION_INTERVALS, REPLICATION_MODES, REPLICATION_TARGET_KINDS, readMirrorDeletions } from './replicationInput';
 import type { ReplicationAuthKind, ReplicationCreateInput, ReplicationPatchInput } from './replicationInput';
 import { buildCredentialEnvelope, credentialPlaintext } from './replicationCredential';
 
@@ -285,7 +273,7 @@ class VolumeReplicationService {
   }
 
   private async seal(secret: string): Promise<{ ciphertext: string; iv: string }> {
-    const envelope = await encryptReplicationSecret(secret, await this.replicationKey());
+    const envelope = await encryptSecret(secret, await this.replicationKey());
     return { ciphertext: envelope.ciphertext, iv: envelope.iv };
   }
 }

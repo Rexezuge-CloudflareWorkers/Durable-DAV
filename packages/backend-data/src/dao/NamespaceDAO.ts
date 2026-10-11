@@ -1,5 +1,5 @@
-import { BaseDAO } from './BaseDAO';
-import type { D1Queryable } from '../utils/D1Types';
+import { BaseDAO } from '@rexezuge/d1';
+import type { D1Queryable } from '@rexezuge/d1';
 
 export type NamespaceKind = 'user';
 
@@ -23,45 +23,26 @@ class NamespaceDAO extends BaseDAO {
     super(database);
   }
 
-  public async get(usernameCi: string): Promise<NamespaceRow | null> {
-    return this.firstWithRetry(
-      () => this.database.prepare('SELECT * FROM namespaces WHERE username_ci = ? LIMIT 1').bind(usernameCi).first<NamespaceRow>(),
-      'get namespace by username',
-    );
+  public async get(usernameCi: string): Promise<NamespaceRow | undefined> {
+    return this.first<NamespaceRow>('SELECT * FROM namespaces WHERE username_ci = ? LIMIT 1', [usernameCi]);
   }
 
   public async isTaken(usernameCi: string): Promise<boolean> {
     const row = await this.get(usernameCi);
-    return row !== null;
+    // The kit's first() answers absence with undefined, not null.
+    return row !== undefined;
   }
 
   public async claim(input: { usernameCi: string; kind: NamespaceKind; userEmail?: string | null; userId?: string | null; now: number }): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('INSERT INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)')
-          .bind(input.usernameCi, input.kind, input.userEmail ?? null, input.userId ?? null, input.now)
-          .run(),
-      'claim namespace',
-    );
+    await this.run('INSERT INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)', [input.usernameCi, input.kind, input.userEmail ?? null, input.userId ?? null, input.now]);
   }
 
   public async claimIgnore(input: { usernameCi: string; kind: NamespaceKind; userEmail?: string | null; userId?: string | null; now: number }): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)')
-          .bind(input.usernameCi, input.kind, input.userEmail ?? null, input.userId ?? null, input.now)
-          .run(),
-      'claim namespace ignore',
-    );
+    await this.run('INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)', [input.usernameCi, input.kind, input.userEmail ?? null, input.userId ?? null, input.now]);
   }
 
   public async release(usernameCi: string): Promise<void> {
-    await this.withRetry(
-      () => this.database.prepare('DELETE FROM namespaces WHERE username_ci = ?').bind(usernameCi).run(),
-      'release namespace',
-    );
+    await this.run('DELETE FROM namespaces WHERE username_ci = ?', [usernameCi]);
   }
 }
 

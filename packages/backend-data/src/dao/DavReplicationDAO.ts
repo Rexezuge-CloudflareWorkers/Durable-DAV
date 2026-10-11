@@ -1,6 +1,6 @@
-import { BaseDAO } from './BaseDAO';
+import { BaseDAO } from '@rexezuge/d1';
 import { beginPassStatement, recordRunStatement } from './replicationPassSql';
-import type { D1Queryable } from '../utils/D1Types';
+import type { D1Queryable } from '@rexezuge/d1';
 
 /**
  * Where a replication points.
@@ -77,13 +77,6 @@ type ReplicationTarget = {
  * live there or here, so the retry wrapper is applied at the call site rather than
  * forgotten inside a helper.
  */
-function listByVolumeStatement(database: D1Queryable, volumeId: string): Promise<{ results?: DavReplicationRow[] }> {
-  return database
-    .prepare('SELECT * FROM dav_replications WHERE volume_id = ? ORDER BY created_at ASC')
-    .bind(volumeId)
-    .all<DavReplicationRow>();
-}
-
 class DavReplicationDAO extends BaseDAO {
   constructor(database: D1Queryable) {
     super(database);
@@ -104,16 +97,9 @@ class DavReplicationDAO extends BaseDAO {
     createdBy: string | null;
   }): Promise<void> {
     const { target } = input;
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare(
-            `INSERT INTO dav_replications (replication_id, volume_id, target_kind, remote_url, remote_owner, remote_volume, remote_path,
+    await this.run(`INSERT INTO dav_replications (replication_id, volume_id, target_kind, remote_url, remote_owner, remote_volume, remote_path,
               auth_kind, encrypted_secret, secret_iv, mode, mirror_deletions, interval_minutes, enabled, created_at, updated_at, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          )
-          .bind(
-            input.replicationId,
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [input.replicationId,
             input.volumeId,
             target.targetKind,
             target.remoteUrl,
@@ -129,35 +115,19 @@ class DavReplicationDAO extends BaseDAO {
             input.enabled ? 1 : 0,
             input.now,
             input.now,
-            input.createdBy,
-          )
-          .run(),
-      'create dav replication',
-    );
+            input.createdBy,]);
   }
 
-  public async getById(replicationId: string): Promise<DavReplicationRow | null> {
-    return this.firstWithRetry(
-      () => this.database.prepare('SELECT * FROM dav_replications WHERE replication_id = ? LIMIT 1').bind(replicationId).first<DavReplicationRow>(),
-      'get dav replication by id',
-    );
+  public async getById(replicationId: string): Promise<DavReplicationRow | undefined> {
+    return this.first<DavReplicationRow>('SELECT * FROM dav_replications WHERE replication_id = ? LIMIT 1', [replicationId]);
   }
 
-  public async getByVolumeAndTarget(volumeId: string, target: ReplicationTarget): Promise<DavReplicationRow | null> {
-    return this.firstWithRetry(
-      () =>
-        this.database
-          .prepare(
-            'SELECT * FROM dav_replications WHERE volume_id = ? AND target_kind = ? AND remote_url = ? AND remote_owner = ? AND remote_volume = ? AND remote_path = ? LIMIT 1',
-          )
-          .bind(volumeId, target.targetKind, target.remoteUrl, target.remoteOwner, target.remoteVolume, target.remotePath)
-          .first<DavReplicationRow>(),
-      'get dav replication by target',
-    );
+  public async getByVolumeAndTarget(volumeId: string, target: ReplicationTarget): Promise<DavReplicationRow | undefined> {
+    return this.first<DavReplicationRow>('SELECT * FROM dav_replications WHERE volume_id = ? AND target_kind = ? AND remote_url = ? AND remote_owner = ? AND remote_volume = ? AND remote_path = ? LIMIT 1', [volumeId, target.targetKind, target.remoteUrl, target.remoteOwner, target.remoteVolume, target.remotePath]);
   }
 
   public async listByVolume(volumeId: string): Promise<DavReplicationRow[]> {
-    return this.allWithRetry(() => listByVolumeStatement(this.database, volumeId), 'list dav replications by volume');
+    return this.all<DavReplicationRow>('SELECT * FROM dav_replications WHERE volume_id = ? ORDER BY created_at ASC', [volumeId]);
   }
 
   /**
@@ -168,14 +138,7 @@ class DavReplicationDAO extends BaseDAO {
    * degraded on a D1 blip would let the cap be bypassed.
    */
   public async countByVolume(volumeId: string): Promise<number> {
-    const row = await this.firstWithRetry(
-      () =>
-        this.database
-          .prepare('SELECT COUNT(*) AS cnt FROM dav_replications WHERE volume_id = ?')
-          .bind(volumeId)
-          .first<{ cnt: number }>(),
-      'count dav replications by volume',
-    );
+    const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_replications WHERE volume_id = ?', [volumeId]);
     return row?.cnt ?? 0;
   }
 
@@ -216,10 +179,7 @@ class DavReplicationDAO extends BaseDAO {
       }
     }
     bindings.push(replicationId);
-    await this.withRetry(
-      () => this.database.prepare(`UPDATE dav_replications SET ${sets.join(', ')} WHERE replication_id = ?`).bind(...bindings).run(),
-      'update dav replication',
-    );
+    await this.run(`UPDATE dav_replications SET ${sets.join(', ')} WHERE replication_id = ?`, [...bindings]);
   }
 
   /**
@@ -229,18 +189,11 @@ class DavReplicationDAO extends BaseDAO {
    * clearing one without the other would leave a row that decrypts to nothing.
    */
   public async setSecret(replicationId: string, encryptedSecret: string | null, secretIv: string | null, now: number): Promise<void> {
-    await this.withRetry(
-      () =>
-        this.database
-          .prepare('UPDATE dav_replications SET encrypted_secret = ?, secret_iv = ?, updated_at = ? WHERE replication_id = ?')
-          .bind(encryptedSecret, secretIv, now, replicationId)
-          .run(),
-      'update dav replication secret',
-    );
+    await this.run('UPDATE dav_replications SET encrypted_secret = ?, secret_iv = ?, updated_at = ? WHERE replication_id = ?', [encryptedSecret, secretIv, now, replicationId]);
   }
 
   public async deleteById(replicationId: string): Promise<void> {
-    await this.withRetry(() => this.database.prepare('DELETE FROM dav_replications WHERE replication_id = ?').bind(replicationId).run(), 'delete dav replication');
+    await this.run('DELETE FROM dav_replications WHERE replication_id = ?', [replicationId]);
   }
 
   /**
@@ -251,19 +204,10 @@ class DavReplicationDAO extends BaseDAO {
    * the SQLite version D1 happens to ship this month.
    */
   public async listDue(now: number, limit: number): Promise<DavReplicationRow[]> {
-    return this.allWithRetry<DavReplicationRow>(
-      () =>
-        this.database
-          .prepare(
-            `SELECT * FROM dav_replications
+    return this.all<DavReplicationRow>(`SELECT * FROM dav_replications
              WHERE enabled = 1 AND (last_run_at IS NULL OR last_run_at + interval_minutes * 60 <= ?)
              ORDER BY COALESCE(last_run_at, 0) ASC, replication_id ASC
-             LIMIT ?`,
-          )
-          .bind(now, limit)
-          .all<DavReplicationRow>(),
-      'list due dav replications',
-    );
+             LIMIT ?`, [now, limit]);
   }
 
   /**
@@ -273,7 +217,8 @@ class DavReplicationDAO extends BaseDAO {
    * `replicationPassSql` — this is the entry point, not the explanation.
    */
   public async beginPass(replicationId: string, now: number): Promise<void> {
-    await this.withRetry(() => beginPassStatement(this.database, replicationId, now), 'begin dav replication pass');
+    const begin = beginPassStatement(replicationId, now);
+    await this.run(begin.sql, begin.bindings);
   }
 
   /**
@@ -291,10 +236,8 @@ class DavReplicationDAO extends BaseDAO {
     cursorPath: string | null = null,
     remaining = 0,
   ): Promise<void> {
-    await this.withRetry(
-      () => recordRunStatement(this.database, replicationId, status, error, now, maxFailures, cursorPath, remaining),
-      'record dav replication run',
-    );
+    const recorded = recordRunStatement(replicationId, status, error, now, maxFailures, cursorPath, remaining);
+    await this.run(recorded.sql, recorded.bindings);
   }
 
 }

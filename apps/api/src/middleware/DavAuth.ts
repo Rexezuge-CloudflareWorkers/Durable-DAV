@@ -5,8 +5,8 @@ import { davErrorResponse } from '@durable-dav/webdav';
 import { verifyCredential } from './credentialVerifier';
 import type { DavHrefPrefixMode } from '@durable-dav/shared/constants';
 import { readDavHrefPrefixMode } from '@durable-dav/shared/constants';
-import { ErrorSanitizationUtil } from '@durable-dav/shared/utils';
-import { DatabaseError } from '@durable-dav/backend-errors';
+import { ErrorSanitizationUtil } from '@rexezuge/shared';
+import { DatabaseError } from '@rexezuge/errors';
 import { BaseRoute } from '../endpoints/IBaseRoute';
 
 type RequestContext = Context<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId?: string } }>;

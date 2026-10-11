@@ -2,11 +2,12 @@ import { buildReplicationPlan, errorMessageOf, truncateReplicationError } from '
 import type { ReplicationMode } from '@durable-dav/backend-services/replication';
 import { DavReplicationConflictDAO, DavReplicationDAO } from '@durable-dav/backend-data/dao';
 import type { DavReplicationRow } from '@durable-dav/backend-data/dao';
-import { KvCache, invalidateDavVolumeCaches } from '@durable-dav/backend-runtime/kv';
-import type { KvNamespaceLike } from '@durable-dav/backend-runtime/kv';
+import { KvCache } from '@rexezuge/runtime';
+import { invalidateDavVolumeCaches } from '@durable-dav/backend-runtime/kv';
+import type { KvNamespaceLike } from '@rexezuge/runtime';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
-import { createLogger } from '@durable-dav/backend-runtime/logger';
-import { TimestampUtil, UUIDUtil } from '@durable-dav/shared/utils';
+import { createLogger } from '@rexezuge/runtime';
+import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
 import { normalizeVolumeKey } from '@durable-dav/webdav';
 import { collectSlice } from './collectSlice';
 import type { LocalReplicaStub } from './collectSlice';

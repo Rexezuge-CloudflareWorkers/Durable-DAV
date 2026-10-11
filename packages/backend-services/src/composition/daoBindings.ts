@@ -1,14 +1,6 @@
-import {
-  DavCredentialDAO,
-  DavReplicationConflictDAO,
-  DavReplicationDAO,
-  DavVolumeDAO,
-  NamespaceDAO,
-  UserDAO,
-  UserEmailDAO,
-} from '@durable-dav/backend-data/dao';
-import { Container } from '@durable-dav/backend-runtime/di';
-import type { Token } from '@durable-dav/backend-runtime/di';
+import { DavCredentialDAO, DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
+import { Container } from '@rexezuge/runtime';
+import type { Token } from '@rexezuge/runtime';
 import { Tokens } from './tokens';
 import type { RequestScopeEnv } from './serviceFactory';
 

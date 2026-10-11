@@ -154,29 +154,31 @@ describe('BaseRoute error mapping', () => {
     } as unknown as Ctx;
   }
 
-  it('maps status codes to AWS Exception.Type through the registry', () => {
-    expect(BaseRoute.toErrorType(400)).toBe('BadRequest');
-    expect(BaseRoute.toErrorType(401)).toBe('Unauthorized');
-    expect(BaseRoute.toErrorType(403)).toBe('Forbidden');
-    expect(BaseRoute.toErrorType(404)).toBe('NotFound');
-    expect(BaseRoute.toErrorType(409)).toBe('Conflict');
-    expect(BaseRoute.toErrorType(413)).toBe('PayloadTooLarge');
-    expect(BaseRoute.toErrorType(429)).toBe('RateLimited');
+  it('maps status codes to AWS Exception.Type from the kit catalog', () => {
+    // Derived from the kit's CATALOG, so a direct return and a thrown
+    // `ServiceError` spell the same fault the same way in the same field.
+    expect(BaseRoute.toErrorType(400)).toBe('badRequest');
+    expect(BaseRoute.toErrorType(401)).toBe('unauthorized');
+    expect(BaseRoute.toErrorType(403)).toBe('forbidden');
+    expect(BaseRoute.toErrorType(404)).toBe('notFound');
+    expect(BaseRoute.toErrorType(409)).toBe('conflict');
+    expect(BaseRoute.toErrorType(413)).toBe('payloadTooLarge');
+    expect(BaseRoute.toErrorType(429)).toBe('rateLimited');
   });
 
-  it('falls back to InternalServerError for an unmapped or absurd status', () => {
+  it('falls back to internalServerError for an unmapped or absurd status', () => {
     // No `default:` branch, so an unlisted code cannot accidentally inherit
     // another entry's Type.
-    expect(BaseRoute.toErrorType(418)).toBe('InternalServerError');
-    expect(BaseRoute.toErrorType(0)).toBe('InternalServerError');
-    expect(BaseRoute.toErrorType(999)).toBe('InternalServerError');
+    expect(BaseRoute.toErrorType(418)).toBe('internalServerError');
+    expect(BaseRoute.toErrorType(0)).toBe('internalServerError');
+    expect(BaseRoute.toErrorType(999)).toBe('internalServerError');
   });
 
   it('builds the wire envelope', () => {
     const json = vi.fn((_body: unknown, status: number) => new Response('{}', { status }));
     const c = { json } as unknown as Ctx;
     const res = BaseRoute.jsonError(c, 'nope', 400);
-    expect(json).toHaveBeenCalledWith({ Exception: { Type: 'BadRequest', Message: 'nope' } }, 400);
+    expect(json).toHaveBeenCalledWith({ Exception: { Type: 'badRequest', Message: 'nope' } }, 400);
     expect(res.status).toBe(400);
   });
 
@@ -196,7 +198,7 @@ describe('BaseRoute error mapping', () => {
     const res = BaseRoute.toErrorResponse(ctxFor('https://h/user/me'), new Error('internal detail: db password hunter2'));
     expect(res.status).toBe(500);
     const body = (await res.json()) as { Exception: { Type: string; Message: string } };
-    expect(body.Exception.Type).toBe('InternalServerError');
+    expect(body.Exception.Type).toBe('internalServerError');
     // The cause must not reach the client.
     expect(body.Exception.Message).not.toContain('hunter2');
     expect(logged).toHaveBeenCalled();

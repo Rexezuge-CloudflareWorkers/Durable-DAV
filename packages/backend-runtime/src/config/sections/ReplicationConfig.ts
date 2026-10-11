@@ -1,4 +1,4 @@
-import { EnvParser } from '../EnvParser';
+import { EnvParser } from '@rexezuge/runtime';
 import {
   DEFAULT_MAX_REPLICATION_FAILURES,
   DEFAULT_MAX_REPLICATIONS_PER_VOLUME,

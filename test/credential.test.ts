@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { VolumeCredentialService } from '@durable-dav/backend-services/dav';
-import { DavCredentialUtil } from '@durable-dav/shared/utils';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
+import type { D1Queryable } from '@rexezuge/d1';
 
 function createCredentialFakeDb() {
   const state = {

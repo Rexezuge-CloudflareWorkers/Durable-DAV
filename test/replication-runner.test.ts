@@ -4,7 +4,8 @@ import type { LocalReplicaStub } from '../apps/background/src/replication/Replic
 import type { RemoteEntry } from '@durable-dav/backend-services/replication';
 import type { ReplicaStateRow } from '@durable-dav/dav-store';
 import type { DavReplicationRow } from '@durable-dav/backend-data/dao';
-import { encryptReplicationSecret, generateReplicationKey } from '@durable-dav/backend-data/crypto';
+import { encryptSecret } from '@rexezuge/d1';
+import { generateReplicationKey } from '@durable-dav/backend-data/crypto';
 
 /**
  * The runner, end to end against fakes.
@@ -659,7 +660,7 @@ describe('ReplicationRunner — credential handling', () => {
     // prefix, and still the shape any hand-edited or corrupted row would have. The
     // reader must refuse it — treating the whole blob as a username would send the
     // owner's password to the remote as an identity.
-    const envelope = await encryptReplicationSecret('no-colon-here', key);
+    const envelope = await encryptSecret('no-colon-here', key);
     // `target_kind: 'dav'` reaches the HTTP path, but the credential is
     // rejected before any request is built — which is the point: the failure must
     // surface as `failed`, not as an unauthenticated request.
@@ -682,7 +683,7 @@ describe('ReplicationRunner — credential handling', () => {
     // *accepts* a correct one. A reader that refused everything would have passed it.
     // This drives the real `buildRemote` and the real `basicAuthValue`.
     const key = generateReplicationKey();
-    const envelope = await encryptReplicationSecret('alice:hunter2', key);
+    const envelope = await encryptSecret('alice:hunter2', key);
     const seen: (string | null)[] = [];
     const { runner } = build({
       env: { REPLICATION_ENCRYPTION_KEY: key },
@@ -710,7 +711,7 @@ describe('ReplicationRunner — credential handling', () => {
 it('reports a decryption failure instead of skipping authentication', async () => {
     // Reporting it as `failed` is correct; skipping auth would let the remote
     // answer 401 and the owner would debug a key problem as a target problem.
-    const envelope = await encryptReplicationSecret('user:pw', generateReplicationKey());
+    const envelope = await encryptSecret('user:pw', generateReplicationKey());
     const { runner, dao } = build({
       env: { REPLICATION_ENCRYPTION_KEY: generateReplicationKey() },
       row: { target_kind: 'dav', remote_url: 'https://dav.example.com/f', auth_kind: 'basic', encrypted_secret: envelope.ciphertext, secret_iv: envelope.iv },
@@ -811,7 +812,7 @@ describe('ReplicationRunner — the ambiguity hash', () => {
 describe('ReplicationRunner — configuration and credentials', () => {
   it('sends a bearer token', async () => {
     const key = generateReplicationKey();
-    const envelope = await encryptReplicationSecret('tok-123', key);
+    const envelope = await encryptSecret('tok-123', key);
     const { runner, target } = build({
       env: { REPLICATION_ENCRYPTION_KEY: key },
       row: { target_kind: 'dav', remote_url: 'https://dav.example.com/f', auth_kind: 'bearer', encrypted_secret: envelope.ciphertext, secret_iv: envelope.iv },

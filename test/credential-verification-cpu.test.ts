@@ -1,26 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import { Hono } from 'hono';
-import { Container, setRequestScope } from '@durable-dav/backend-runtime/di';
+import { Container, setRequestScope } from '@rexezuge/runtime';
 import { Tokens } from '@durable-dav/backend-services/composition';
 import type { DavPermissionService, VolumeService } from '@durable-dav/backend-services/dav';
 import type { UserIdentityService } from '@durable-dav/backend-services/identity';
 import { DavCredentialDAO, DavVolumeDAO } from '@durable-dav/backend-data/dao';
-import type { D1Queryable } from '@durable-dav/backend-data/utils';
-import { DatabaseError } from '@durable-dav/backend-errors';
-import { DavCredentialUtil, passwordFingerprint } from '@durable-dav/shared/utils';
+import type { D1Queryable } from '@rexezuge/d1';
+import { DatabaseError } from '@rexezuge/errors';
+import { passwordFingerprint } from '@rexezuge/shared';
+import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 import { requiresWrite } from '@durable-dav/webdav';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import { davAuthForVolume } from '../apps/api/src/middleware/DavAuth';
-import {
-  lookupCredentialMemo,
-  rememberCredential,
-  forgetCredential,
-  resetCredentialMemoForTests,
-  setCredentialMemoClockForTests,
-  credentialMemoSizeForTests,
-  DEFAULT_TTL_MS,
-  MAX_ENTRIES,
-} from '../apps/api/src/middleware/credentialMemo';
+import { lookupCredentialMemo, rememberCredential, forgetCredential, resetCredentialMemoForTests, setCredentialMemoClockForTests, credentialMemoSizeForTests, DEFAULT_TTL_MS, MAX_ENTRIES } from '../apps/api/src/middleware/credentialMemo';
 import { verifyCredential } from '../apps/api/src/middleware/credentialVerifier';
 import { CredentialVerifierDO, VerificationCache } from '../apps/background/src/dav/CredentialVerifierDO';
 import { credentialShardOf, CREDENTIAL_SHARD_COUNT } from '../packages/shared/src/utils/CredentialShardUtil';
@@ -447,7 +439,7 @@ describe('a D1 failure on the auth hot path is a typed DatabaseError', () => {
     // The point of retrying a read at all: a transient blip must not surface.
     const { db, calls } = failingDb('D1_ERROR: database is locked', 2);
     const dao = new DavVolumeDAO(db);
-    await expect(dao.getByOwnerName('alice', 'photos')).resolves.toBeNull();
+    await expect(dao.getByOwnerName('alice', 'photos')).resolves.toBeUndefined();
     expect(calls()).toBe(3);
   });
 
