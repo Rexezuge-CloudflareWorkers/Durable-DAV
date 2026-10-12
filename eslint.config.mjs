@@ -70,7 +70,10 @@ export default tseslint.config(
   },
 
   // --- Unicorn: modern JS/TS quality rules ---
-  unicorn.configs['flat/recommended'],
+  // NOTE: `configs.recommended` is the flat config. The legacy `configs['flat/recommended']`
+  // alias was removed in eslint-plugin-unicorn v77 — referencing it yields `undefined`,
+  // which ESLint ≥10.12 rejects with "Unexpected undefined config".
+  unicorn.configs.recommended,
   {
     rules: {
       // Codebase uses ctx, req, res, env, err, util, db, dao, etc. — too invasive to rename
@@ -109,6 +112,19 @@ export default tseslint.config(
       'unicorn/consistent-boolean-name': 'off',
       // Uint8Array#toBase64 / fromBase64 are not guaranteed in all Workers runtime versions
       'unicorn/prefer-uint8array-base64': 'off',
+      // The documentation house style is a JSDoc block whose continuation lines
+      // are asterisk-prefixed, and v77 added this rule to `recommended`, where it
+      // flags every such comment in the tree. The fix strips the `* ` into prose
+      // no editor renders as JSDoc, so a deliberate, uniform style would become
+      // an unreadable one to satisfy a formatting preference.
+      'unicorn/no-asterisk-prefix-in-documentation-comments': 'off',
+      // A default parameter — and a destructuring default — only fires on
+      // `undefined`, and the absent marker throughout this codebase is `null`:
+      // `userEmail: string | null`, `lastStatus: 'ok' | 'partial' | 'failed' |
+      // null`, `cleanPath(raw: string | null)`. Moving `?? 'x'` onto the binding
+      // would stop converting an explicit `null` and silently change behaviour,
+      // so the fallback stays where it is instead.
+      'unicorn/prefer-default-parameters': 'off',
       // Class member ordering would require extensive restructuring of existing classes
       'unicorn/consistent-class-member-order': 'off',
       // Gmail API response fields (addLabelIds, removeLabelIds) use verb prefixes by convention
@@ -424,6 +440,13 @@ export default tseslint.config(
       'unicorn/no-await-expression-member': 'off',
       // Fake-D1 doubles break out of a nested loop to model a statement miss.
       'unicorn/no-break-in-nested-loop': 'off',
+      // Fixture factories keep parameters the current suite never varies —
+      // `volumeRow(overrides)`, `basic(username, password)`,
+      // `pullOnlyFixture(options)`. Dropping them hardcodes the exact values the
+      // factory exists to swap, and a positional `basic('not-the-password')`
+      // reads as a username. The parameter list is the fixture's API, not dead
+      // weight.
+      'unicorn/no-unnecessary-parameters': 'off',
       // Module-level `let` for values resolved in `beforeAll` is the normal
       // integration-fixture shape.
       'unicorn/no-top-level-assignment-in-function': 'off',

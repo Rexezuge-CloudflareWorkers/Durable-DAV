@@ -24,6 +24,9 @@ const migrationSql = migrationFiles.map((f) => readFileSync(path.resolve(migrati
 // seeds the pre-0004 shape, so it must be able to stop between files.
 const migrationFileEntries = migrationFiles.map((name) => ({ name, sql: readFileSync(path.resolve(migrationsDir, name), 'utf8') }));
 
+// A tool config *is* an executable module: the migrations are read and the
+// aliases are resolved at import time, which is the only time there is.
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 export default defineConfig({
   define: {
     __INTEGRATION_MIGRATION_SQL__: JSON.stringify(migrationSql),

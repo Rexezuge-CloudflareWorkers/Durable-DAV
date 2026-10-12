@@ -34,7 +34,7 @@ describe('backend strings (en)', () => {
     // groups safe to delete in the first place was never caught.
     const keyPath = (node: object, prefix = ''): string[] =>
       Object.entries(node).flatMap(([key, value]) =>
-        value !== null && typeof value === 'object' ? keyPath(value as object, `${prefix}${key}.`) : [`${prefix}${key}`],
+        value !== null && typeof value === 'object' ? keyPath(value as object, `${prefix}${key}.`) : `${prefix}${key}`,
       );
     const expected = keyPath(LOCALE_STRINGS.en).sort();
     expect(expected.length).toBeGreaterThan(0);

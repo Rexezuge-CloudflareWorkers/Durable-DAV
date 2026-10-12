@@ -13,6 +13,9 @@ const webSrcPath = fileURLToPath(new URL('apps/web/src', import.meta.url));
 const cloudflareSocketsMockPath = fileURLToPath(new URL('test/mocks/cloudflare-sockets.ts', import.meta.url));
 const cloudflareWorkersMockPath = fileURLToPath(new URL('test/mocks/cloudflare-workers.ts', import.meta.url));
 
+// A tool config *is* an executable module: the aliases are resolved and the
+// thresholds are read at import time, which is the only time there is.
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 export default defineConfig({
   test: {
     globals: true,

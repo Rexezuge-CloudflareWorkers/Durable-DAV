@@ -9,6 +9,9 @@ const apiSpaShellPath = path.resolve(apiGeneratedDir, 'spa-shell.ts');
 
 const apiTarget = 'http://localhost:8787';
 
+// A tool config *is* an executable module: `defineConfig` has to run at import
+// time for Vite to see the plugins and the proxy.
+// eslint-disable-next-line unicorn/no-top-level-side-effects
 export default defineConfig({
   plugins: [
     react(),

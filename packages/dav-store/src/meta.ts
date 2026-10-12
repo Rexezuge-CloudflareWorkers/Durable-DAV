@@ -106,10 +106,10 @@ function isDuplicateColumnError(error: unknown): boolean {
   return /duplicate\s+column\s+name/i.test(message);
 }
 
-function stringField(row: SqlRow, key: string, fallback = ''): string {
+function stringField(row: SqlRow, key: string): string {
   const value = row[key];
   if (typeof value === 'string') return value;
-  return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint' ? String(value) : fallback;
+  return typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint' ? String(value) : '';
 }
 
 function nullableStringField(row: SqlRow, key: string): string | undefined {
@@ -248,10 +248,10 @@ function getDeadProperties(sql: DurableSqlStorage, path: string): DeadProperty[]
     throw error;
   }
   return rows.map((row) => ({
-    namespaceURI: stringField(row, 'namespace_uri', ''),
-    localName: stringField(row, 'local_name', ''),
+    namespaceURI: stringField(row, 'namespace_uri'),
+    localName: stringField(row, 'local_name'),
     prefix: nullableStringField(row, 'prefix') ?? null,
-    valueXml: stringField(row, 'value_xml', ''),
+    valueXml: stringField(row, 'value_xml'),
   }));
 }
 
