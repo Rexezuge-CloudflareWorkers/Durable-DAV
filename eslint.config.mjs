@@ -70,7 +70,10 @@ export default tseslint.config(
   },
 
   // --- Unicorn: modern JS/TS quality rules ---
-  unicorn.configs['flat/recommended'],
+  // NOTE: `configs.recommended` is the flat config. The legacy `configs['flat/recommended']`
+  // alias was removed in eslint-plugin-unicorn v77 — referencing it yields `undefined`,
+  // which ESLint ≥10.12 rejects with "Unexpected undefined config".
+  unicorn.configs.recommended,
   {
     rules: {
       // Codebase uses ctx, req, res, env, err, util, db, dao, etc. — too invasive to rename
