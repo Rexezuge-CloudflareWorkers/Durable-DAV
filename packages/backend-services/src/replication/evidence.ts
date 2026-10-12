@@ -82,6 +82,7 @@ function provablyIdentical(a: PlanSide, b: PlanSide): boolean {
   if (a.isCollection) return true;
   // Strong validator first; size+timestamp only as the fallback for servers that
   // send no ETag.
+  // eslint-disable-next-line unicorn/prefer-ternary -- see the tier note above.
   if (a.etag === null || b.etag === null) return sameSizeAndTime(a, b);
   // eslint-disable-next-line unicorn/prefer-ternary -- see above.
   return a.etag === b.etag && a.size === b.size;

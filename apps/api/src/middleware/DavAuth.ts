@@ -203,8 +203,7 @@ async function davAuthForVolumeInner(
     // `credentialVerifier.ts`. The stored hash is passed in rather than looked
     // up here: the D1 read above stays per-request, so only the derivation is
     // ever reused.
-    const verified = await verifyCredential(c.env, basic.username, basic.password, credential.passwordHash);
-    const { ok, needsRehash, upgradedHash } = verified;
+    const { ok, needsRehash, upgradedHash } = await verifyCredential(c.env, basic.username, basic.password, credential.passwordHash);
     if (!ok) return unauthorizedDav();
     if (credential.volumeId !== volume.id) return unauthorizedDav();
     // Read-only credentials (migration 0005) get exactly the read methods.

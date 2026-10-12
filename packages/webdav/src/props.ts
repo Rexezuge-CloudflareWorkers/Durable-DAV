@@ -136,12 +136,12 @@ function generatePropfindResponse(
     // request would otherwise build a `lockdiscovery` string per requested
     // property and discard it.
     const live = toLiveProperties(node, base);
-    ok = [...Object.entries(live).flatMap(([key, value]) => (value === undefined ? [] : [renderDavProperty(key, value)])), ...dead.map(renderPropertyElement)];
+    ok = [...Object.entries(live).flatMap(([key, value]) => (value === undefined ? [] : renderDavProperty(key, value))), ...dead.map(renderPropertyElement)];
   } else if (mode === 'propname') {
     // Names only, so the base never matters: every value is empty.
     const live = toLiveProperties(node);
     ok = [
-      ...Object.entries(live).flatMap(([key, value]) => (value === undefined ? [] : [renderDavProperty(key, '')])),
+      ...Object.entries(live).flatMap(([key, value]) => (value === undefined ? [] : renderDavProperty(key, ''))),
       ...dead.map((p) => renderEmptyPropertyElement({ ...p, valueXml: '' })),
     ];
   } else {
