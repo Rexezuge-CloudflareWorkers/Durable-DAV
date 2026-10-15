@@ -20,7 +20,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@rexezuge/runtime": "^1.2.0"
+    "@rexezuge/runtime": "^1.5.2"
   },
   "devDependencies": {
     "@types/node": "26.6.4",
