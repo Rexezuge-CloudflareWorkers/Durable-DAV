@@ -19,8 +19,8 @@ importers:
         specifier: 0.23.0
         version: 0.23.0(@cloudflare/workers-types@5.20261005.1)(@vitest/runner@4.1.11)(@vitest/snapshot@4.1.11)(vitest@4.1.11)
       '@rexezuge/d1':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/errors':
         specifier: ^1.2.0
         version: 1.2.0
@@ -154,8 +154,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/webdav
       '@rexezuge/d1':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/errors':
         specifier: ^1.2.0
         version: 1.2.0
@@ -283,8 +283,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@rexezuge/d1':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/identity':
         specifier: ^1.2.0
         version: 1.2.0
@@ -327,8 +327,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@rexezuge/d1':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/errors':
         specifier: ^1.2.0
         version: 1.2.0
@@ -1447,6 +1447,9 @@ packages:
 
   '@rexezuge/d1@1.2.0':
     resolution: {integrity: sha512-3E7fPSiUkkVhaBb2+xcQKD/f/c3DeBwVvw7bNVUH6DyGABLAyKYY1+8XwQC5tGbkHNhyzSCigcDu4ZspM0bJNw==}
+
+  '@rexezuge/d1@1.5.2':
+    resolution: {integrity: sha512-Fo112gWa1GOF1IepnxvszJUk/uITu1Zpub2aqIczxUnTHCeibfqYC7lWv4P/rFoInMo5OWez+AIzQ2D5dBVtXQ==}
 
   '@rexezuge/errors@1.2.0':
     resolution: {integrity: sha512-9dhTdr79H8nZmAZBBvnhKEAScT8oF1Uirir1zQ2cU1WxPjHyF3YidvFPhz00ADRcRQf4vVbR0QPgR6ZfY+malQ==}
@@ -3891,6 +3894,11 @@ snapshots:
     dependencies:
       '@rexezuge/errors': 1.2.0
       '@rexezuge/shared': 1.2.0
+
+  '@rexezuge/d1@1.5.2':
+    dependencies:
+      '@rexezuge/errors': 1.5.2
+      '@rexezuge/shared': 1.5.2
 
   '@rexezuge/errors@1.2.0': {}
 

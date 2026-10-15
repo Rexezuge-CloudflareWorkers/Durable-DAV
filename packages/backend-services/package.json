@@ -29,7 +29,7 @@
     "@durable-dav/backend-data": "workspace:*",
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/shared": "workspace:*",
-    "@rexezuge/d1": "^1.2.0",
+    "@rexezuge/d1": "^1.5.2",
     "@rexezuge/errors": "^1.2.0",
     "@rexezuge/http": "^1.5.2",
     "@rexezuge/identity": "^1.2.0",
