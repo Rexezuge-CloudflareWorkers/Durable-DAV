@@ -22,7 +22,7 @@
     "@rexezuge/errors": "^1.2.0",
     "@rexezuge/i18n": "^1.2.0",
     "@rexezuge/identity": "^1.2.0",
-    "@rexezuge/http": "^1.2.0",
+    "@rexezuge/http": "^1.5.2",
     "@rexezuge/runtime": "^1.5.2",
     "@rexezuge/shared": "^1.5.2",
     "@rexezuge/tooling": "^1.2.0",
