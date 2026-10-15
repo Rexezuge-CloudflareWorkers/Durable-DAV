@@ -7,7 +7,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@cloudflare/vitest-pool-workers": "0.22.0",
+    "@cloudflare/vitest-pool-workers": "0.23.0",
     "@durable-dav/backend-data": "workspace:*",
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/backend-services": "workspace:*",
