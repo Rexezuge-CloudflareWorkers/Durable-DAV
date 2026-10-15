@@ -22,8 +22,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0
       '@rexezuge/errors':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/http':
         specifier: ^1.2.0
         version: 1.2.0
@@ -157,8 +157,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0
       '@rexezuge/errors':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/http':
         specifier: ^1.2.0
         version: 1.2.0
@@ -330,8 +330,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0
       '@rexezuge/errors':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/http':
         specifier: ^1.2.0
         version: 1.2.0
@@ -1450,6 +1450,9 @@ packages:
 
   '@rexezuge/errors@1.2.0':
     resolution: {integrity: sha512-9dhTdr79H8nZmAZBBvnhKEAScT8oF1Uirir1zQ2cU1WxPjHyF3YidvFPhz00ADRcRQf4vVbR0QPgR6ZfY+malQ==}
+
+  '@rexezuge/errors@1.5.2':
+    resolution: {integrity: sha512-Wf0OLpw+TFP0CFFXJpvgq0Kb/GP/8lCWdQetUS+Rg48FX5p6Kunaj8ZyxG2QtrJINvY5d8RxaVXa1FA+8KQugg==}
 
   '@rexezuge/http@1.2.0':
     resolution: {integrity: sha512-6yHtxtvXUxbfFU8wdnPYrRoh/z6uMbaPyPycWQm3fcDm73MVNCN27fwmMMDV99Sr3ihNtkOlP+mzzAHcjWdBEw==}
@@ -3887,6 +3890,8 @@ snapshots:
       '@rexezuge/shared': 1.2.0
 
   '@rexezuge/errors@1.2.0': {}
+
+  '@rexezuge/errors@1.5.2': {}
 
   '@rexezuge/http@1.2.0':
     dependencies:
