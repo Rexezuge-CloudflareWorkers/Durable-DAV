@@ -37,8 +37,8 @@ importers:
         specifier: ^1.5.2
         version: 1.5.2
       '@rexezuge/shared':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       '@rexezuge/tooling':
         specifier: ^1.2.0
         version: 1.2.0(eslint@10.12.0(jiti@2.7.0))(jsonc-parser@3.3.1)(prettier@3.9.9)(typescript-eslint@8.71.2(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)
@@ -169,8 +169,8 @@ importers:
         specifier: ^1.5.2
         version: 1.5.2
       '@rexezuge/shared':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       chanfana:
         specifier: 3.4.0
         version: 3.4.0
@@ -209,8 +209,8 @@ importers:
         specifier: ^1.5.2
         version: 1.5.2
       '@rexezuge/shared':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -289,8 +289,8 @@ importers:
         specifier: ^1.2.0
         version: 1.2.0
       '@rexezuge/shared':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
     devDependencies:
       '@cloudflare/workers-types':
         specifier: 5.20261005.1
@@ -342,8 +342,8 @@ importers:
         specifier: ^1.5.2
         version: 1.5.2
       '@rexezuge/shared':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -361,8 +361,8 @@ importers:
         specifier: workspace:*
         version: link:../webdav
       '@rexezuge/shared':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
       dofs:
         specifier: ^0.1.0
         version: 0.1.0(patch_hash=21317a197333fa14d1e33c5c82818bc9f9fc846edb558c4a608bf8f83fbcaf64)(hono@4.13.10)
@@ -377,8 +377,8 @@ importers:
   packages/shared:
     dependencies:
       '@rexezuge/shared':
-        specifier: ^1.2.0
-        version: 1.2.0
+        specifier: ^1.5.2
+        version: 1.5.2
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -1465,6 +1465,9 @@ packages:
 
   '@rexezuge/shared@1.2.0':
     resolution: {integrity: sha512-lHWZt6eYXrR9D5QYbj4reYWUhqk07LkXq9YTfOgOQWizsEfLTokDdR3o83HU6DOLMFhBwy4UUxNx312845L2jA==}
+
+  '@rexezuge/shared@1.5.2':
+    resolution: {integrity: sha512-TxpfjqrVBrEvDphLraKM9OIi0IuWukgSOQKrenb46Bfo5eVTm5cdYklW+a/Ud8aX+cyMPPxqqxVuR0z8X3QKCQ==}
 
   '@rexezuge/tooling@1.2.0':
     resolution: {integrity: sha512-e58Z7Fj+//jxnY73PhQY0XQ/OaQU+bINOEWo5ouA01diaaKRp0voa9+KzucmYJ2orEz73BTLhNYrZDb+Xh9V7w==}
@@ -3907,6 +3910,8 @@ snapshots:
   '@rexezuge/runtime@1.5.2': {}
 
   '@rexezuge/shared@1.2.0': {}
+
+  '@rexezuge/shared@1.5.2': {}
 
   '@rexezuge/tooling@1.2.0(eslint@10.12.0(jiti@2.7.0))(jsonc-parser@3.3.1)(prettier@3.9.9)(typescript-eslint@8.71.2(eslint@10.12.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)':
     dependencies:
