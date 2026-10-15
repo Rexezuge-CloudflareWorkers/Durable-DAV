@@ -48,7 +48,7 @@
     "prettier": "3.9.9",
     "react": "19.3.0",
     "react-dom": "19.3.0",
-    "react-i18next": "^17.0.15",
+    "react-i18next": "^17.0.16",
     "react-router-dom": "7.18.4",
     "tsx": "4.23.15",
     "typescript": "6.0.3",
