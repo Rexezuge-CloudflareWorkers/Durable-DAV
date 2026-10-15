@@ -24,7 +24,7 @@
     "@rexezuge/identity": "^1.2.0",
     "@rexezuge/http": "^1.2.0",
     "@rexezuge/runtime": "^1.5.2",
-    "@rexezuge/shared": "^1.2.0",
+    "@rexezuge/shared": "^1.5.2",
     "@rexezuge/tooling": "^1.2.0",
     "@rexezuge/web": "^1.5.2",
     "@testing-library/jest-dom": "7.0.1",
