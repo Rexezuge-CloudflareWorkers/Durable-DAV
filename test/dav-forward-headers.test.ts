@@ -18,10 +18,10 @@ describe('applyDavForwardHeaders', () => {
   it('never lets a caller-supplied X-Dav-Page reach the DO', () => {
     // The regression: on the WebDAV plane these survived, which violated
     // RFC 4918 §9.1 (no paging concept) *and* poisoned the read cache.
-    const h = applyDavForwardHeaders(
-      new Headers({ 'X-Dav-Page': '2', 'X-Dav-Page-Limit': '1' }),
-      { ...BASE, userEmail: 'owner@example.com' },
-    );
+    const h = applyDavForwardHeaders(new Headers({ 'X-Dav-Page': '2', 'X-Dav-Page-Limit': '1' }), {
+      ...BASE,
+      userEmail: 'owner@example.com',
+    });
     expect(h.get('X-Dav-Page')).toBeNull();
     expect(h.get('X-Dav-Page-Limit')).toBeNull();
   });
@@ -74,10 +74,7 @@ describe('applyDavForwardHeaders', () => {
     // `X-Dav-Base`/`X-Dav-Path` are the DO's whole addressing model, so a
     // client value that survived would let a request name a resource in a
     // different volume.
-    const h = applyDavForwardHeaders(
-      new Headers({ 'X-Dav-Base': '/bob/secret', 'X-Dav-Path': '../escape' }),
-      { ...BASE, userEmail: null },
-    );
+    const h = applyDavForwardHeaders(new Headers({ 'X-Dav-Base': '/bob/secret', 'X-Dav-Path': '../escape' }), { ...BASE, userEmail: null });
     expect(h.get('X-Dav-Base')).toBe('/alice/photos');
     expect(h.get('X-Dav-Path')).toBe('dir');
   });
@@ -91,18 +88,19 @@ describe('applyDavForwardHeaders', () => {
   });
 
   it('uses the resolved Destination when one is supplied', () => {
-    const h = applyDavForwardHeaders(
-      new Headers({ Destination: '/raw/client/value' }),
-      { ...BASE, userEmail: null, destination: 'https://host/alice/photos/target' },
-    );
+    const h = applyDavForwardHeaders(new Headers({ Destination: '/raw/client/value' }), {
+      ...BASE,
+      userEmail: null,
+      destination: 'https://host/alice/photos/target',
+    });
     expect(h.get('Destination')).toBe('https://host/alice/photos/target');
   });
 
   it('preserves unrelated request headers', () => {
-    const h = applyDavForwardHeaders(
-      new Headers({ Depth: '1', 'Content-Type': 'application/xml', 'If-Match': '"etag"' }),
-      { ...BASE, userEmail: null },
-    );
+    const h = applyDavForwardHeaders(new Headers({ Depth: '1', 'Content-Type': 'application/xml', 'If-Match': '"etag"' }), {
+      ...BASE,
+      userEmail: null,
+    });
     expect(h.get('Depth')).toBe('1');
     expect(h.get('Content-Type')).toBe('application/xml');
     expect(h.get('If-Match')).toBe('"etag"');

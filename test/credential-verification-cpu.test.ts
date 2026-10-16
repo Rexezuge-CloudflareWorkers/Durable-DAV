@@ -12,7 +12,16 @@ import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
 import { requiresWrite } from '@durable-dav/webdav';
 import type { DavVolumeRow } from '@durable-dav/backend-data/dao';
 import { davAuthForVolume } from '../apps/api/src/middleware/DavAuth';
-import { lookupCredentialMemo, rememberCredential, forgetCredential, resetCredentialMemoForTests, setCredentialMemoClockForTests, credentialMemoSizeForTests, DEFAULT_TTL_MS, MAX_ENTRIES } from '../apps/api/src/middleware/credentialMemo';
+import {
+  lookupCredentialMemo,
+  rememberCredential,
+  forgetCredential,
+  resetCredentialMemoForTests,
+  setCredentialMemoClockForTests,
+  credentialMemoSizeForTests,
+  DEFAULT_TTL_MS,
+  MAX_ENTRIES,
+} from '../apps/api/src/middleware/credentialMemo';
 import { verifyCredential } from '../apps/api/src/middleware/credentialVerifier';
 import { CredentialVerifierDO, VerificationCache } from '../apps/background/src/dav/CredentialVerifierDO';
 import { credentialShardOf, CREDENTIAL_SHARD_COUNT } from '../packages/shared/src/utils/CredentialShardUtil';
@@ -67,14 +76,14 @@ function fakeDb(row: Record<string, unknown> | null): { db: D1Queryable; queries
       queries.push(normalized);
       const statement = {
         bind: () => statement,
-        first: async <T,>(): Promise<T | null> => {
+        first: async <T>(): Promise<T | null> => {
           if (!row) return null;
           if (normalized.includes('WHERE username = ? AND expires_at > ?')) {
-            return (Number(row.expires_at) > 1 ? (row as T) : null);
+            return Number(row.expires_at) > 1 ? (row as T) : null;
           }
           return row as T;
         },
-        all: async <T,>(): Promise<{ results: T[] }> => ({ results: (row ? [row] : []) as T[] }),
+        all: async <T>(): Promise<{ results: T[] }> => ({ results: (row ? [row] : []) as T[] }),
         run: async () => ({ success: true, meta: { changes: 1 } }),
       };
       return statement;
@@ -390,12 +399,12 @@ describe('a D1 failure on the auth hot path is a typed DatabaseError', () => {
       prepare: () => {
         const statement = {
           bind: () => statement,
-          first: async <T,>(): Promise<T | null> => {
+          first: async <T>(): Promise<T | null> => {
             calls += 1;
             if (calls > failures) return null;
             throw new Error(message);
           },
-          all: async <T,>(): Promise<{ results: T[] }> => ({ results: [] as T[] }),
+          all: async <T>(): Promise<{ results: T[] }> => ({ results: [] as T[] }),
           run: async () => ({ success: true, meta: { changes: 0 } }),
         };
         return statement;
@@ -450,8 +459,8 @@ describe('a D1 failure on the auth hot path is a typed DatabaseError', () => {
       prepare: () => {
         const statement = {
           bind: () => statement,
-          first: async <T,>(): Promise<T | null> => row as T,
-          all: async <T,>(): Promise<{ results: T[] }> => ({ results: [row] as T[] }),
+          first: async <T>(): Promise<T | null> => row as T,
+          all: async <T>(): Promise<{ results: T[] }> => ({ results: [row] as T[] }),
           run: async () => ({ success: true, meta: { changes: 0 } }),
         };
         return statement;
@@ -469,10 +478,10 @@ describe('a D1 failure on the auth hot path is a typed DatabaseError', () => {
       prepare: () => {
         const statement = {
           bind: () => statement,
-          first: async <T,>(): Promise<T | null> => {
+          first: async <T>(): Promise<T | null> => {
             throw new Error('D1_ERROR: no such table: dav_volumes');
           },
-          all: async <T,>(): Promise<{ results: T[] }> => ({ results: [] as T[] }),
+          all: async <T>(): Promise<{ results: T[] }> => ({ results: [] as T[] }),
           run: async () => ({ success: true, meta: { changes: 0 } }),
         };
         return statement;
@@ -618,9 +627,7 @@ describe('the verifier DO endpoint', () => {
   it('rejects a malformed body without throwing', async () => {
     const instance = verifierDo();
     for (const body of ['', 'not json', '{}', JSON.stringify({ username: USERNAME })]) {
-      const response = await instance.fetch(
-        new Request('https://dav-auth.internal/verify', { method: 'POST', body }),
-      );
+      const response = await instance.fetch(new Request('https://dav-auth.internal/verify', { method: 'POST', body }));
       expect(response.status, body).toBe(400);
     }
   });
@@ -644,7 +651,9 @@ describe('the verifier DO endpoint', () => {
     // one that is permanently expired.
     expect(new CredentialVerifierDO({} as DurableObjectState, { CREDENTIAL_MEMO_TTL_SECONDS: '5' } as unknown as Env).cacheSize()).toBe(0);
     expect(new CredentialVerifierDO({} as DurableObjectState, { CREDENTIAL_MEMO_TTL_SECONDS: '0' } as unknown as Env).cacheSize()).toBe(0);
-    expect(new CredentialVerifierDO({} as DurableObjectState, { CREDENTIAL_MEMO_TTL_SECONDS: 'nonsense' } as unknown as Env).cacheSize()).toBe(0);
+    expect(
+      new CredentialVerifierDO({} as DurableObjectState, { CREDENTIAL_MEMO_TTL_SECONDS: 'nonsense' } as unknown as Env).cacheSize(),
+    ).toBe(0);
   });
 });
 
@@ -708,7 +717,11 @@ describe('the verifier DO hop', () => {
 
   it('falls back on a non-2xx or unparseable reply', async () => {
     const hash = await DavCredentialUtil.hashPassword(PASSWORD);
-    for (const outcome of [{ status: 500, body: {} }, { status: 200, body: { ok: 'yes' } }, { status: 200, body: null }]) {
+    for (const outcome of [
+      { status: 500, body: {} },
+      { status: 200, body: { ok: 'yes' } },
+      { status: 200, body: null },
+    ]) {
       const { env } = fakeNamespace(outcome as FetchOutcome);
       expect((await verifyCredential(env, USERNAME, PASSWORD, hash)).ok, JSON.stringify(outcome)).toBe(true);
     }

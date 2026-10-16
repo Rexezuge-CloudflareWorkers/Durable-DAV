@@ -99,8 +99,6 @@ function hasChildElement(element: XmlElement, name: string): boolean {
   return getChildElements(element).some((child) => (child.localName ?? '').toLowerCase() === wanted);
 }
 
-
-
 function parseSize(raw: string | null): number | null {
   if (raw === null) return null;
   const trimmed = raw.trim();

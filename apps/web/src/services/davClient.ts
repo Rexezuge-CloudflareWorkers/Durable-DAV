@@ -53,7 +53,7 @@ async function davFetch(url: string, init: RequestInit): Promise<Response> {
   // Callers of the mutating helpers discard the response entirely. An unread
   // body holds the connection open, so a multi-file upload plus MKCOL/DELETE/
   // MOVE could exhaust the per-origin connection pool. Drain it.
-  void response.body?.cancel().catch(() => undefined);
+  void response.body?.cancel().catch(() => {});
   return response;
 }
 
@@ -156,7 +156,7 @@ export async function deleteEntry(owner: string, volume: string, innerPath: stri
  * lets the caller decide rather than assume consent.
  */
 export async function moveEntry(owner: string, volume: string, fromPath: string, toPath: string, overwrite = false): Promise<void> {
-  const destination = new URL(entryUrl(owner, volume, toPath), globalThis.location.origin).href;
+  const destination = new URL(entryUrl(owner, volume, toPath), location.origin).href;
   await davFetch(entryUrl(owner, volume, fromPath), {
     method: 'MOVE',
     headers: { Destination: destination, Overwrite: overwrite ? 'T' : 'F' },
@@ -164,7 +164,7 @@ export async function moveEntry(owner: string, volume: string, fromPath: string,
 }
 
 export async function copyEntry(owner: string, volume: string, fromPath: string, toPath: string, overwrite = false): Promise<void> {
-  const destination = new URL(entryUrl(owner, volume, toPath), globalThis.location.origin).href;
+  const destination = new URL(entryUrl(owner, volume, toPath), location.origin).href;
   await davFetch(entryUrl(owner, volume, fromPath), {
     method: 'COPY',
     headers: { Destination: destination, Overwrite: overwrite ? 'T' : 'F' },

@@ -164,7 +164,13 @@ function findRefreshableLock(sql: DurableSqlStorage, innerPath: string, tokens: 
  * This is the mirror image of the descendant scan `handleDelete` and `handleMove`
  * run.
  */
-function checkDescendantConflicts(request: Request, innerPath: string, depthHeader: LockDepth, requestedScope: 'shared' | 'exclusive', deps: LockDeps): Response | null {
+function checkDescendantConflicts(
+  request: Request,
+  innerPath: string,
+  depthHeader: LockDepth,
+  requestedScope: 'shared' | 'exclusive',
+  deps: LockDeps,
+): Response | null {
   if (depthHeader !== 'infinity' || !deps.repo.statInner(innerPath).isDirectory) return null;
   let descendants: string[];
   try {
@@ -253,7 +259,12 @@ function resolveDepth(existing: LockDetails | undefined, targetIsCollection: boo
  * A refresh is exempt — re-refreshing the lock you already hold necessarily finds
  * it, which is not a conflict.
  */
-function checkScopeConflict(sql: DurableSqlStorage, activePath: string, requestedScope: 'shared' | 'exclusive', existing: LockDetails | undefined): Response | null {
+function checkScopeConflict(
+  sql: DurableSqlStorage,
+  activePath: string,
+  requestedScope: 'shared' | 'exclusive',
+  existing: LockDetails | undefined,
+): Response | null {
   if (existing) return null;
   const current = readLocks(sql, activePath);
   const blocked = requestedScope === 'exclusive' ? current.length > 0 : current.some((lock) => lock.scope === 'exclusive');

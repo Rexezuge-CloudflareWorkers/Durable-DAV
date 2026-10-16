@@ -97,25 +97,30 @@ class DavReplicationDAO extends BaseDAO {
     createdBy: string | null;
   }): Promise<void> {
     const { target } = input;
-    await this.run(`INSERT INTO dav_replications (replication_id, volume_id, target_kind, remote_url, remote_owner, remote_volume, remote_path,
+    await this.run(
+      `INSERT INTO dav_replications (replication_id, volume_id, target_kind, remote_url, remote_owner, remote_volume, remote_path,
               auth_kind, encrypted_secret, secret_iv, mode, mirror_deletions, interval_minutes, enabled, created_at, updated_at, created_by)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [input.replicationId,
-            input.volumeId,
-            target.targetKind,
-            target.remoteUrl,
-            target.remoteOwner,
-            target.remoteVolume,
-            target.remotePath,
-            input.authKind,
-            input.encryptedSecret,
-            input.secretIv,
-            input.mode,
-            input.mirrorDeletions ? 1 : 0,
-            input.intervalMinutes,
-            input.enabled ? 1 : 0,
-            input.now,
-            input.now,
-            input.createdBy,]);
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        input.replicationId,
+        input.volumeId,
+        target.targetKind,
+        target.remoteUrl,
+        target.remoteOwner,
+        target.remoteVolume,
+        target.remotePath,
+        input.authKind,
+        input.encryptedSecret,
+        input.secretIv,
+        input.mode,
+        input.mirrorDeletions ? 1 : 0,
+        input.intervalMinutes,
+        input.enabled ? 1 : 0,
+        input.now,
+        input.now,
+        input.createdBy,
+      ],
+    );
   }
 
   public async getById(replicationId: string): Promise<DavReplicationRow | null> {
@@ -123,7 +128,10 @@ class DavReplicationDAO extends BaseDAO {
   }
 
   public async getByVolumeAndTarget(volumeId: string, target: ReplicationTarget): Promise<DavReplicationRow | null> {
-    return this.first<DavReplicationRow>('SELECT * FROM dav_replications WHERE volume_id = ? AND target_kind = ? AND remote_url = ? AND remote_owner = ? AND remote_volume = ? AND remote_path = ? LIMIT 1', [volumeId, target.targetKind, target.remoteUrl, target.remoteOwner, target.remoteVolume, target.remotePath]);
+    return this.first<DavReplicationRow>(
+      'SELECT * FROM dav_replications WHERE volume_id = ? AND target_kind = ? AND remote_url = ? AND remote_owner = ? AND remote_volume = ? AND remote_path = ? LIMIT 1',
+      [volumeId, target.targetKind, target.remoteUrl, target.remoteOwner, target.remoteVolume, target.remotePath],
+    );
   }
 
   public async listByVolume(volumeId: string): Promise<DavReplicationRow[]> {
@@ -133,9 +141,9 @@ class DavReplicationDAO extends BaseDAO {
   /**
    * How many targets a bucket has, for the per-bucket replication cap.
    *
-   * `firstWithRetry` rather than a bare `.first()`, as everywhere else in this
-   * package: the caller uses the count to *reject* a creation, so a count that
-   * degraded on a D1 blip would let the cap be bypassed.
+   * Read through `BaseDAO.first`, as every read in this package is: the caller
+   * uses the count to *reject* a creation, so a count that degraded on a D1
+   * blip would let the cap be bypassed.
    */
   public async countByVolume(volumeId: string): Promise<number> {
     const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_replications WHERE volume_id = ?', [volumeId]);
@@ -189,7 +197,12 @@ class DavReplicationDAO extends BaseDAO {
    * clearing one without the other would leave a row that decrypts to nothing.
    */
   public async setSecret(replicationId: string, encryptedSecret: string | null, secretIv: string | null, now: number): Promise<void> {
-    await this.run('UPDATE dav_replications SET encrypted_secret = ?, secret_iv = ?, updated_at = ? WHERE replication_id = ?', [encryptedSecret, secretIv, now, replicationId]);
+    await this.run('UPDATE dav_replications SET encrypted_secret = ?, secret_iv = ?, updated_at = ? WHERE replication_id = ?', [
+      encryptedSecret,
+      secretIv,
+      now,
+      replicationId,
+    ]);
   }
 
   public async deleteById(replicationId: string): Promise<void> {
@@ -204,10 +217,13 @@ class DavReplicationDAO extends BaseDAO {
    * the SQLite version D1 happens to ship this month.
    */
   public async listDue(now: number, limit: number): Promise<DavReplicationRow[]> {
-    return this.all<DavReplicationRow>(`SELECT * FROM dav_replications
+    return this.all<DavReplicationRow>(
+      `SELECT * FROM dav_replications
              WHERE enabled = 1 AND (last_run_at IS NULL OR last_run_at + interval_minutes * 60 <= ?)
              ORDER BY COALESCE(last_run_at, 0) ASC, replication_id ASC
-             LIMIT ?`, [now, limit]);
+             LIMIT ?`,
+      [now, limit],
+    );
   }
 
   /**
@@ -239,7 +255,6 @@ class DavReplicationDAO extends BaseDAO {
     const recorded = recordRunStatement(replicationId, status, error, now, maxFailures, cursorPath, remaining);
     await this.run(recorded.sql, recorded.bindings);
   }
-
 }
 
 export { DavReplicationDAO };

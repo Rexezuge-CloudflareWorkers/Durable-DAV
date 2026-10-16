@@ -33,12 +33,36 @@ class NamespaceDAO extends BaseDAO {
     return row !== null;
   }
 
-  public async claim(input: { usernameCi: string; kind: NamespaceKind; userEmail?: string | null; userId?: string | null; now: number }): Promise<void> {
-    await this.run('INSERT INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)', [input.usernameCi, input.kind, input.userEmail ?? null, input.userId ?? null, input.now]);
+  public async claim(input: {
+    usernameCi: string;
+    kind: NamespaceKind;
+    userEmail?: string | null;
+    userId?: string | null;
+    now: number;
+  }): Promise<void> {
+    await this.run('INSERT INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)', [
+      input.usernameCi,
+      input.kind,
+      input.userEmail ?? null,
+      input.userId ?? null,
+      input.now,
+    ]);
   }
 
-  public async claimIgnore(input: { usernameCi: string; kind: NamespaceKind; userEmail?: string | null; userId?: string | null; now: number }): Promise<void> {
-    await this.run('INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)', [input.usernameCi, input.kind, input.userEmail ?? null, input.userId ?? null, input.now]);
+  public async claimIgnore(input: {
+    usernameCi: string;
+    kind: NamespaceKind;
+    userEmail?: string | null;
+    userId?: string | null;
+    now: number;
+  }): Promise<void> {
+    await this.run('INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)', [
+      input.usernameCi,
+      input.kind,
+      input.userEmail ?? null,
+      input.userId ?? null,
+      input.now,
+    ]);
   }
 
   public async release(usernameCi: string): Promise<void> {

@@ -167,15 +167,22 @@ describe('handlePropfind', () => {
 
 describe('handleProppatch', () => {
   function sql(execFails = false) {
-    return { exec: vi.fn(() => (execFails ? (() => { throw new Error('SQLITE_ERROR'); })() : undefined)) };
+    return {
+      exec: vi.fn(() =>
+        execFails
+          ? (() => {
+              throw new Error('SQLITE_ERROR');
+            })()
+          : undefined,
+      ),
+    };
   }
 
   function proppatch(body: string): Request {
     return new Request(`${URL_BASE}/a.txt`, { method: 'PROPPATCH', headers: { 'Content-Type': 'application/xml' }, body });
   }
 
-  const deadPropSet = (ns: string, name: string) =>
-    `<D:set><D:prop><X:${name} xmlns:X="${ns}">v</X:${name}></D:prop></D:set>`;
+  const deadPropSet = (ns: string, name: string) => `<D:set><D:prop><X:${name} xmlns:X="${ns}">v</X:${name}></D:prop></D:set>`;
 
   it('200s a dead-property set', async () => {
     const repo = seeded();
@@ -254,14 +261,7 @@ describe('handleProppatch', () => {
 
   it('400s a malformed body', async () => {
     const repo = seeded();
-    const response = await handleProppatch(
-      proppatch('<not-xml'),
-      'dir/a.txt',
-      BASES,
-      repo as never,
-      fakeLocks() as never,
-      sql() as never,
-    );
+    const response = await handleProppatch(proppatch('<not-xml'), 'dir/a.txt', BASES, repo as never, fakeLocks() as never, sql() as never);
     expect(response.status).toBe(400);
   });
 

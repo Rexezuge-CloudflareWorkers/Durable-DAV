@@ -36,7 +36,7 @@ jobs:
         run: pnpm run validate:locales
 
       - name: Check God-Files
-        run: node scripts/check-god-files.mjs
+        run: pnpm run check:god-files
 
   unit-tests:
     name: Unit Tests
@@ -79,6 +79,9 @@ jobs:
 
       - name: Build Web App
         run: pnpm --filter @durable-dav/web build
+
+      - name: Verify SPA Shell
+        run: pnpm run verify:spa-shell
 
   dependabot-auto-merge:
     if: ${{ github.event_name == 'pull_request' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.state == 'open' && !github.event.repository.fork }}

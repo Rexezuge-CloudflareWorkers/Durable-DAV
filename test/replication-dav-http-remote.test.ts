@@ -38,19 +38,25 @@ function multistatus(entries: string[]): string {
 }
 
 function fileResponse(href: string, etag = '"v1"'): string {
-  return `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype/><D:getetag>${etag}</D:getetag>` +
-    `<D:getcontentlength>5</D:getcontentlength></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`;
+  return (
+    `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype/><D:getetag>${etag}</D:getetag>` +
+    `<D:getcontentlength>5</D:getcontentlength></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`
+  );
 }
 
 function collectionResponse(href: string): string {
-  return `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop>` +
-    `<D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`;
+  return (
+    `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop>` +
+    `<D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>`
+  );
 }
 
 function bareResponse(href: string): string {
   // Listed but undescribed: the server answered the resource with no 2xx propstat.
-  return `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:getetag>"v1"</D:getetag></D:prop>` +
-    `<D:status>HTTP/1.1 404 Not Found</D:status></D:propstat></D:response>`;
+  return (
+    `<D:response><D:href>${href}</D:href><D:propstat><D:prop><D:getetag>"v1"</D:getetag></D:prop>` +
+    `<D:status>HTTP/1.1 404 Not Found</D:status></D:propstat></D:response>`
+  );
 }
 
 describe('joinUrl', () => {
@@ -189,7 +195,10 @@ describe('DavHttpRemote.list', () => {
     // root, which is the invariant the planner compares local paths against.
     // `DavVolumeRemote` rebases explicitly because a sibling bucket's DO listing
     // is whole-volume.
-    const body = multistatus([fileResponse('/remote.php/dav/files/me/backup/a.txt'), fileResponse('/remote.php/dav/files/me/backup/deep/b.txt')]);
+    const body = multistatus([
+      fileResponse('/remote.php/dav/files/me/backup/a.txt'),
+      fileResponse('/remote.php/dav/files/me/backup/deep/b.txt'),
+    ]);
     const { impl } = fakeFetch(() => new Response(body, { status: 207 }));
     const listing = await remote({ fetchImpl: impl, remotePath: 'backup' }).list('');
     expect(listing.entries.map((entry) => entry.path)).toEqual(['a.txt', 'deep/b.txt']);
@@ -259,7 +268,9 @@ describe('DavHttpRemote — writes', () => {
   it('accepts 201 and 204 from PUT', async () => {
     for (const status of [201, 204]) {
       const { impl } = fakeFetch(() => new Response(null, { status }));
-      await expect(remote({ fetchImpl: impl }).writeFile('a.txt', new Uint8Array([1]), { contentType: null, ifMatch: null })).resolves.toEqual({
+      await expect(
+        remote({ fetchImpl: impl }).writeFile('a.txt', new Uint8Array([1]), { contentType: null, ifMatch: null }),
+      ).resolves.toEqual({
         etag: null,
       });
     }
@@ -269,9 +280,9 @@ describe('DavHttpRemote — writes', () => {
     // A human wrote the file between our read and our write. That must be
     // reported, not retried over the top of their edit.
     const { impl } = fakeFetch(() => new Response(null, { status: 412 }));
-    await expect(remote({ fetchImpl: impl }).writeFile('a.txt', new Uint8Array([1]), { contentType: null, ifMatch: '"x"' })).rejects.toThrow(
-      /If-Match/,
-    );
+    await expect(
+      remote({ fetchImpl: impl }).writeFile('a.txt', new Uint8Array([1]), { contentType: null, ifMatch: '"x"' }),
+    ).rejects.toThrow(/If-Match/);
   });
 
   it('sends If-Match only when a precondition was supplied', async () => {
@@ -321,7 +332,9 @@ describe('DavHttpRemote.remove — recursive emulation', () => {
     // A misbehaving target that answers every PROPFIND with the same child would
     // otherwise recurse without bound inside a Durable Object invocation.
     const { impl } = fakeFetch((_url, init) =>
-      init.method === 'PROPFIND' ? new Response(multistatus([fileResponse('/remote.php/dav/files/me/dir/a.txt')]), { status: 207 }) : new Response(null, { status: 204 }),
+      init.method === 'PROPFIND'
+        ? new Response(multistatus([fileResponse('/remote.php/dav/files/me/dir/a.txt')]), { status: 207 })
+        : new Response(null, { status: 204 }),
     );
     await expect(remote({ fetchImpl: impl }).remove('dir', { ifMatch: null, recursive: true })).rejects.toThrow(RemoteUnavailableError);
   });

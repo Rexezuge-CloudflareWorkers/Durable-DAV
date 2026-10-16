@@ -1,11 +1,17 @@
 export { MiddlewareHandlers } from './MiddlewareHandlers';
 export type { RequestContext } from './MiddlewareHandlers';
 export { scopeMiddleware } from './scopeMiddleware';
-export { rateLimit, clientIp } from '@rexezuge/http';
+export { rateLimit, clientIp, resetRateLimitForTests } from '@rexezuge/http';
 export type { RateLimitContext, RateLimitHandler, RateLimitOptions } from '@rexezuge/http';
-export { resetRateLimitForTests } from './rateLimitConfig';
 export { RATE_LIMIT_DEFS, registerRateLimits } from './rateLimitConfig';
-export { securityHeaders, applySecurityHeaders, sensitivePaths, SECURITY_HEADERS, CONTENT_SECURITY_POLICY, STRICT_TRANSPORT_SECURITY } from '@rexezuge/http';
+export {
+  securityHeaders,
+  applySecurityHeaders,
+  sensitivePaths,
+  SECURITY_HEADERS,
+  CONTENT_SECURITY_POLICY,
+  STRICT_TRANSPORT_SECURITY,
+} from '@rexezuge/http';
 export type { HeaderContext } from '@rexezuge/http';
 import { sensitivePaths as buildSensitivePaths } from '@rexezuge/http';
 /**

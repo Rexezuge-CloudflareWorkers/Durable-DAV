@@ -72,15 +72,15 @@ type ReplicationDecision =
   */
   | { kind: 'keep-both'; path: string; winner: 'local' | 'remote'; conflictPath: string }
   /**
-  * `pull-only` only: the remote's version wins, and the local version that would
-  * have been overwritten is preserved at `conflictPath` **on the local side**.
-  *
-  * A distinct kind rather than `keep-both` with `winner: 'remote'`, because
-  * `PlanExecutor.keepBoth` writes the loser's bytes into *both* sides' conflict
-  * slots — and under `pull-only` the remote must never be written at all. Reusing
-  * the existing kind would push a local edit to a target whose whole definition is
-  * that it is not written to.
-  */
+   * `pull-only` only: the remote's version wins, and the local version that would
+   * have been overwritten is preserved at `conflictPath` **on the local side**.
+   *
+   * A distinct kind rather than `keep-both` with `winner: 'remote'`, because
+   * `PlanExecutor.keepBoth` writes the loser's bytes into *both* sides' conflict
+   * slots — and under `pull-only` the remote must never be written at all. Reusing
+   * the existing kind would push a local edit to a target whose whole definition is
+   * that it is not written to.
+   */
   | { kind: 'pull-and-preserve'; path: string; conflictPath: string; contentType: string | null }
   /**
   Sizes match but the validators do not; the runner hashes before deciding.

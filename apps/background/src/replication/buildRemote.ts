@@ -59,7 +59,9 @@ function authHeader(authKind: string, secret: string): RemoteAuth {
       // it" sent owners through a loop — every rotation re-sealed the same bare
       // password and failed identically. The remedy is to re-enter the credential
       // (username and password) for this target, which is what "re-enter" says.
-      throw new RemoteUnavailableError('stored replication credential is in an unreadable format; re-enter the username and password for this target');
+      throw new RemoteUnavailableError(
+        'stored replication credential is in an unreadable format; re-enter the username and password for this target',
+      );
     }
     return { kind: 'basic', value: basicAuthValue(secret.slice(0, separator), secret.slice(separator + 1)) };
   }
@@ -140,7 +142,9 @@ async function buildRemote(options: BuildRemoteOptions): Promise<RemoteVolume> {
  * kind. `ReplicationRunner` uses it to purge the right read caches.
  */
 function siblingVolumeKey(row: DavReplicationRow): string | null {
-  return row.target_kind !== 'dav-volume' || row.remote_owner === '' || row.remote_volume === '' ? null : normalizeVolumeKey(row.remote_owner, row.remote_volume);
+  return row.target_kind !== 'dav-volume' || row.remote_owner === '' || row.remote_volume === ''
+    ? null
+    : normalizeVolumeKey(row.remote_owner, row.remote_volume);
 }
 
 export { allowedHosts, buildRemote, siblingVolumeKey };

@@ -152,7 +152,7 @@ function conflictWinner(local: PlanSide, remote: PlanSide, mode: ReplicationMode
   // local version — so "the remote wins" never means "the local edit is gone".
   if (mode === 'copy-only') return 'local';
   if (mode === 'pull-only') return 'remote';
-  if ((mode === 'keep-both') || local.mtime === null || remote.mtime === null || (local.mtime === remote.mtime)) return null;
+  if (mode === 'keep-both' || local.mtime === null || remote.mtime === null || local.mtime === remote.mtime) return null;
   return local.mtime > remote.mtime ? 'local' : 'remote';
 }
 

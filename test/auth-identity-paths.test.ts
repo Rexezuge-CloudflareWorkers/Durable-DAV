@@ -40,7 +40,9 @@ describe('AccessAuthService.verifyAccessJwt — configuration guards', () => {
     // A blank aud is a whitespace-only secret; a comma-joined one would only
     // ever match the first entry, so a valid token for the second audience
     // would be refused as an authentication failure.
-    await expect(AccessAuthService.verifyAccessJwt(requestWith('token'), 'https://team.example.com', ' '.repeat(3))).rejects.toThrow(/configuration/i);
+    await expect(AccessAuthService.verifyAccessJwt(requestWith('token'), 'https://team.example.com', ' '.repeat(3))).rejects.toThrow(
+      /configuration/i,
+    );
     await expect(AccessAuthService.verifyAccessJwt(requestWith('token'), 'https://team.example.com', 'a,b')).rejects.toThrow(/multiple/i);
   });
 

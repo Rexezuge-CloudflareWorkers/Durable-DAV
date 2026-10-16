@@ -108,8 +108,6 @@ class VerificationCache {
     }
   }
 
-  
-
   public get size(): number {
     return this.entries.size;
   }
@@ -138,7 +136,9 @@ class CredentialVerifierDO extends DurableObject<Env> {
     const username = typeof body.username === 'string' ? body.username : '';
     const password = typeof body.password === 'string' ? body.password : '';
     const passwordHash = typeof body.passwordHash === 'string' ? body.passwordHash : '';
-    return !username || !password || !passwordHash ? new Response('Bad Request', { status: 400 }) : Response.json(await this.verify(username, password, passwordHash));
+    return !username || !password || !passwordHash
+      ? new Response('Bad Request', { status: 400 })
+      : Response.json(await this.verify(username, password, passwordHash));
   }
 
   private async verify(username: string, password: string, passwordHash: string): Promise<VerifyResponseBody> {
@@ -206,5 +206,5 @@ export { CredentialVerifierDO, VerificationCache };
 export type { VerifyRequestBody, VerifyResponseBody, CacheEntry };
 // Re-exported so the shard constants stay discoverable next to the class that
 // serves them; the single definition is in `shared` (see `CredentialShardUtil`).
-export {   VERIFY_PATH, DEFAULT_TTL_SECONDS, MAX_CACHE_ENTRIES };
+export { VERIFY_PATH, DEFAULT_TTL_SECONDS, MAX_CACHE_ENTRIES };
 export { credentialShardOf, CREDENTIAL_SHARD_COUNT } from '@durable-dav/shared/utils/CredentialShardUtil';

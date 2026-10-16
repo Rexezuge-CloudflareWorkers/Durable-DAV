@@ -67,14 +67,12 @@ describe('innerPathOf', () => {
     // leading segments, so slicing them off is always correct regardless of how
     // the client encoded them.
     const app = new Hono();
-    app.get('/:owner/:volume/*', (c) => c.json({ owner: c.req.param('owner'), volume: c.req.param('volume'), inner: innerPathOf(c.req.url) }));
+    app.get('/:owner/:volume/*', (c) =>
+      c.json({ owner: c.req.param('owner'), volume: c.req.param('volume'), inner: innerPathOf(c.req.url) }),
+    );
 
     return Promise.all(
-      [
-        '/alice/photos/notes.txt',
-        '/%61lice/photos/notes.txt',
-        '/alice/my%20photos/dir/notes.txt',
-      ].map(async (path) => {
+      ['/alice/photos/notes.txt', '/%61lice/photos/notes.txt', '/alice/my%20photos/dir/notes.txt'].map(async (path) => {
         const body = (await (await app.request(`https://h${path}`)).json()) as { owner: string; volume: string; inner: string };
         expect(body.inner).toBe(path.endsWith('dir/notes.txt') ? 'dir/notes.txt' : 'notes.txt');
       }),

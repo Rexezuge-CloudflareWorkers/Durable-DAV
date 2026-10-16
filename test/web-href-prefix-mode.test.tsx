@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 
@@ -34,15 +33,7 @@ const BASE_DETAIL: VolumeDetail = {
 function renderCard(detail: VolumeDetail = BASE_DETAIL) {
   const onUpdated = vi.fn();
   const showNotice = vi.fn();
-  render(
-    <HrefPrefixModeCard
-      owner={detail.owner}
-      volume={detail.name}
-      detail={detail}
-      showNotice={showNotice}
-      onUpdated={onUpdated}
-    />,
-  );
+  render(<HrefPrefixModeCard owner={detail.owner} volume={detail.name} detail={detail} showNotice={showNotice} onUpdated={onUpdated} />);
   return { onUpdated, showNotice };
 }
 

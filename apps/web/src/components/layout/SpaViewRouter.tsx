@@ -1,8 +1,7 @@
 import { Route, Routes } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import type { CurrentUser } from '../../types';
-import { Card } from '../ui/Card';
-import { AppPage, Unauthorized } from '@rexezuge/web';
+import { AppPage, Card, Unauthorized } from '@rexezuge/web';
 import { LandingView } from '../../views/LandingView';
 import { DashboardView } from '../../views/DashboardView';
 import { NewVolumeView } from '../../views/NewVolumeView';
@@ -79,7 +78,7 @@ function SpaViewRouter({
             <AppPage>
               <Unauthorized
                 title={t('unauthorized.title', 'Access Required')}
-                message={t('errors.signInToCreate', 'Sign In To Create Volumes.')}
+                message={t('errors.signInToCreate', 'Sign In To Create Buckets.')}
                 actionLabel={t('unauthorized.action', 'Sign In With Cloudflare Access')}
               />
             </AppPage>

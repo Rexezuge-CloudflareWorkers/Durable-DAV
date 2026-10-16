@@ -136,7 +136,7 @@ describe('security headers', () => {
   it('never fails a request when header application throws', async () => {
     // Applied *after* `next()`, so a throw here would replace a good response
     // with a 500. Guarded, and asserted.
-    const throwing = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const throwing = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = await runApp((a) => a.get('/x', (c) => c.json({ ok: true })), 'https://h/x');
     expect(res.status).toBe(200);
     throwing.mockRestore();
@@ -149,9 +149,9 @@ describe('BaseRoute error mapping', () => {
     app.get('*', (c) => c.json({}));
     void app.request(url, {} as never);
     return {
-      req: { url, header: () => undefined },
+      req: { url, header: () => {} },
       res: new Response(),
-      header: () => undefined,
+      header: () => {},
       json: () => new Response(),
     } as unknown as Ctx;
   }
@@ -210,7 +210,8 @@ describe('BaseRoute error mapping', () => {
     expect(valid).toEqual({ malformed: false, oversized: false, body: { a: 1 } });
   });
 
-  it('answers 413 for an oversized body and 400 for a malformed one', () => {    // Six call sites wrote this pair by hand and had drifted from the registry
+  it('answers 413 for an oversized body and 400 for a malformed one', () => {
+    // Six call sites wrote this pair by hand and had drifted from the registry
     // that decides the Type, so it is centralised in `rejectUnreadableBody`.
     const json = vi.fn((_body: unknown, status: number) => new Response('{}', { status }));
     const c = { json } as unknown as Ctx;
@@ -221,7 +222,7 @@ describe('BaseRoute error mapping', () => {
   });
 
   it('masks an untyped error as a localized 500 and logs it', async () => {
-    const logged = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {});
     const res = BaseRoute.toErrorResponse(ctxFor('https://h/user/me'), new Error('internal detail: db password hunter2'));
     expect(res.status).toBe(500);
     const body = (await res.json()) as { Exception: { Type: string; Message: string } };
@@ -251,7 +252,7 @@ function localizedCtx(language: string | undefined): Ctx {
 }
 
 describe('BaseRoute Accept-Language resolution', () => {
-  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => undefined);
+  const quiet = () => vi.spyOn(console, 'error').mockImplementation(() => {});
 
   /**
    * The `Exception.Message` a 500 carries for a given `Accept-Language`.
@@ -292,7 +293,7 @@ describe('BaseRoute Accept-Language resolution', () => {
     for (const header of [undefined, 'de', 'ja', 'xx']) {
       const res = BaseRoute.toErrorResponse(localizedCtx(header), new Error('secret: hunter2'));
       expect(res.status).toBe(500);
-      expect((await res.json() as { Exception: { Message: string } }).Exception.Message).not.toContain('hunter2');
+      expect(((await res.json()) as { Exception: { Message: string } }).Exception.Message).not.toContain('hunter2');
     }
     spy.mockRestore();
   });

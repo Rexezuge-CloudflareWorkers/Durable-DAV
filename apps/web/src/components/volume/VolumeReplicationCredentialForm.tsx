@@ -3,8 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { BucketReplication } from '../../types';
 import { rotateReplicationCredential } from '../../services/replicationService';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
-import { Button } from '../ui/Button';
-import { Input, Label, Select } from '../ui/Input';
+import { Button, Input, Label, Select } from '@rexezuge/web';
 
 /**
  * Replace one target's stored credential.

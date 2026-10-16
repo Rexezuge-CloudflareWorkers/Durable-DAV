@@ -130,7 +130,10 @@ describe('UserService.upsertUser — resolve-then-create', () => {
       created_at: 1,
       updated_at: 1,
     });
-    store.emails.push({ email: 'new@example.com', user_id: 'usr_alice', is_verified: 1 }, { email: 'alice@example.com', user_id: 'usr_alice', is_verified: 0 });
+    store.emails.push(
+      { email: 'new@example.com', user_id: 'usr_alice', is_verified: 1 },
+      { email: 'alice@example.com', user_id: 'usr_alice', is_verified: 0 },
+    );
 
     const summary = await serviceFor(store).upsertUser('NEW@example.com');
 
@@ -155,7 +158,7 @@ describe('UserService.upsertUser — resolve-then-create', () => {
     expect(summary).toMatchObject({ id: store.users[0]?.id, email: 'bob.smith@example.com', username: null });
   });
 
-  it('falls back to an opaque anchor when the address is still another account\'s', async () => {
+  it("falls back to an opaque anchor when the address is still another account's", async () => {
     // `registerAccount` reads the anchor row back and requires its own id; when
     // the address is held as a previous holder's anchor the write is a no-op and
     // the read-back disagrees, so the caller retries with an opaque anchor.
@@ -242,18 +245,15 @@ describe('UserService lookups', () => {
     // A `null` return now means exactly one thing: no such row. It used to
     // `catch` and return null, which made the availability endpoint report
     // "taken, pick another" during a D1 outage.
-    const service = new UserService(
-      { DB: {} as never },
-      {
-        ...daosFor(newStore()),
-        userDAO: () =>
-          Promise.resolve({
-            getByUsernameCi: async () => {
-              throw new Error('D1_ERROR: database is locked');
-            },
-          } as never),
-      } as never,
-    );
+    const service = new UserService({ DB: {} as never }, {
+      ...daosFor(newStore()),
+      userDAO: () =>
+        Promise.resolve({
+          getByUsernameCi: async () => {
+            throw new Error('D1_ERROR: database is locked');
+          },
+        } as never),
+    } as never);
 
     await expect(service.getByUsername('alice')).rejects.toThrow(/locked/);
   });

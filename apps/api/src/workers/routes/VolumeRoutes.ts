@@ -37,7 +37,13 @@ type VolumeJson = {
   href: string;
 };
 
-function toVolumeJson(r: { owner: string; name: string; description: string | null; is_private: number; href_prefix_mode: string }): VolumeJson {
+function toVolumeJson(r: {
+  owner: string;
+  name: string;
+  description: string | null;
+  is_private: number;
+  href_prefix_mode: string;
+}): VolumeJson {
   return {
     owner: r.owner,
     name: r.name,
@@ -91,7 +97,11 @@ async function handleListVolumes(c: ApiContext): Promise<Response> {
  * tried only after the id path has failed, so a real id-keyed read is never
  * masked by it.
  */
-async function listOwnedVolumes(scope: ReturnType<typeof BaseRoute.getScope>, userId: string | null, email: string): Promise<DavVolumeRow[]> {
+async function listOwnedVolumes(
+  scope: ReturnType<typeof BaseRoute.getScope>,
+  userId: string | null,
+  email: string,
+): Promise<DavVolumeRow[]> {
   const dao = await scope.get(Tokens.DavVolumeDAO)();
   if (userId) {
     try {
@@ -136,9 +146,9 @@ class UpdateVolume extends VolumeScopedRoute {
     // a missing `description` into an explicit clear, and the service's
     // "Nothing to update" check counts presence, not truthiness.
     const patch = {
-      ...(('description' in body) && { description: body.description }),
-      ...(('isPrivate' in body) && { isPrivate: body.isPrivate }),
-      ...(('hrefPrefixMode' in body) && { hrefPrefixMode: body.hrefPrefixMode }),
+      ...('description' in body && { description: body.description }),
+      ...('isPrivate' in body && { isPrivate: body.isPrivate }),
+      ...('hrefPrefixMode' in body && { hrefPrefixMode: body.hrefPrefixMode }),
     };
     const updated = await scope.get(Tokens.VolumeService).updateVolume(row.owner, row.name, viewer, patch);
     const cache = scope.get(Tokens.KvCache);

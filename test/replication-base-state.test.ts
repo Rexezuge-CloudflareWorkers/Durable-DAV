@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { ensureReplicationSchema, forgetReplicaPaths, forgetReplication, loadReplicaState, replicaPaths, saveReplicaState } from '../packages/dav-store/src/replication';
+import {
+  ensureReplicationSchema,
+  forgetReplicaPaths,
+  forgetReplication,
+  loadReplicaState,
+  replicaPaths,
+  saveReplicaState,
+} from '../packages/dav-store/src/replication';
 import type { DurableSqlStorage, ReplicaStateRow } from '../packages/dav-store/src/replication';
 
 /**
@@ -57,10 +64,12 @@ sort and offers `(a, b) => a.path - b.path`, which is `NaN` for strings. `compar
 is the same total order the planner uses on real paths.
 */
 function rowsFor(table: Map<string, SqlRow>, replicationId: unknown): SqlRow[] {
-  return [...table.values()]
-    .filter((row) => row.replication_id === String(replicationId))
-    // eslint-disable-next-line unicorn/prefer-simple-sort-comparator -- see above
-    .sort(compareByPath);
+  return (
+    [...table.values()]
+      .filter((row) => row.replication_id === String(replicationId))
+      // eslint-disable-next-line unicorn/prefer-simple-sort-comparator -- see above
+      .sort(compareByPath)
+  );
 }
 
 /**
@@ -75,8 +84,19 @@ function recordingSql() {
       statements.push({ sql: query, bindings });
       const normalized = query.replaceAll(/\s+/g, ' ').trim();
       if (normalized.startsWith('INSERT INTO dav_replica_state')) {
-        const [replicationId, path, isCollection, localEtag, localMtime, localSize, remoteEtag, remoteMtime, remoteSize, contentType, syncedAt] =
-          bindings;
+        const [
+          replicationId,
+          path,
+          isCollection,
+          localEtag,
+          localMtime,
+          localSize,
+          remoteEtag,
+          remoteMtime,
+          remoteSize,
+          contentType,
+          syncedAt,
+        ] = bindings;
         table.set(`${String(replicationId)} ${String(path)}`, {
           replication_id: String(replicationId),
           path: String(path),

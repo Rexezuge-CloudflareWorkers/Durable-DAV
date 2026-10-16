@@ -223,7 +223,12 @@ function useVolumeMutations(owner: string, volume: string, path: string, showNot
     } catch (error) {
       showNotice(
         'error',
-        toLocalizedErrorMessage(t, error, kind === 'rename' ? 'errors.failedToRename' : 'errors.failedToDuplicate', 'Failed To Complete Operation.'),
+        toLocalizedErrorMessage(
+          t,
+          error,
+          kind === 'rename' ? 'errors.failedToRename' : 'errors.failedToDuplicate',
+          'Failed To Complete Operation.',
+        ),
       );
     } finally {
       setBusy(false);
@@ -231,11 +236,11 @@ function useVolumeMutations(owner: string, volume: string, path: string, showNot
   }, [overwritePrompt, owner, volume, refresh, showNotice, t]);
 
   /**
- * Largest body the preview panel will hold in memory (1 MiB).
- */
-const MAX_PREVIEW_BYTES = 1_048_576;
+   * Largest body the preview panel will hold in memory (1 MiB).
+   */
+  const MAX_PREVIEW_BYTES = 1_048_576;
 
-const openPreview = useCallback(
+  const openPreview = useCallback(
     async (entry: DavEntry, openPath: (p: string) => void) => {
       if (entry.isCollection) {
         openPath(entry.path);

@@ -216,7 +216,7 @@ describe('href prefix mode: root', () => {
     expect(res.status).toBe(200);
     expect(await res.text()).toBe('still readable');
     expect((await dav('/docs')).status).toBe(200);
-    expect((await hrefsOf('docs'))).toContain('/docs/');
+    expect(await hrefsOf('docs')).toContain('/docs/');
   });
 
   it('keeps the HTML collection listing on the volume base', async () => {

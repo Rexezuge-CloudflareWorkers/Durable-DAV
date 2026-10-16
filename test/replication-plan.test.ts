@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { buildReplicationPlan, conflictWinner, conflictPathFor, provablyIdentical, sideChanged } from '@durable-dav/backend-services/replication';
+import {
+  buildReplicationPlan,
+  conflictWinner,
+  conflictPathFor,
+  provablyIdentical,
+  sideChanged,
+} from '@durable-dav/backend-services/replication';
 import type { PlanBase, PlanSide } from '@durable-dav/backend-services/replication';
 
 /**
@@ -409,9 +415,15 @@ describe('helpers', () => {
   it('sideChanged answers "changed" whenever evidence is missing', () => {
     // Conservative in one direction only: a false *changed* costs one redundant
     // transfer, a false *unchanged* costs a lost edit.
-    expect(sideChanged({ etag: null, mtime: null, size: null, isCollection: false }, { etag: '"a"', mtime: 1, size: 1, isCollection: false })).toBe(true);
-    expect(sideChanged({ etag: '"a"', mtime: 1, size: 1, isCollection: false }, { etag: '"a"', mtime: 1, size: 1, isCollection: false })).toBe(false);
-    expect(sideChanged({ etag: '"a"', mtime: 1, size: 2, isCollection: false }, { etag: '"a"', mtime: 1, size: 1, isCollection: false })).toBe(true);
+    expect(
+      sideChanged({ etag: null, mtime: null, size: null, isCollection: false }, { etag: '"a"', mtime: 1, size: 1, isCollection: false }),
+    ).toBe(true);
+    expect(
+      sideChanged({ etag: '"a"', mtime: 1, size: 1, isCollection: false }, { etag: '"a"', mtime: 1, size: 1, isCollection: false }),
+    ).toBe(false);
+    expect(
+      sideChanged({ etag: '"a"', mtime: 1, size: 2, isCollection: false }, { etag: '"a"', mtime: 1, size: 1, isCollection: false }),
+    ).toBe(true);
   });
 
   it('provablyIdentical only answers yes on positive evidence', () => {

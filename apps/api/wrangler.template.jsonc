@@ -86,6 +86,11 @@
   "vars": {
     "ENVIRONMENT": "production",
     "DEBUG_MODE": "false",
+    // Floor for the kit's logger, installed by the request-scope composition
+    // root. `info` is the default; `debug` is for diagnosing a deployment, where
+    // it surfaces the KV skips and cache decisions that are otherwise silent.
+    // An unrecognized value floors at `info` rather than failing a request.
+    "LOG_LEVEL": "info",
     "SITE_URL": "",
     "POLICY_AUD": "",
     "TEAM_DOMAIN": "",

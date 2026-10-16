@@ -65,19 +65,19 @@ type ReplicationPatchInput = {
 };
 
 /**
-* `mirrorDeletions`, checked against the mode it will be read in.
-*
-* Type before value, for the reason every other coercion in this file gives: a
-* `"true"` must never become `true`, because this one boolean is the difference
-* between "the remote's content is imported" and "a local file the remote does not
-* have is deleted".
-*
-* Refusing `true` outside `pull-only` is not pedantry. The flag is unread in the
-* other three modes — `copy-only` already propagates local deletions to the remote,
-* and `sync`/`keep-both` propagate in both directions — so storing it would be a
-* setting that appears to do something and does not. A silent no-op is the outcome
-* that must not happen by accident.
-*/
+ * `mirrorDeletions`, checked against the mode it will be read in.
+ *
+ * Type before value, for the reason every other coercion in this file gives: a
+ * `"true"` must never become `true`, because this one boolean is the difference
+ * between "the remote's content is imported" and "a local file the remote does not
+ * have is deleted".
+ *
+ * Refusing `true` outside `pull-only` is not pedantry. The flag is unread in the
+ * other three modes — `copy-only` already propagates local deletions to the remote,
+ * and `sync`/`keep-both` propagate in both directions — so storing it would be a
+ * setting that appears to do something and does not. A silent no-op is the outcome
+ * that must not happen by accident.
+ */
 function readMirrorDeletions(value: unknown, mode: string): boolean {
   const flag = optionalBoolean(value, 'mirrorDeletions', false);
   if (flag && mode !== MIRROR_DELETION_MODE) {

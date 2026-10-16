@@ -1,10 +1,34 @@
-import { describe, expect, it, vi } from 'vitest';
-import { KvCache } from '@rexezuge/runtime';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { KvCache, resetBreakerForTests } from '@rexezuge/runtime';
 import type { KvNamespaceLike } from '@rexezuge/runtime';
 import { buildKvKey, clampTtl, digest128, KV_DOMAINS } from '@rexezuge/runtime';
 import { Tokens, createRequestScope } from '@durable-dav/backend-services/composition';
 import { base64ToBytes, bytesToBase64 } from '@rexezuge/shared';
-import { MAX_CACHED_FILE_BYTES, cacheControlFor, cacheKeyForVolume, etagForPropfind, getCachedFile, getCachedPropfind, getCachedVolumeList, hashBody, invalidateVolumeCaches, invalidateVolumeListCache, isFresh, putCachedFile, putCachedPropfind, putCachedVolumeList } from '../apps/api/src/workers/routes/DavReadCache';
+import {
+  MAX_CACHED_FILE_BYTES,
+  cacheControlFor,
+  cacheKeyForVolume,
+  etagForPropfind,
+  getCachedFile,
+  getCachedPropfind,
+  getCachedVolumeList,
+  hashBody,
+  invalidateVolumeCaches,
+  invalidateVolumeListCache,
+  isFresh,
+  putCachedFile,
+  putCachedPropfind,
+  putCachedVolumeList,
+} from '../apps/api/src/workers/routes/DavReadCache';
+
+// `KvCache`'s circuit breaker is per-isolate state, not per-instance: three
+// consecutive failures open it for every later test in this file (the
+// deliberately-failing bindings below trip it), and an open breaker answers
+// from its fallback, which reads as a cache miss. Reset it between tests, the
+// same way the kit's own suite does.
+afterEach(() => {
+  resetBreakerForTests();
+});
 
 // In-memory fake of the single CACHE binding (structural KvNamespaceLike).
 // Ported from ../Git `test/kv-cache.test.ts`. Stores text and binary entries
@@ -26,7 +50,9 @@ function makeFakeKv(initial: Record<string, string> = {}): KvNamespaceLike & {
       if (!entry) return Promise.resolve(null);
       if (type === 'arrayBuffer') {
         if (entry.bytes) return Promise.resolve(entry.bytes.slice().buffer as ArrayBuffer);
-        return entry.text === undefined ? Promise.resolve(null) : Promise.resolve(new TextEncoder().encode(entry.text).buffer as ArrayBuffer);
+        return entry.text === undefined
+          ? Promise.resolve(null)
+          : Promise.resolve(new TextEncoder().encode(entry.text).buffer as ArrayBuffer);
       }
       return entry.text === undefined ? Promise.resolve(null) : Promise.resolve(entry.text);
     },

@@ -130,7 +130,10 @@ class DavHttpRemote implements RemoteVolume {
         next = resolveRedirectUrl(target, location, { allowedHosts: this.deps.allowedHosts });
       } catch (error) {
         if (error instanceof RemoteUrlRejectedError) {
-          throw new RemoteUnavailableError(`redirect from ${init.method} ${path} was refused by the egress policy: ${error.message}`, response.status);
+          throw new RemoteUnavailableError(
+            `redirect from ${init.method} ${path} was refused by the egress policy: ${error.message}`,
+            response.status,
+          );
         }
         throw error;
       }
@@ -300,7 +303,12 @@ class DavHttpRemote implements RemoteVolume {
     if (dav === null) {
       throw new RemoteUnavailableError('target answered OPTIONS without a DAV header; the URL does not appear to be a WebDAV server');
     }
-    return { davClasses: dav.split(',').map((entry) => entry.trim()).filter((entry) => entry !== '') };
+    return {
+      davClasses: dav
+        .split(',')
+        .map((entry) => entry.trim())
+        .filter((entry) => entry !== ''),
+    };
   }
 }
 export { DavHttpRemote };

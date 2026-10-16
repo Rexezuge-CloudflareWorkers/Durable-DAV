@@ -157,7 +157,12 @@ describe('PROPFIND lockdiscovery hrefs carry the volume base', () => {
   it('agrees between allprop and a named lockdiscovery request', () => {
     const base = '/alice/photos';
     const allprop = generatePropfindResponse(lockedNode, 'allprop', [], base);
-    const named = generatePropfindResponse(lockedNode, 'prop', [{ namespaceURI: 'DAV:', localName: 'lockdiscovery', prefix: 'D', valueXml: '' }], base);
+    const named = generatePropfindResponse(
+      lockedNode,
+      'prop',
+      [{ namespaceURI: 'DAV:', localName: 'lockdiscovery', prefix: 'D', valueXml: '' }],
+      base,
+    );
 
     // `lockdiscovery` carries two hrefs: the lock *token* (a `urn:uuid:`, which
     // is not a path and must not be touched) and the `lockroot` (the path, which
@@ -173,7 +178,12 @@ describe('PROPFIND lockdiscovery hrefs carry the volume base', () => {
 
   it('returns an empty lockdiscovery when nothing is locked', () => {
     const unlocked: DavNodeInfo = { ...lockedNode, locks: [] };
-    const named = generatePropfindResponse(unlocked, 'prop', [{ namespaceURI: 'DAV:', localName: 'lockdiscovery', prefix: 'D', valueXml: '' }], '/alice/photos');
+    const named = generatePropfindResponse(
+      unlocked,
+      'prop',
+      [{ namespaceURI: 'DAV:', localName: 'lockdiscovery', prefix: 'D', valueXml: '' }],
+      '/alice/photos',
+    );
     expect(named).toContain('<lockdiscovery></lockdiscovery>');
   });
 });

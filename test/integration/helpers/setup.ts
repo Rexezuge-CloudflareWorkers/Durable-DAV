@@ -37,7 +37,10 @@ export async function ensureUser(db: D1Database, email: string, username?: strin
     .run();
   // Read the id back: on a conflict the row kept its original, and the registry
   // must point at *that* account.
-  const row = await db.prepare('SELECT id, current_email FROM users WHERE email = ?').bind(normalizedEmail).first<{ id: string; current_email: string }>();
+  const row = await db
+    .prepare('SELECT id, current_email FROM users WHERE email = ?')
+    .bind(normalizedEmail)
+    .first<{ id: string; current_email: string }>();
   const userId = row?.id ?? id;
   await db
     .prepare('UPDATE users SET username = COALESCE(username, ?), updated_at = COALESCE(updated_at, ?) WHERE id = ?')
@@ -51,9 +54,7 @@ export async function ensureUser(db: D1Database, email: string, username?: strin
     .bind(normalizedEmail, userId, now)
     .run();
   await db
-    .prepare(
-      `INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, 'user', ?, ?, ?)`,
-    )
+    .prepare(`INSERT OR IGNORE INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, 'user', ?, ?, ?)`)
     .bind(handleCi, normalizedEmail, userId, now)
     .run();
   return handle;

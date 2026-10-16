@@ -12,8 +12,7 @@ import {
   updateReplication,
 } from '../../services/replicationService';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
-import { RefreshButton } from '@rexezuge/web';
+import { Card, CardHeader, CardTitle, RefreshButton } from '@rexezuge/web';
 import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal';
 import { VolumeReplicationRow } from './VolumeReplicationRow';
 import { VolumeReplicationForm } from './VolumeReplicationForm';
@@ -188,7 +187,10 @@ export function VolumeReplicationCard({
 
       <div className="space-y-4">
         <p className="text-sm text-[var(--color-text-secondary)]">
-          {t('replication.description', 'Keep This Bucket In Sync With Another WebDAV Server, On A Schedule. Changes Move In Both Directions.')}
+          {t(
+            'replication.description',
+            'Keep This Bucket In Sync With Another WebDAV Server, On A Schedule. Changes Move In Both Directions.',
+          )}
         </p>
 
         {replications.length > 0 ? (
@@ -234,13 +236,7 @@ export function VolumeReplicationCard({
           />
         )}
 
-        <VolumeReplicationForm
-          owner={owner}
-          volume={volume}
-          intervals={intervals}
-          showNotice={showNotice}
-          onSaved={refresh}
-        />
+        <VolumeReplicationForm owner={owner} volume={volume} intervals={intervals} showNotice={showNotice} onSaved={refresh} />
       </div>
 
       {removing !== null && (
@@ -256,7 +252,5 @@ export function VolumeReplicationCard({
 }
 
 function targetLabelOf(replication: BucketReplication): string {
-  return replication.targetKind === 'dav-volume'
-    ? `${replication.remoteOwner}/${replication.remoteVolume}`
-    : replication.remoteUrl;
+  return replication.targetKind === 'dav-volume' ? `${replication.remoteOwner}/${replication.remoteVolume}` : replication.remoteUrl;
 }

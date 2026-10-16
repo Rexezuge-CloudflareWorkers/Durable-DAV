@@ -174,4 +174,15 @@ function hasPendingPageCorrection(args: {
   return args.requestedLimit === args.resolvedLimit && args.requestedPage > args.resolvedPage;
 }
 
-export { DEFAULT_PAGE_SIZE, PAGE_SIZE_OPTIONS, clampPage, clampPageSize, hasEntries, hasNextPage, hasPendingPageCorrection, pageCountFor, readStoredPageSize, storePageSize };
+export {
+  DEFAULT_PAGE_SIZE,
+  PAGE_SIZE_OPTIONS,
+  clampPage,
+  clampPageSize,
+  hasEntries,
+  hasNextPage,
+  hasPendingPageCorrection,
+  pageCountFor,
+  readStoredPageSize,
+  storePageSize,
+};

@@ -55,11 +55,5 @@ function readDavHrefPrefixMode(value: string | null | undefined): DavHrefPrefixM
   return isDavHrefPrefixMode(value) ? value : DEFAULT_DAV_HREF_PREFIX_MODE;
 }
 
-export {
-  DAV_HREF_PREFIX_MODES,
-  DEFAULT_DAV_HREF_PREFIX_MODE,
-  isDavHrefPrefixMode,
-  toDavHrefPrefixMode,
-  readDavHrefPrefixMode,
-};
+export { DAV_HREF_PREFIX_MODES, DEFAULT_DAV_HREF_PREFIX_MODE, isDavHrefPrefixMode, toDavHrefPrefixMode, readDavHrefPrefixMode };
 export type { DavHrefPrefixMode };

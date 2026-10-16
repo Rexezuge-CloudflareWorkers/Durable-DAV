@@ -46,7 +46,8 @@ const api = (path: string, init: RequestInit = {}): Promise<Response> => SELF.fe
 /**
 Browser-plane path for a volume-relative path (`''` is the volume root).
 */
-const filesUrl = (innerPath = ''): string => `/user/volumes/${encodeURIComponent(OWNER)}/${encodeURIComponent(VOLUME)}/files${innerPath === '' ? '' : `/${innerPath}`}`;
+const filesUrl = (innerPath = ''): string =>
+  `/user/volumes/${encodeURIComponent(OWNER)}/${encodeURIComponent(VOLUME)}/files${innerPath === '' ? '' : `/${innerPath}`}`;
 
 /**
  * The real request the SPA makes: PROPFIND `Depth: 1` at the browser plane,
@@ -78,13 +79,15 @@ beforeAll(async () => {
   expect((await api(filesUrl('docs'), { method: 'MKCOL' })).status).toBe(201);
   expect((await api(filesUrl('docs/raw'), { method: 'MKCOL' })).status).toBe(201);
   expect((await api(filesUrl('my folder'), { method: 'MKCOL' })).status).toBe(201);
-  expect((await api(filesUrl('readme.txt'), { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'root file' })).status).toBe(201);
-  expect((await api(filesUrl('docs/notes.txt'), { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'nested file' })).status).toBe(
+  expect((await api(filesUrl('readme.txt'), { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'root file' })).status).toBe(
     201,
   );
-  expect((await api(filesUrl('docs/raw/p q.txt'), { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'spaced file' })).status).toBe(
-    201,
-  );
+  expect(
+    (await api(filesUrl('docs/notes.txt'), { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'nested file' })).status,
+  ).toBe(201);
+  expect(
+    (await api(filesUrl('docs/raw/p q.txt'), { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'spaced file' })).status,
+  ).toBe(201);
 });
 
 describe('SPA bucket browser ⇄ WebDAV addressing contract', () => {
@@ -195,7 +198,11 @@ describe('browser-plane paged listing', () => {
   /**
   Paged PROPFIND with paging headers, parsed by the real SPA parser.
   */
-  async function listPage(innerPath: string, page: number, limit: number): Promise<{ entries: Array<{ path: string }>; total: number | null; servedPage: number | null; servedLimit: number | null }> {
+  async function listPage(
+    innerPath: string,
+    page: number,
+    limit: number,
+  ): Promise<{ entries: Array<{ path: string }>; total: number | null; servedPage: number | null; servedLimit: number | null }> {
     const res = await api(`${filesUrl(innerPath)}?page=${page}&limit=${limit}`, {
       method: 'PROPFIND',
       headers: { Depth: '1', 'Content-Type': 'application/xml; charset=utf-8' },

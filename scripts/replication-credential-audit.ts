@@ -183,15 +183,16 @@ function main(): void {
   }
   if (!args.db) die('--db is required');
 
-  const rows = d1(
-    args,
-    `SELECT r.replication_id, r.auth_kind, r.remote_url, r.remote_owner, r.remote_volume,
+  const rows =
+    d1(
+      args,
+      `SELECT r.replication_id, r.auth_kind, r.remote_url, r.remote_owner, r.remote_volume,
             v.owner, v.name AS volume_name, r.encrypted_secret, r.secret_iv
        FROM dav_replications r
        JOIN dav_volumes v ON v.id = r.volume_id
       WHERE r.auth_kind IN ('basic', 'bearer')
       ORDER BY v.owner, v.name;`,
-  ).results ?? [];
+    ).results ?? [];
 
   const key = readKey(args.config);
   const findings: Finding[] = rows.map((row) => {
@@ -234,7 +235,9 @@ function main(): void {
     }
     const broken = findings.filter((finding) => finding.verdict === 'needs-username');
     const locked = findings.filter((finding) => finding.verdict === 'undecryptable');
-    process.stdout.write(`\n${findings.length} scanned, ${broken.length} need a username re-entered, ${locked.length} could not be decrypted.\n`);
+    process.stdout.write(
+      `\n${findings.length} scanned, ${broken.length} need a username re-entered, ${locked.length} could not be decrypted.\n`,
+    );
     if (broken.length > 0) {
       process.stdout.write(
         '\nRemedy: re-enter the username AND password for each target above, via\n' +

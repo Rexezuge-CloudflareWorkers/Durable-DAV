@@ -70,7 +70,9 @@ const FULL_STOP = 46;
 function toLocalizedErrorMessage(t: TranslateFn, error: unknown, fallbackKey: string, fallbackDefault: string): string {
   const type = getBackendErrorType(error);
   const base =
-    type === null ? undefined : BACKEND_TYPE_TO_I18N_KEY[type] && t(BACKEND_TYPE_TO_I18N_KEY[type], BACKEND_TYPE_TO_FALLBACK[type] ?? fallbackDefault);
+    type === null
+      ? undefined
+      : BACKEND_TYPE_TO_I18N_KEY[type] && t(BACKEND_TYPE_TO_I18N_KEY[type], BACKEND_TYPE_TO_FALLBACK[type] ?? fallbackDefault);
   const localized = base ?? t(fallbackKey, fallbackDefault);
   const detail = error instanceof Error ? error.message.trim() : '';
   if (detail === '' || detail === localized) return localized;

@@ -1,7 +1,20 @@
-// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { PAGE_SIZE_OPTIONS, clampPage, clampPageSize, hasEntries, hasNextPage, pageCountFor, readStoredPageSize } from '../apps/web/src/lib/davPage';
-import { clampPageNumber, clampPageSize as clampServerPageSize, clampPageToCollection, offsetForPage, pageCountFor as serverPageCountFor } from '../packages/dav-store/src/listing';
+import {
+  PAGE_SIZE_OPTIONS,
+  clampPage,
+  clampPageSize,
+  hasEntries,
+  hasNextPage,
+  pageCountFor,
+  readStoredPageSize,
+} from '../apps/web/src/lib/davPage';
+import {
+  clampPageNumber,
+  clampPageSize as clampServerPageSize,
+  clampPageToCollection,
+  offsetForPage,
+  pageCountFor as serverPageCountFor,
+} from '../packages/dav-store/src/listing';
 
 /**
  * `?page=` and `?limit=` are user-supplied, so the clamps are the security

@@ -2,9 +2,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { CurrentUser } from '../../types';
 import { renameCurrentUsername, loadCurrentUser } from '../../services/userService';
-import { Button } from '../ui/Button';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
-import { Input, Label } from '../ui/Input';
+import { Button, Card, CardHeader, CardTitle, Input, Label } from '@rexezuge/web';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
 
 export function ProfileSettingsCard({

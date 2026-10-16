@@ -6,7 +6,7 @@
  * only thing that makes them worth keeping.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { KvCache } from '@rexezuge/runtime';
+import { KvCache, resetBreakerForTests } from '@rexezuge/runtime';
 import { DavConditionalGuard } from '../apps/background/src/dav/DavConditionalGuard';
 import { DatabaseError, NotFoundError } from '@rexezuge/errors';
 import { VerificationCache } from '../apps/background/src/dav/CredentialVerifierDO';
@@ -15,10 +15,13 @@ import { VolumeService } from '../packages/backend-services/src/dav/VolumeServic
 import type { UserIdentityService } from '@rexezuge/identity';
 
 // `KvCache` logs through a module-level logger rather than an injected one, so
-// the purge-cap warning is asserted through this spy.
-const loggerWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => undefined);
+// the purge-cap warning is asserted through this spy. Its circuit breaker is
+// per-isolate state too, so it is reset between tests here as well: one test's
+// failing binding would otherwise serve every later one from the fallback.
+const loggerWarnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 afterEach(() => {
   loggerWarnSpy.mockClear();
+  resetBreakerForTests();
 });
 
 // ---------------------------------------------------------------------------
@@ -194,9 +197,10 @@ describe('VerificationCache boundary behaviour (the 401 premise)', () => {
 // ---------------------------------------------------------------------------
 // 4. `DatabaseError` carries `cause`.
 //
-// `BaseDAO.firstWithRetry` threw `new DatabaseError(msg, retryable)` and dropped
-// the original error, even though the class accepts `{ cause }`. Every
-// downstream `error.message` was therefore a one-liner with no stack.
+// The retry path threw `new DatabaseError(msg, retryable)` and dropped the
+// original error, even though the class accepts `{ cause }`. Every downstream
+// `error.message` was therefore a one-liner with no stack. The wrapper is the
+// kit's now (`BaseDAO.first`/`all`/`run`); these pin the class it constructs.
 // ---------------------------------------------------------------------------
 describe('DatabaseError keeps its cause', () => {
   it('retains the original error for the stack chain', () => {
@@ -234,7 +238,9 @@ describe('requireCallerAccount separates "no account" from "outage"', () => {
   };
 
   it('a null account is a NotFoundError', async () => {
-    await expect(withIdentity(() => Promise.resolve(null)).requireCallerAccount('nobody@example.com')).rejects.toBeInstanceOf(NotFoundError);
+    await expect(withIdentity(() => Promise.resolve(null)).requireCallerAccount('nobody@example.com')).rejects.toBeInstanceOf(
+      NotFoundError,
+    );
   });
 
   it('a DatabaseError propagates so the route maps it to 503, not 404', async () => {
@@ -263,7 +269,10 @@ describe('KvCache.purgePrefix page cap', () => {
 
   it('deletes everything when the listing drains before the cap', async () => {
     const namespace = {
-      list: vi.fn().mockResolvedValueOnce({ keys: keys(3) }).mockResolvedValueOnce({ keys: [] }),
+      list: vi
+        .fn()
+        .mockResolvedValueOnce({ keys: keys(3) })
+        .mockResolvedValueOnce({ keys: [] }),
       delete: vi.fn().mockResolvedValue(undefined),
     };
     const cache = new KvCache(namespace as never);

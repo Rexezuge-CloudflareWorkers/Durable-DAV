@@ -34,17 +34,26 @@ class DavReplicationConflictDAO extends BaseDAO {
     kind: 'conflict' | 'deletion';
     now: number;
   }): Promise<void> {
-    await this.run('INSERT INTO dav_replication_conflicts (conflict_id, replication_id, path, winner, kept_path, kind, detected_at) VALUES (?, ?, ?, ?, ?, ?, ?)', [input.conflictId, input.replicationId, input.path, input.winner, input.keptPath, input.kind, input.now]);
+    await this.run(
+      'INSERT INTO dav_replication_conflicts (conflict_id, replication_id, path, winner, kept_path, kind, detected_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
+      [input.conflictId, input.replicationId, input.path, input.winner, input.keptPath, input.kind, input.now],
+    );
   }
 
   public async listByReplication(replicationId: string, includeResolved: boolean, limit = 200): Promise<DavReplicationConflictRow[]> {
-    return this.all<DavReplicationConflictRow>(`SELECT * FROM dav_replication_conflicts
+    return this.all<DavReplicationConflictRow>(
+      `SELECT * FROM dav_replication_conflicts
              WHERE replication_id = ? ${includeResolved ? '' : 'AND resolved_at IS NULL'}
-             ORDER BY detected_at DESC LIMIT ?`, [replicationId, limit]);
+             ORDER BY detected_at DESC LIMIT ?`,
+      [replicationId, limit],
+    );
   }
 
   public async countUnresolved(replicationId: string): Promise<number> {
-    const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_replication_conflicts WHERE replication_id = ? AND resolved_at IS NULL', [replicationId]);
+    const row = await this.first<{ cnt: number }>(
+      'SELECT COUNT(*) AS cnt FROM dav_replication_conflicts WHERE replication_id = ? AND resolved_at IS NULL',
+      [replicationId],
+    );
     return row?.cnt ?? 0;
   }
 
@@ -57,10 +66,12 @@ class DavReplicationConflictDAO extends BaseDAO {
    * the same bytes over a file a user may have edited since.
    */
   public async markResolved(replicationId: string, conflictId: string, now: number): Promise<boolean> {
-    const result = await this.run('UPDATE dav_replication_conflicts SET resolved_at = ? WHERE conflict_id = ? AND replication_id = ? AND resolved_at IS NULL', [now, conflictId, replicationId]);
+    const result = await this.run(
+      'UPDATE dav_replication_conflicts SET resolved_at = ? WHERE conflict_id = ? AND replication_id = ? AND resolved_at IS NULL',
+      [now, conflictId, replicationId],
+    );
     return (result.meta?.changes ?? 0) > 0;
   }
-
 }
 
 export { DavReplicationConflictDAO };

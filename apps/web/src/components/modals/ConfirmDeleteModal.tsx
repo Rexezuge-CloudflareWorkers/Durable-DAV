@@ -1,14 +1,22 @@
 import { AlertTriangle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { ModalShell } from '@rexezuge/web';
-import { Button } from '../ui/Button';
+import { Button, ModalShell } from '@rexezuge/web';
 
 /**
- * Styled delete confirmation kept local: the kit's `ConfirmDeleteModal` takes
- * the same message/label props but renders unstyled buttons, while this app's
- * destructive dialogs use the themed `ghost`/`danger` pair. The frame is the
- * kit's (`ModalShell`, with its Escape handling and corner close); the chrome
- * stays this app's. Revisit when the kit styles its own.
+ * The themed delete confirmation: the kit's `ModalShell` frame (Escape
+ * handling, corner close) with this app's chrome inside it.
+ *
+ * Deliberately not the kit's `ConfirmDeleteModal`, which takes the same
+ * message/label props but renders two bare `<button>`s — no tone, no icon, no
+ * focus ring — so adopting it would drop the `ghost`/`danger` pair out of the
+ * app's most destructive dialogs. That is the family's reading too: all five
+ * repos that own this dialog keep their own skin over the kit's frame, and the
+ * kit's version is imported by none of them. The kit's own docs describe its
+ * `message`-as-prop contract as the point (no translation dependency), which is
+ * exactly what a *frame* should offer; the skin is this file's whole job.
+ *
+ * A caller reaches for `TypeToConfirmModal` (kit) when the name must be retyped
+ * — the bucket Danger Zone — and this one when a single confirm is the gate.
  */
 export function ConfirmDeleteModal({
   title,

@@ -32,11 +32,11 @@ const logger = createLogger('CronTasks');
  * the replication rows, which is where the owner and the auto-disable counter
  * both see them. Must never throw for the same reason — a throw here would be
  * attributed to the *task*, not to the target, and would take the credential
- * prune down with it. The kit template's own catch is the second net.
+ * prune down with it. The kit template logs and re-throws, and the phase
+ * runner's per-task catch is the net that keeps that from happening.
  */
 class ReplicationSyncTask extends AbstractScheduledTask {
   public readonly name = 'ReplicationSyncTask';
-  public readonly phase: 1 | 2 = 2;
 
   protected getTaskType(): string | null {
     return null;

@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../ui/Button';
-import { Input, Label, Select } from '../ui/Input';
+import { Button, Input, Label, Select } from '@rexezuge/web';
 import { createReplication, REPLICATION_MODES } from '../../services/replicationService';
 import type { CreateReplicationInput, ReplicationMode } from '../../services/replicationService';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
@@ -103,7 +102,7 @@ export function VolumeReplicationForm({
       // Sent only where the server accepts it. `true` on any other mode is a 400,
       // so this is derived from the mode rather than being a checkbox that can be
       // left ticked while the mode changes underneath it.
-      ...((mode === 'pull-only') && { mirrorDeletions }),
+      ...(mode === 'pull-only' && { mirrorDeletions }),
       intervalMinutes,
     };
     try {
@@ -149,7 +148,10 @@ export function VolumeReplicationForm({
             onChange={(e) => setRemoteUrl(e.target.value)}
           />
           <p className="text-xs text-[var(--color-text-muted)]">
-            {t('replication.httpsOnly', 'Https Only. Loopback And Private Network Addresses Are Blocked Unless The Operator Has Allowed Them.')}
+            {t(
+              'replication.httpsOnly',
+              'Https Only. Loopback And Private Network Addresses Are Blocked Unless The Operator Has Allowed Them.',
+            )}
           </p>
         </div>
       ) : (
@@ -167,14 +169,23 @@ export function VolumeReplicationForm({
 
       <div className="space-y-1.5">
         <Label htmlFor="replication-remote-path">{t('replication.remotePath', 'Subdirectory (Optional)')}</Label>
-        <Input id="replication-remote-path" value={remotePath} onChange={(e) => setRemotePath(e.target.value)} placeholder="backups/bucket" />
+        <Input
+          id="replication-remote-path"
+          value={remotePath}
+          onChange={(e) => setRemotePath(e.target.value)}
+          placeholder="backups/bucket"
+        />
       </div>
 
       {targetKind === 'dav' && (
         <>
           <div className="space-y-1.5">
             <Label htmlFor="replication-auth-kind">{t('replication.authKind', 'Authentication')}</Label>
-            <Select id="replication-auth-kind" value={authKind} onChange={(e) => setAuthKind(e.target.value as 'none' | 'basic' | 'bearer')}>
+            <Select
+              id="replication-auth-kind"
+              value={authKind}
+              onChange={(e) => setAuthKind(e.target.value as 'none' | 'basic' | 'bearer')}
+            >
               <option value="none">{t('replication.authNone', 'None')}</option>
               <option value="basic">{t('replication.authBasic', 'Basic (Username And Password)')}</option>
               <option value="bearer">{t('replication.authBearer', 'Bearer Token')}</option>
@@ -213,7 +224,7 @@ export function VolumeReplicationForm({
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div className="space-y-1.5">
-          <Label htmlFor="replication-mode">{t('replication.mode', 'Sync Mode')}</Label>
+          <Label htmlFor="replication-mode">{t('replication.modeLabel', 'Sync Mode')}</Label>
           <Select id="replication-mode" value={mode} onChange={(e) => setMode(e.target.value as ReplicationMode)}>
             {MODES.map((option) => (
               <option key={option} value={option}>

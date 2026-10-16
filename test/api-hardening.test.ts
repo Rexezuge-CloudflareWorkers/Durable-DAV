@@ -1,12 +1,6 @@
 import { describe, expect, it, beforeEach } from 'vitest';
 import { Hono } from 'hono';
-import {
-  RATE_LIMIT_DEFS,
-  registerRateLimits,
-  resetRateLimitForTests,
-  clientIp,
-  rateLimit,
-} from '../apps/api/src/middleware';
+import { RATE_LIMIT_DEFS, registerRateLimits, resetRateLimitForTests, clientIp, rateLimit } from '../apps/api/src/middleware';
 import { invalidatesReadCache } from '../apps/api/src/workers/routes/DavReadCache';
 import { acceptsHtml as acceptsHtmlForTest } from '../apps/api/src/workers/acceptsHtml';
 import { MAX_XML_BODY_BYTES, readCappedBody, readCappedText, exceedsDeclaredLength } from '@durable-dav/webdav';
@@ -157,7 +151,7 @@ describe('rate limiting is actually wired', () => {
   });
 
   it('groups anonymous callers without a trusted CF-Connecting-IP', () => {
-    expect(clientIp(() => undefined)).toBe('unknown');
+    expect(clientIp(() => {})).toBe('unknown');
   });
 });
 

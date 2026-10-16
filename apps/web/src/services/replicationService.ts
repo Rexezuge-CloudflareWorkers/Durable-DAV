@@ -1,4 +1,4 @@
-import type { BucketReplication, ReplicationConflict,  } from '../types';
+import type { BucketReplication, ReplicationConflict } from '../types';
 import { apiDelete, apiGet, apiPatch, apiPost } from '../lib/api';
 
 /**
@@ -145,11 +145,7 @@ export async function runReplicationNow(
   );
 }
 
-export async function listReplicationConflicts(
-  owner: string,
-  volume: string,
-  replicationId: string,
-): Promise<ReplicationConflict[]> {
+export async function listReplicationConflicts(owner: string, volume: string, replicationId: string): Promise<ReplicationConflict[]> {
   const data = await apiGet<{ conflicts?: ReplicationConflict[] }>(
     `${replicationBase(owner, volume)}/${encodeURIComponent(replicationId)}/conflicts`,
   );
@@ -169,5 +165,4 @@ export async function resolveReplicationConflict(
   return data.resolved;
 }
 
-
-export {type CreatedBucketReplication} from '../types';
+export { type CreatedBucketReplication } from '../types';

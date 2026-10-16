@@ -1,0 +1,10 @@
+[
+  "apps/background/src/replication/ReplicationRunner.ts",
+  "apps/background/src/dav/DavRepository.ts",
+  "apps/background/src/DavVolumeWorker.ts",
+  "apps/web/src/views/volume/useVolumeMutations.ts",
+  "apps/background/src/replication/remote/DavHttpRemote.ts",
+  "apps/web/src/views/VolumeView.tsx",
+  "packages/backend-services/src/replication/buildReplicationPlan.ts",
+  "apps/api/src/workers/routes/DavReadCache.ts"
+]

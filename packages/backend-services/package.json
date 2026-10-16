@@ -29,12 +29,12 @@
     "@durable-dav/backend-data": "workspace:*",
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/shared": "workspace:*",
-    "@rexezuge/d1": "^1.2.0",
-    "@rexezuge/errors": "^1.2.0",
-    "@rexezuge/http": "^1.5.2",
-    "@rexezuge/identity": "^1.2.0",
-    "@rexezuge/runtime": "^1.5.2",
-    "@rexezuge/shared": "^1.5.2"
+    "@rexezuge/d1": "^1.9.0",
+    "@rexezuge/errors": "^1.9.0",
+    "@rexezuge/http": "^1.9.0",
+    "@rexezuge/identity": "^1.9.0",
+    "@rexezuge/runtime": "^1.9.0",
+    "@rexezuge/shared": "^1.9.0"
   },
   "devDependencies": {
     "@types/node": "26.6.4",

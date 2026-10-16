@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
-import { LanguageSelector } from '@rexezuge/web';
+import { Card, CardHeader, CardTitle, LanguageSelector } from '@rexezuge/web';
 import { SUPPORTED_LANGUAGES } from '../../i18n';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
 
 export function LanguageSettingsCard({
   language,

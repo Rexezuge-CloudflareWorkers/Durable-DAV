@@ -212,15 +212,21 @@ describe('Durable-DAV lifecycle (buckets + WebDAV Class 1/2)', () => {
     expect(refresh.status).toBe(200);
     expect(await refresh.text()).toContain('<depth>infinity</depth>');
 
-    expect((await SELF.fetch('https://example.com/test/photos/dir', { method: 'UNLOCK', headers: { ...auth, 'Lock-Token': token } })).status).toBe(204);
+    expect(
+      (await SELF.fetch('https://example.com/test/photos/dir', { method: 'UNLOCK', headers: { ...auth, 'Lock-Token': token } })).status,
+    ).toBe(204);
 
     // Released: the same write that was refused now succeeds, so the 423 above
     // came from this lock and not from something else about the path.
-    expect((await SELF.fetch('https://example.com/test/photos/dir/child.txt', {
-      method: 'PUT',
-      headers: { ...otherAuth, 'Content-Type': 'text/plain' },
-      body: 'overwritten',
-    })).status).toBe(204);
+    expect(
+      (
+        await SELF.fetch('https://example.com/test/photos/dir/child.txt', {
+          method: 'PUT',
+          headers: { ...otherAuth, 'Content-Type': 'text/plain' },
+          body: 'overwritten',
+        })
+      ).status,
+    ).toBe(204);
   });
 
   it('PATCH visibility and DELETE bucket (danger zone)', async () => {

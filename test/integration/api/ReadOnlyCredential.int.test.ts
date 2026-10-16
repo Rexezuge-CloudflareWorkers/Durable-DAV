@@ -44,7 +44,10 @@ beforeAll(async () => {
   expect([201, 400]).toContain(created.status);
 });
 
-async function mintCredential(name: string, readOnly?: boolean): Promise<{ username: string; password: string; credentialId: string; readOnly: boolean }> {
+async function mintCredential(
+  name: string,
+  readOnly?: boolean,
+): Promise<{ username: string; password: string; credentialId: string; readOnly: boolean }> {
   const res = await SELF.fetch(`https://example.com/user/volumes/${ownerHandle}/${VOLUME}/credentials`, {
     method: 'POST',
     headers: JSON_HEADERS,
@@ -185,7 +188,7 @@ describe('read-only credentials over the real DAV plane', () => {
     expect(res.status).toBe(404);
   });
 
-  it('does not let a non-owner flip a credential on someone else\'s bucket', async () => {
+  it("does not let a non-owner flip a credential on someone else's bucket", async () => {
     // The credential plane answers 403 rather than 404: this is the owner's own
     // management surface, so hiding existence buys nothing. The caller is fixed
     // by `DEV_AUTH_EMAIL` in the test env, so the foreign bucket is the part

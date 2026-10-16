@@ -3,9 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { DavHrefPrefixMode, VolumeDetail } from '../../types';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
 import { updateVolume } from '../../services/volumeService';
-import { Button } from '../ui/Button';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
-import { Label, Select } from '../ui/Input';
+import { Button, Card, CardHeader, CardTitle, Label, Select } from '@rexezuge/web';
 
 /**
  * Per-bucket `DAV:href` anchoring.

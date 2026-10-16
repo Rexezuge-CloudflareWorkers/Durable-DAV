@@ -40,7 +40,9 @@ async function seedPreReadOnly(): Promise<void> {
   await DB.prepare('INSERT INTO users (email, created_at, id, current_email, username, updated_at) VALUES (?, ?, ?, ?, ?, ?)')
     .bind('alice@example.com', now, 'usr_aaa', 'alice@example.com', 'alice', now)
     .run();
-  await DB.prepare('INSERT INTO user_emails (email, user_id, is_verified, created_at) VALUES (?, ?, 1, ?)').bind('alice@example.com', 'usr_aaa', now).run();
+  await DB.prepare('INSERT INTO user_emails (email, user_id, is_verified, created_at) VALUES (?, ?, 1, ?)')
+    .bind('alice@example.com', 'usr_aaa', now)
+    .run();
   await DB.prepare('INSERT INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)')
     .bind('alice', 'user', 'alice@example.com', 'usr_aaa', now)
     .run();
@@ -100,7 +102,9 @@ describe('0005 leaves existing credentials writable', () => {
     await seedPreReadOnly();
     await applyMigrations(DB, { from: READ_ONLY, to: READ_ONLY });
 
-    const row = await DB.prepare('SELECT read_only FROM dav_credentials WHERE credential_id = ?').bind('cred-1').first<{ read_only: number }>();
+    const row = await DB.prepare('SELECT read_only FROM dav_credentials WHERE credential_id = ?')
+      .bind('cred-1')
+      .first<{ read_only: number }>();
     // The whole safety story of the migration. `1` here would lock the owner
     // out of their own bucket with no error and no way to diagnose it.
     expect(row?.read_only).toBe(0);
@@ -120,7 +124,9 @@ describe('0005 leaves existing credentials writable', () => {
       .bind('cred-legacy-shape', 'vol-alice', 'photos-quiet-otter-5678', 'hash-2', 'omitted', 'ddav_cd', 'efgh', now, now + 86_400)
       .run();
 
-    const row = await DB.prepare('SELECT read_only FROM dav_credentials WHERE credential_id = ?').bind('cred-legacy-shape').first<{ read_only: number }>();
+    const row = await DB.prepare('SELECT read_only FROM dav_credentials WHERE credential_id = ?')
+      .bind('cred-legacy-shape')
+      .first<{ read_only: number }>();
     expect(row?.read_only).toBe(0);
   });
 
@@ -129,16 +135,18 @@ describe('0005 leaves existing credentials writable', () => {
     // in a state no code path knows how to read.
     await applyMigrations(DB);
     await seedPreReadOnly();
-    await expect(
-      DB.prepare('UPDATE dav_credentials SET read_only = 2 WHERE credential_id = ?').bind('cred-1').run(),
-    ).rejects.toThrow(/CHECK constraint failed|constraint/u);
+    await expect(DB.prepare('UPDATE dav_credentials SET read_only = 2 WHERE credential_id = ?').bind('cred-1').run()).rejects.toThrow(
+      /CHECK constraint failed|constraint/u,
+    );
   });
 
   it('round-trips an explicit read-only credential', async () => {
     await applyMigrations(DB);
     await seedPreReadOnly();
     await DB.prepare('UPDATE dav_credentials SET read_only = 1 WHERE credential_id = ?').bind('cred-1').run();
-    const row = await DB.prepare('SELECT read_only FROM dav_credentials WHERE credential_id = ?').bind('cred-1').first<{ read_only: number }>();
+    const row = await DB.prepare('SELECT read_only FROM dav_credentials WHERE credential_id = ?')
+      .bind('cred-1')
+      .first<{ read_only: number }>();
     expect(row?.read_only).toBe(1);
   });
 });

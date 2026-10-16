@@ -38,7 +38,11 @@ const dav = (innerPath = ''): string => `https://example.com/${ownerHandle}/${VO
 async function propfind(path: string, headers: Record<string, string>): Promise<Response> {
   return SELF.fetch(path, {
     method: 'PROPFIND',
-    headers: { Authorization: basic(credential.username, credential.password), 'Content-Type': 'application/xml; charset=utf-8', ...headers },
+    headers: {
+      Authorization: basic(credential.username, credential.password),
+      'Content-Type': 'application/xml; charset=utf-8',
+      ...headers,
+    },
     body: PROPFIND_BODY,
   });
 }
@@ -51,7 +55,9 @@ async function propfind(path: string, headers: Record<string, string>): Promise<
  * base and the self-response for us.
  */
 function entryPaths(xml: string): string[] {
-  return parseMultistatus(xml, '', `/${ownerHandle}/${VOLUME}`).map((e) => e.path).sort();
+  return parseMultistatus(xml, '', `/${ownerHandle}/${VOLUME}`)
+    .map((e) => e.path)
+    .sort();
 }
 
 beforeAll(async () => {

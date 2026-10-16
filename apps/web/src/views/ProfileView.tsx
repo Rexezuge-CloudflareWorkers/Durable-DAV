@@ -2,13 +2,11 @@ import { useEffect, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { UserRound } from 'lucide-react';
-import { ContextBar } from '@rexezuge/web';
+import { Card, ContextBar, LoadingSpinner } from '@rexezuge/web';
 import type { UserProfile } from '../types';
 import { loadProfile } from '../services/profileService';
 import { toLocalizedErrorMessage } from '../lib/backendErrors';
-import { Card } from '../components/ui/Card';
 import { Logo } from '../components/layout/Logo';
-import { LoadingSpinner } from '@rexezuge/web';
 
 export function ProfileView({ showNotice }: { showNotice: (type: 'success' | 'error', text: string) => void }) {
   const { username = '' } = useParams<{ username: string }>();

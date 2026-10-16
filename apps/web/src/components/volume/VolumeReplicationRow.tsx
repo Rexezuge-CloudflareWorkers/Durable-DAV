@@ -1,8 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import type { BucketReplication } from '../../types';
 import { intervalLabel, targetLabel } from '../../services/replicationService';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
+import { Badge, Button } from '@rexezuge/web';
 
 const STATUS_VARIANTS: Record<string, 'success' | 'warning' | 'error' | 'neutral'> = {
   ok: 'success',
@@ -72,9 +71,7 @@ export function VolumeReplicationRow({
             */}
             {replication.mode === 'pull-only' && (
               <Badge variant={replication.mirrorDeletions ? 'warning' : 'neutral'}>
-                {replication.mirrorDeletions
-                  ? t('replication.exactMirror', 'Exact Mirror')
-                  : t('replication.safeCopy', 'Safe Copy')}
+                {replication.mirrorDeletions ? t('replication.exactMirror', 'Exact Mirror') : t('replication.safeCopy', 'Safe Copy')}
               </Badge>
             )}
           </p>
@@ -91,10 +88,7 @@ export function VolumeReplicationRow({
 
       {replication.passInFlight && (
         <p className="text-xs text-[var(--color-text-muted)]">
-          {t(
-            'replication.passInFlight',
-            'A Sync Pass Is In Progress. Deletions Propagate Only After A Pass Finishes Without Errors.',
-          )}
+          {t('replication.passInFlight', 'A Sync Pass Is In Progress. Deletions Propagate Only After A Pass Finishes Without Errors.')}
         </p>
       )}
 

@@ -29,10 +29,7 @@ type Call = { op: string; arg?: string };
  * exercise the gate pass `complete: false` explicitly, so every listing in this
  * file states whether it is trustworthy rather than relying on a bare array.
  */
-function listing(
-  entries: RemoteEntry[],
-  complete = true,
-): { entries: RemoteEntry[]; complete: boolean } {
+function listing(entries: RemoteEntry[], complete = true): { entries: RemoteEntry[]; complete: boolean } {
   return { entries, complete };
 }
 
@@ -44,7 +41,9 @@ function listing(
  * credential path only exists in the real code, and a test that replaces it is a
  * test that cannot catch a bug in it.
  */
-function localStub(overrides: Partial<LocalReplicaStub> = {}): LocalReplicaStub & { applied: Recorded[]; state: ReplicaStateRow[]; calls: Call[] } {
+function localStub(
+  overrides: Partial<LocalReplicaStub> = {},
+): LocalReplicaStub & { applied: Recorded[]; state: ReplicaStateRow[]; calls: Call[] } {
   const applied: Recorded[] = [];
   const state: ReplicaStateRow[] = [];
   const calls: Call[] = [];
@@ -95,7 +94,14 @@ function siblingStub(files: Record<string, string>, overrides: Partial<LocalRepl
         Object.keys(files)
           .filter((name) => name !== path && (path === '' || name.startsWith(`${path}/`)))
           .map((name) => {
-            const entry = { path: name, isCollection: false, etag: `"${name}-v1"`, mtime: 1000, size: files[name]?.length ?? 1, contentType: 'text/plain' };
+            const entry = {
+              path: name,
+              isCollection: false,
+              etag: `"${name}-v1"`,
+              mtime: 1000,
+              size: files[name]?.length ?? 1,
+              contentType: 'text/plain',
+            };
             return path === '' ? entry : { ...entry, path: name.slice(path.length + 1) };
           }),
       ));
@@ -155,7 +161,15 @@ function recordingDAO() {
   return {
     runs,
     async beginPass() {},
-    async recordRun(_id: string, status: string, error: string | null, _now: number, _max: number, _cursor: string | null, remaining: number) {
+    async recordRun(
+      _id: string,
+      status: string,
+      error: string | null,
+      _now: number,
+      _max: number,
+      _cursor: string | null,
+      remaining: number,
+    ) {
       runs.push({ status, error, remaining });
     },
     async deleteById() {},
@@ -208,11 +222,14 @@ describe('ReplicationRunner — pass bookkeeping', () => {
 
   it('never throws, and records the failure on the row instead', async () => {
     // One unreachable target must not abort the rest of the cron sweep.
-    const target = siblingStub({}, {
-      listReplicaChildren: async () => {
-        throw new Error('target is down');
+    const target = siblingStub(
+      {},
+      {
+        listReplicaChildren: async () => {
+          throw new Error('target is down');
+        },
       },
-    });
+    );
     const { runner, dao } = build({ remote: target });
     const result = await runner.runSlice();
     expect(result.status).toBe('failed');
@@ -278,11 +295,14 @@ describe('ReplicationRunner — the deletion gate', () => {
     // through a listing that did not complete is not evidence of anything. The
     // sibling's RPC throws rather than returning `[]` for exactly this reason.
     const stub = localStub({ listReplicaChildren: async () => listing([]), loadReplicaStateRows: async () => [baseRow('gone.txt')] });
-    const target = siblingStub({}, {
-      listReplicaChildren: async () => {
-        throw new Error('sibling dofs unavailable');
+    const target = siblingStub(
+      {},
+      {
+        listReplicaChildren: async () => {
+          throw new Error('sibling dofs unavailable');
+        },
       },
-    });
+    );
     const { runner } = build({ stub, remote: target });
     const result = await runner.runSlice();
     expect(target.calls.some((call) => call.op === 'unlink')).toBe(false);
@@ -324,7 +344,10 @@ describe('ReplicationRunner — the deletion gate', () => {
     // Symmetric to the remote case. A partial local listing omits paths, and each
     // omission would read as "not here" and queue a pull that overwrites a good
     // local copy with a stale remote one.
-    const stub = localStub({ listReplicaChildren: async () => listing([], false), loadReplicaStateRows: async () => [baseRow('keep.txt')] });
+    const stub = localStub({
+      listReplicaChildren: async () => listing([], false),
+      loadReplicaStateRows: async () => [baseRow('keep.txt')],
+    });
     const { runner, target } = build({ stub, remoteFiles: { 'keep.txt': 'remote' } });
     const result = await runner.runSlice();
     expect(target.calls.some((call) => call.op === 'write')).toBe(false);
@@ -437,7 +460,14 @@ describe('ReplicationRunner — transfers', () => {
   });
 
   it('writes a conflict copy rather than overwriting, in keep-both', async () => {
-    const localFile: RemoteEntry = { path: 'a.txt', isCollection: false, etag: '"local-v2"', mtime: 2000, size: 3, contentType: 'text/plain' };
+    const localFile: RemoteEntry = {
+      path: 'a.txt',
+      isCollection: false,
+      etag: '"local-v2"',
+      mtime: 2000,
+      size: 3,
+      contentType: 'text/plain',
+    };
     const stub = localStub({
       listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []),
       readReplicaStream: async () => new Response('abc').body,
@@ -492,7 +522,14 @@ describe('ReplicationRunner — pull-only', () => {
     const localEtag = options?.localEtag ?? '"l-v2"';
     const remoteEtag = options?.remoteEtag ?? '"r-v1"';
     const localBody = options?.localBody ?? 'local bytes';
-    const localFile: RemoteEntry = { path: 'a.txt', isCollection: false, etag: localEtag, mtime: 1000, size: localBody.length, contentType: 'text/plain' };
+    const localFile: RemoteEntry = {
+      path: 'a.txt',
+      isCollection: false,
+      etag: localEtag,
+      mtime: 1000,
+      size: localBody.length,
+      contentType: 'text/plain',
+    };
     return localStub({
       listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []),
       readReplicaStream: async () => new Response(localBody).body,
@@ -542,7 +579,9 @@ describe('ReplicationRunner — pull-only', () => {
   it('never writes upstream when only the remote changed', async () => {
     const stub = localStub({
       listReplicaChildren: async (path: string) =>
-        listing(path === '' ? [{ path: 'a.txt', isCollection: false, etag: '"l-v1"', mtime: 1000, size: 1, contentType: 'text/plain' }] : []),
+        listing(
+          path === '' ? [{ path: 'a.txt', isCollection: false, etag: '"l-v1"', mtime: 1000, size: 1, contentType: 'text/plain' }] : [],
+        ),
       loadReplicaStateRows: async () => [
         {
           replicationId: 'rep_1',
@@ -569,11 +608,17 @@ describe('ReplicationRunner — pull-only', () => {
     const localFile: RemoteEntry = { path: 'a.txt', isCollection: false, etag: '"l-v1"', mtime: 1000, size: 1, contentType: 'text/plain' };
     const stub = localStub({ listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []) });
 
-    const safe = build({ stub: localStub({ listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []) }), row: { mode: 'pull-only', mirror_deletions: 0 } });
+    const safe = build({
+      stub: localStub({ listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []) }),
+      row: { mode: 'pull-only', mirror_deletions: 0 },
+    });
     await safe.runner.runSlice();
     expect(safe.stub.applied.some((operation) => operation.op === 'unlink')).toBe(false);
 
-    const mirror = build({ stub: localStub({ listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []) }), row: { mode: 'pull-only', mirror_deletions: 1 } });
+    const mirror = build({
+      stub: localStub({ listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []) }),
+      row: { mode: 'pull-only', mirror_deletions: 1 },
+    });
     await mirror.runner.runSlice();
     expect(mirror.stub.applied.some((operation) => operation.op === 'unlink' && operation.path === 'a.txt')).toBe(true);
     // The remote is still never written, whatever the flag says.
@@ -666,7 +711,13 @@ describe('ReplicationRunner — credential handling', () => {
     // surface as `failed`, not as an unauthenticated request.
     const { runner, dao } = build({
       env: { REPLICATION_ENCRYPTION_KEY: key },
-      row: { target_kind: 'dav', remote_url: 'https://dav.example.com/f', auth_kind: 'basic', encrypted_secret: envelope.ciphertext, secret_iv: envelope.iv },
+      row: {
+        target_kind: 'dav',
+        remote_url: 'https://dav.example.com/f',
+        auth_kind: 'basic',
+        encrypted_secret: envelope.ciphertext,
+        secret_iv: envelope.iv,
+      },
     });
     const result = await runner.runSlice();
     expect(result.status).toBe('failed');
@@ -708,13 +759,19 @@ describe('ReplicationRunner — credential handling', () => {
     expect(atob(String(header).replace('Basic ', ''))).toBe('alice:hunter2');
   });
 
-it('reports a decryption failure instead of skipping authentication', async () => {
+  it('reports a decryption failure instead of skipping authentication', async () => {
     // Reporting it as `failed` is correct; skipping auth would let the remote
     // answer 401 and the owner would debug a key problem as a target problem.
     const envelope = await encryptSecret('user:pw', generateReplicationKey());
     const { runner, dao } = build({
       env: { REPLICATION_ENCRYPTION_KEY: generateReplicationKey() },
-      row: { target_kind: 'dav', remote_url: 'https://dav.example.com/f', auth_kind: 'basic', encrypted_secret: envelope.ciphertext, secret_iv: envelope.iv },
+      row: {
+        target_kind: 'dav',
+        remote_url: 'https://dav.example.com/f',
+        auth_kind: 'basic',
+        encrypted_secret: envelope.ciphertext,
+        secret_iv: envelope.iv,
+      },
     });
     const result = await runner.runSlice();
     expect(result.status).toBe('failed');
@@ -745,17 +802,28 @@ describe('ReplicationRunner — the ambiguity hash', () => {
 
   it('agrees when the two sides hash equal, without transferring either', async () => {
     const body = BIG;
-    const localFile: RemoteEntry = { path: 'a.txt', isCollection: false, etag: '"l"', mtime: 1000, size: body.length, contentType: 'text/plain' };
+    const localFile: RemoteEntry = {
+      path: 'a.txt',
+      isCollection: false,
+      etag: '"l"',
+      mtime: 1000,
+      size: body.length,
+      contentType: 'text/plain',
+    };
     const stubLocal = localStub({
       // One entry at any depth: the file sits at the root, so the walk never descends
       // and the listing answer is the same whatever it asks for.
       listReplicaChildren: async () => listing([localFile]),
       readReplicaBytes: async () => localBytes(body),
     });
-    const target = siblingStub({}, {
-      listReplicaChildren: async () => listing([{ path: 'a.txt', isCollection: false, etag: '"r"', mtime: 1000, size: body.length, contentType: 'text/plain' }]),
-      readReplicaStream: async () => new Response(body).body,
-    });
+    const target = siblingStub(
+      {},
+      {
+        listReplicaChildren: async () =>
+          listing([{ path: 'a.txt', isCollection: false, etag: '"r"', mtime: 1000, size: body.length, contentType: 'text/plain' }]),
+        readReplicaStream: async () => new Response(body).body,
+      },
+    );
     const { runner, stub: applied } = build({ stub: stubLocal, remote: target, env: { REPLICATION_HASH_ON_AMBIGUOUS: 'true' } });
     await runner.runSlice();
     // Equal hashes mean agreement: nothing is pushed, nothing is pulled, and the base
@@ -765,12 +833,17 @@ describe('ReplicationRunner — the ambiguity hash', () => {
   });
 
   it('applies the winning side when the hashes differ', async () => {
-    const { runner, stub: applied, target } = build({
+    const {
+      runner,
+      stub: applied,
+      target,
+    } = build({
       stub: localStub({
         // A newer local mtime so `sync` has a decidable winner. Without one the two
         // sides tie and the planner resolves to keep-both before it ever hashes —
         // which is correct, and would leave the hash path untested.
-        listReplicaChildren: async () => listing([{ path: 'a.txt', isCollection: false, etag: '"l2"', mtime: 2000, size: 4, contentType: 'text/plain' }]),
+        listReplicaChildren: async () =>
+          listing([{ path: 'a.txt', isCollection: false, etag: '"l2"', mtime: 2000, size: 4, contentType: 'text/plain' }]),
         loadReplicaStateRows: async () => [
           {
             replicationId: 'rep_1',
@@ -815,7 +888,13 @@ describe('ReplicationRunner — configuration and credentials', () => {
     const envelope = await encryptSecret('tok-123', key);
     const { runner, target } = build({
       env: { REPLICATION_ENCRYPTION_KEY: key },
-      row: { target_kind: 'dav', remote_url: 'https://dav.example.com/f', auth_kind: 'bearer', encrypted_secret: envelope.ciphertext, secret_iv: envelope.iv },
+      row: {
+        target_kind: 'dav',
+        remote_url: 'https://dav.example.com/f',
+        auth_kind: 'bearer',
+        encrypted_secret: envelope.ciphertext,
+        secret_iv: envelope.iv,
+      },
       stub: localStub(),
     });
     // The HTTP path is stubbed at `buildRemote` in this file, so what is asserted here
@@ -828,14 +907,10 @@ describe('ReplicationRunner — configuration and credentials', () => {
   it('reports a missing DAV_VOLUME binding rather than throwing', async () => {
     const row = replicationRow();
     const dao = recordingDAO();
-    const runner = new ReplicationRunner(
-      { DB: {} as never } as never,
-      row,
-      'alice',
-      'demo',
-      localStub(),
-      { replicationDAO: dao as never, conflictDAO: { record: async () => undefined } as never },
-    );
+    const runner = new ReplicationRunner({ DB: {} as never } as never, row, 'alice', 'demo', localStub(), {
+      replicationDAO: dao as never,
+      conflictDAO: { record: async () => {} } as never,
+    });
     // A misconfigured deployment must degrade to a recorded failure, not a 500 from the
     // cron worker.
     const result = await runner.runSlice();
@@ -852,7 +927,8 @@ describe('ReplicationRunner — configuration and credentials', () => {
   it('records a conflict even when the audit write fails', async () => {
     const { runner } = build({
       stub: localStub({
-        listReplicaChildren: async () => listing([{ path: 'a.txt', isCollection: false, etag: '"l2"', mtime: 2000, size: 3, contentType: 'text/plain' }]),
+        listReplicaChildren: async () =>
+          listing([{ path: 'a.txt', isCollection: false, etag: '"l2"', mtime: 2000, size: 3, contentType: 'text/plain' }]),
         readReplicaStream: async () => new Response('abc').body,
       }),
       remote: siblingStub({ 'a.txt': 'remote version' }),
@@ -898,7 +974,9 @@ describe('ReplicationRunner — trailing-slash collection hrefs', () => {
     const fetchImpl = async (input: string, init?: RequestInit): Promise<Response> => {
       const method = init?.method ?? 'GET';
       if (method === 'PROPFIND') {
-        const entries = input.endsWith('/docs') ? [coll(`${BASE}/docs/`), file(`${BASE}/docs/b.txt`)] : [coll(`${BASE}/`), coll(`${BASE}/docs/`)];
+        const entries = input.endsWith('/docs')
+          ? [coll(`${BASE}/docs/`), file(`${BASE}/docs/b.txt`)]
+          : [coll(`${BASE}/`), coll(`${BASE}/docs/`)];
         return new Response(ms(entries), { status: 207 });
       }
       if (method === 'PUT') {
@@ -911,7 +989,9 @@ describe('ReplicationRunner — trailing-slash collection hrefs', () => {
       fetchImpl,
       stub: localStub({
         listReplicaChildren: async (path: string) =>
-          listing(path === '' ? [{ path: 'a.txt', isCollection: false, etag: '"l1"', mtime: 1000, size: 11, contentType: 'text/plain' }] : []),
+          listing(
+            path === '' ? [{ path: 'a.txt', isCollection: false, etag: '"l1"', mtime: 1000, size: 11, contentType: 'text/plain' }] : [],
+          ),
         readReplicaStream: async () => new Response('local bytes').body,
       }),
       row: { target_kind: 'dav', remote_url: BASE, remote_path: '', auth_kind: 'none' },

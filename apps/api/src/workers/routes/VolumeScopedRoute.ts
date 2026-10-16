@@ -65,7 +65,9 @@ const FORBIDDEN_BODY = { Exception: { Type: 'Forbidden', Message: 'Forbidden' } 
  */
 function requireUser(c: ApiContext): Response | { email: string; userId: string | null } {
   const email = c.get('AuthenticatedUserEmailAddress');
-  return typeof email !== 'string' || email === '' ? c.json(UNAUTHORIZED_BODY, 401) : { email: email.toLowerCase(), userId: (c.get('AuthenticatedUserId')) ?? null };
+  return typeof email !== 'string' || email === ''
+    ? c.json(UNAUTHORIZED_BODY, 401)
+    : { email: email.toLowerCase(), userId: c.get('AuthenticatedUserId') ?? null };
 }
 
 /**

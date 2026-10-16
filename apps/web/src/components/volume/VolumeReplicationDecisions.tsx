@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { ReplicationConflict } from '../../types';
-import { Button } from '../ui/Button';
+import { Button } from '@rexezuge/web';
 
 /**
  * The recorded decisions for one target.
@@ -48,16 +48,10 @@ export function VolumeReplicationDecisions({
             <p className="text-xs text-[var(--color-text-muted)]">
               {conflict.kind === 'deletion'
                 ? t('replication.deletionPropagated', 'Deletion Propagated. {{winner}} Side Was Removed.', {
-                    winner:
-                      conflict.winner === 'local'
-                        ? t('replication.thisBucket', 'This Bucket')
-                        : t('replication.remote', 'Remote'),
+                    winner: conflict.winner === 'local' ? t('replication.thisBucket', 'This Bucket') : t('replication.remote', 'Remote'),
                   })
                 : t('replication.conflictResolved', 'Both Sides Changed. {{winner}} Side Was Kept.', {
-                    winner:
-                      conflict.winner === 'local'
-                        ? t('replication.thisBucket', 'This Bucket')
-                        : t('replication.remote', 'Remote'),
+                    winner: conflict.winner === 'local' ? t('replication.thisBucket', 'This Bucket') : t('replication.remote', 'Remote'),
                   })}
             </p>
             {conflict.keptPath !== null && (

@@ -63,7 +63,7 @@ async function moveOneVolume(env: Env, move: VolumeMoveItem): Promise<{ empty: b
     await source.deleteVolume();
     return { empty: entries.length === 0 };
   } catch (error) {
-    await target.deleteVolume().catch(() => undefined);
+    await target.deleteVolume().catch(() => {});
     throw error;
   }
 }

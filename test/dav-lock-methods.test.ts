@@ -111,20 +111,47 @@ describe('handleLock', () => {
     const response = await handleLock(lock('a.txt', lockBody()), 'a.txt', BASES, deps(repo, sql) as never);
     expect(response.status).toBe(201);
     expect(response.headers.get('Lock-Token')).toMatch(/^<urn:uuid:[0-9a-f-]+>$/);
-    expect(sql.exec).toHaveBeenCalledWith(expect.stringContaining('INSERT INTO dav_locks'), expect.anything(), 'a.txt', expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything());
+    expect(sql.exec).toHaveBeenCalledWith(
+      expect.stringContaining('INSERT INTO dav_locks'),
+      expect.anything(),
+      'a.txt',
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+    );
   });
 
   it('200s a refresh with an empty body', async () => {
     const repo = seeded();
     const token = crypto.randomUUID();
     const sql = fakeSql([
-      { token, path: 'a.txt', scope: 'exclusive', depth: '0', owner: 'tester', timeout: 3600, // `expires_at` is compared against `Date.now()` (milliseconds) by the
-      // `readLocks` query, not against seconds.
-      expires_at: Date.now() + 3_600_000, root: '/alice/photos/a.txt' },
+      {
+        token,
+        path: 'a.txt',
+        scope: 'exclusive',
+        depth: '0',
+        owner: 'tester',
+        timeout: 3600, // `expires_at` is compared against `Date.now()` (milliseconds) by the
+        // `readLocks` query, not against seconds.
+        expires_at: Date.now() + 3_600_000,
+        root: '/alice/photos/a.txt',
+      },
     ]);
-    const response = await handleLock(lock('a.txt', '', { 'If': `(<urn:uuid:${token}>)` }), 'a.txt', BASES, deps(repo, sql) as never);
+    const response = await handleLock(lock('a.txt', '', { If: `(<urn:uuid:${token}>)` }), 'a.txt', BASES, deps(repo, sql) as never);
     expect(response.status).toBe(200);
-    expect(sql.exec).toHaveBeenCalledWith(expect.stringContaining('UPDATE dav_locks'), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), token);
+    expect(sql.exec).toHaveBeenCalledWith(
+      expect.stringContaining('UPDATE dav_locks'),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      expect.anything(),
+      token,
+    );
   });
 
   it('400s Depth: infinity on a non-collection', async () => {
@@ -143,12 +170,10 @@ describe('handleLock', () => {
 
   it('423s when the target is locked by another client', async () => {
     const repo = seeded();
-    const response = await handleLock(
-      lock('a.txt', lockBody()),
-      'a.txt',
-      BASES,
-      { ...deps(repo, fakeSql()), locks: fakeLocks({ lockedPaths: ['a.txt'] }) } as never,
-    );
+    const response = await handleLock(lock('a.txt', lockBody()), 'a.txt', BASES, {
+      ...deps(repo, fakeSql()),
+      locks: fakeLocks({ lockedPaths: ['a.txt'] }),
+    } as never);
     expect(response.status).toBe(423);
   });
 
@@ -156,7 +181,11 @@ describe('handleLock', () => {
     // A LOCK reporting success with no stored row leaves the client's token
     // authorising nothing, and every later write unblocked.
     const repo = seeded();
-    const sql = { exec: vi.fn(() => { throw new Error('SQLITE_BUSY'); }) };
+    const sql = {
+      exec: vi.fn(() => {
+        throw new Error('SQLITE_BUSY');
+      }),
+    };
     const response = await handleLock(lock('a.txt', lockBody()), 'a.txt', BASES, deps(repo, sql as never) as never);
     expect(response.status).toBe(500);
   });
@@ -169,7 +198,16 @@ describe('handleLock', () => {
     const repo = seeded();
     const other = crypto.randomUUID();
     const sql = fakeSql([
-      { token: other, path: 'dir', scope: 'shared', depth: '0', owner: 'someone-else', timeout: 3600, expires_at: Date.now() + 3_600_000, root: '/alice/photos/dir' },
+      {
+        token: other,
+        path: 'dir',
+        scope: 'shared',
+        depth: '0',
+        owner: 'someone-else',
+        timeout: 3600,
+        expires_at: Date.now() + 3_600_000,
+        root: '/alice/photos/dir',
+      },
     ]);
     const response = await handleLock(lock('dir', lockBody('shared')), 'dir', BASES, deps(repo, sql) as never);
     expect(response.status).toBe(201);
@@ -183,7 +221,16 @@ describe('handleLock', () => {
   it('423s a new exclusive lock where a shared one already exists', async () => {
     const repo = seeded();
     const sql = fakeSql([
-      { token: crypto.randomUUID(), path: 'dir', scope: 'shared', depth: '0', owner: 'someone-else', timeout: 3600, expires_at: Date.now() + 3_600_000, root: '/alice/photos/dir' },
+      {
+        token: crypto.randomUUID(),
+        path: 'dir',
+        scope: 'shared',
+        depth: '0',
+        owner: 'someone-else',
+        timeout: 3600,
+        expires_at: Date.now() + 3_600_000,
+        root: '/alice/photos/dir',
+      },
     ]);
     const response = await handleLock(lock('dir', lockBody('exclusive')), 'dir', BASES, deps(repo, sql) as never);
     expect(response.status).toBe(423);

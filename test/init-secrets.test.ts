@@ -31,19 +31,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { parse } from 'jsonc-parser';
 import { decryptSecret, encryptSecret } from '@rexezuge/d1';
-import {
-  canProvisionSecret,
-  parseSecretNames,
-  planSecrets,
-  provisionableSecretNames,
-  provisionSecretValue,
-} from '../scripts/init-secrets';
+import { canProvisionSecret, parseSecretNames, planSecrets, provisionableSecretNames, provisionSecretValue } from '../scripts/init-secrets';
 
 const initSecretsScript = fileURLToPath(new URL('../scripts/init-secrets.ts', import.meta.url));
 
-const template = parse(
-  readFileSync(fileURLToPath(new URL('../apps/api/wrangler.template.jsonc', import.meta.url)), 'utf8'),
-) as { secrets_store_secrets?: Array<{ binding?: string; secret_name?: string }> };
+const template = parse(readFileSync(fileURLToPath(new URL('../apps/api/wrangler.template.jsonc', import.meta.url)), 'utf8')) as {
+  secrets_store_secrets?: Array<{ binding?: string; secret_name?: string }>;
+};
 
 const declaredSecretNames = (): string[] => (template.secrets_store_secrets ?? []).map((secret) => secret.secret_name ?? '');
 
@@ -57,7 +51,10 @@ const secretTable = (...names: string[]): string =>
     '┌───────────────────────────┬──────────┬─────────┬─────────┬─────────┬──────────────────────┬──────────────────────┐',
     '│ Name                      │ ID       │ Comment │ Scopes  │ Status  │ Created              │ Modified             │',
     '├───────────────────────────┼──────────┼─────────┼─────────┼─────────┼──────────────────────┼──────────────────────┤',
-    ...names.map((name, index) => `│ ${name.padEnd(25)} │ ${String(index).padEnd(8)} │         │ workers │ active  │ 10/9/2026, 4:12:00 PM │ 10/9/2026, 4:12:00 PM │`),
+    ...names.map(
+      (name, index) =>
+        `│ ${name.padEnd(25)} │ ${String(index).padEnd(8)} │         │ workers │ active  │ 10/9/2026, 4:12:00 PM │ 10/9/2026, 4:12:00 PM │`,
+    ),
     '└───────────────────────────┴──────────┴─────────┴─────────┴─────────┴──────────────────────┴──────────────────────┘',
   ].join('\n');
 
@@ -210,9 +207,7 @@ describe('a failed run exits non-zero', () => {
       // stack frames as sources, and its source-map reader crashed on them —
       // so the one test whose whole job is to prove a failure is *reported*
       // failed by taking the reporter down with it.
-      const detail = `${result.stdout}${result.stderr}`
-        .split('\n')
-        .find((line) => line.trimStart().startsWith('Error:'));
+      const detail = `${result.stdout}${result.stderr}`.split('\n').find((line) => line.trimStart().startsWith('Error:'));
       expect(result.status, `child reported: ${detail ?? '(nothing)'}`).toBe(1);
       expect(result.stderr).toContain('unprovisionable');
     } finally {

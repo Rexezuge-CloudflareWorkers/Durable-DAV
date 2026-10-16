@@ -218,5 +218,5 @@ async function handleUnlock(request: Request, innerPath: string, deps: UnlockDep
 }
 
 export { handleLock, handleUnlock };
-export type {  UnlockDeps };
-export {type LockDeps} from './lockPhases';
+export type { UnlockDeps };
+export { type LockDeps } from './lockPhases';
