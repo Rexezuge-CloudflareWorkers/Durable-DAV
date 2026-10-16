@@ -36,10 +36,7 @@ interface HandleClaim {
 class UserService {
   private readonly deps: Required<UserServiceDeps>;
 
-  constructor(
-    env: UserServiceEnv,
-    deps: UserServiceDeps = {},
-  ) {
+  constructor(env: UserServiceEnv, deps: UserServiceDeps = {}) {
     this.deps = {
       userDAO: () => Promise.resolve(new UserDAO(env.DB)),
       userEmailDAO: () => Promise.resolve(new UserEmailDAO(env.DB)),
@@ -125,7 +122,7 @@ class UserService {
         // `namespaces` absent — keep the reserved-derived value.
       }
       if (!taken) {
-        const userMatch = await dao.getByUsernameCi(ci).catch(() => undefined);
+        const userMatch = await dao.getByUsernameCi(ci).catch(() => {});
         taken = Boolean(userMatch);
       }
       if (!taken) return candidate;
@@ -278,7 +275,7 @@ class UserService {
     const userMatch = await this.deps
       .userDAO()
       .then((dao) => dao.getByUsernameCi(handleCi))
-      .catch(() => undefined);
+      .catch(() => {});
     // `!= null` rather than `!== undefined`: the kit's DAO answers absence with
     // `null`, and a test-injected stub may return either — both mean "no such
     // row".

@@ -58,7 +58,7 @@ async function readCappedBody(request: Request, maxBytes: number): Promise<BodyR
     total += value.byteLength;
     if (total > maxBytes) {
       // Stop pulling; the caller answers 413 without waiting for the rest.
-      await reader.cancel().catch(() => undefined);
+      await reader.cancel().catch(() => {});
       return { ok: false, reason: 'too-large' };
     }
     chunks.push(value);

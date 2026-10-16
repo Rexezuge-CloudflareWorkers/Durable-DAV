@@ -54,9 +54,18 @@ function createCredentialFakeDb() {
       },
       run(): Promise<{ success: boolean; meta?: { changes?: number } }> {
         if (q.startsWith('INSERT INTO dav_credentials')) {
-          const [credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, read_only] = params as Array<
-            string | number
-          >;
+          const [
+            credential_id,
+            volume_id,
+            username,
+            password_hash,
+            name,
+            password_prefix,
+            password_last_four,
+            created_at,
+            expires_at,
+            read_only,
+          ] = params as Array<string | number>;
           if (state.rows.some((r) => r.username === username)) {
             throw new Error('UNIQUE constraint failed: dav_credentials.username');
           }

@@ -2,8 +2,6 @@ import { RemoteUnavailableError } from '@durable-dav/backend-services/replicatio
 import type { RemoteEntry, RemoteListing, RemoteVolume } from '@durable-dav/backend-services/replication';
 import { normalizeVolumeKey, stripSlashes as trimSlashes } from '@durable-dav/webdav';
 
-
-
 /**
  * The RPC surface this adapter needs from a volume Durable Object.
  *
@@ -140,7 +138,9 @@ class DavVolumeRemote implements RemoteVolume {
     try {
       return await this.stub.listReplicaChildren(innerPath);
     } catch (error) {
-      throw new RemoteUnavailableError(`listing ${innerPath} on the sibling volume failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new RemoteUnavailableError(
+        `listing ${innerPath} on the sibling volume failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 
@@ -229,7 +229,9 @@ class DavVolumeRemote implements RemoteVolume {
   public async remove(path: string, options: { ifMatch: string | null; recursive: boolean }): Promise<void> {
     if (path === '') throw new RemoteUnavailableError('refusing to delete the replication root');
     const inner = this.withRoot(path);
-    const result = await this.stub.applyReplicaOperations(this.replicationId, [{ op: 'unlink', path: inner, recursive: options.recursive }]);
+    const result = await this.stub.applyReplicaOperations(this.replicationId, [
+      { op: 'unlink', path: inner, recursive: options.recursive },
+    ]);
     if (result.failed > 0) {
       throw new RemoteUnavailableError(`deleting ${inner} from the sibling volume failed: ${result.error ?? 'unknown error'}`);
     }
@@ -242,7 +244,9 @@ class DavVolumeRemote implements RemoteVolume {
       // compliance is not in question the way a third-party server's is.
       return { davClasses: ['1', '2'] };
     } catch (error) {
-      throw new RemoteUnavailableError(`sibling volume ${this.stubKey} could not be read: ${error instanceof Error ? error.message : String(error)}`);
+      throw new RemoteUnavailableError(
+        `sibling volume ${this.stubKey} could not be read: ${error instanceof Error ? error.message : String(error)}`,
+      );
     }
   }
 

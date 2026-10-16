@@ -36,7 +36,8 @@ describe('VolumeService quota hardening', () => {
   // The quota counts by account key (migration 0004), not by address: a user who
   // changed address still owns the same buckets, and an email-keyed count would
   // read as zero and let them exceed the limit.
-  const identity = () => Promise.resolve({ resolveAccount: async () => ({ id: 'usr_a', email: 'a@x.co', anchorEmail: 'a@x.co', username: 'alice' }) } as never);
+  const identity = () =>
+    Promise.resolve({ resolveAccount: async () => ({ id: 'usr_a', email: 'a@x.co', anchorEmail: 'a@x.co', username: 'alice' }) } as never);
 
   it('prefers COUNT(*) over listing rows', async () => {
     let listed = false;
@@ -100,7 +101,10 @@ describe('VolumeService quota hardening', () => {
       { DB: {} as never },
       {
         volumeDAO: () => Promise.resolve({ getByOwnerName: async () => null } as never),
-        identity: () => Promise.resolve({ resolveAccount: async () => ({ id: 'usr_a', email: 'a@x.co', anchorEmail: 'a@x.co', username: null }) } as never),
+        identity: () =>
+          Promise.resolve({
+            resolveAccount: async () => ({ id: 'usr_a', email: 'a@x.co', anchorEmail: 'a@x.co', username: null }),
+          } as never),
         credentialDAO: () => Promise.resolve({} as never),
       },
     );

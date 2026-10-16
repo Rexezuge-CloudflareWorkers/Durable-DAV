@@ -1,7 +1,7 @@
 import { useTranslation } from 'react-i18next';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { PAGE_SIZE_OPTIONS, hasEntries, hasNextPage, pageCountFor } from '../../lib/davPage';
-import { Button } from '../../components/ui/Button';
+import { Button } from '@rexezuge/web';
 
 /**
  * Paging controls for the file listing.
@@ -77,15 +77,27 @@ function VolumeFilePager({
             ))}
           </select>
         </label>
-        <Button variant="secondary" size="sm" disabled={!canGoBack} onClick={() => onPageChange(page - 1)} aria-label={t('files.previousPage', 'Previous Page')}>
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!canGoBack}
+          onClick={() => onPageChange(page - 1)}
+          aria-label={t('files.previousPage', 'Previous Page')}
+        >
           <ChevronLeft className="h-3.5 w-3.5" />
-          {t('files.previousPage', 'Previous')}
+          {t('files.previous', 'Previous')}
         </Button>
         <span className="text-xs text-[var(--color-text-muted)] tabular-nums">
           {t('files.pageOf', 'Page {{page}} of {{pageCount}}', { page, pageCount })}
         </span>
-        <Button variant="secondary" size="sm" disabled={!canGoForward} onClick={() => onPageChange(page + 1)} aria-label={t('files.nextPage', 'Next Page')}>
-          {t('files.nextPage', 'Next')}
+        <Button
+          variant="secondary"
+          size="sm"
+          disabled={!canGoForward}
+          onClick={() => onPageChange(page + 1)}
+          aria-label={t('files.nextPage', 'Next Page')}
+        >
+          {t('files.next', 'Next')}
           <ChevronRight className="h-3.5 w-3.5" />
         </Button>
       </div>

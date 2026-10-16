@@ -73,7 +73,14 @@ interface ReplicaStub {
    * listing is expressible without each case spelling the wrapper by hand.
    */
   listReplicaChildren: (path: string) => Promise<{
-    entries: Array<{ path: string; isCollection: boolean; etag: string | null; mtime: number | null; size: number | null; contentType: string | null }>;
+    entries: Array<{
+      path: string;
+      isCollection: boolean;
+      etag: string | null;
+      mtime: number | null;
+      size: number | null;
+      contentType: string | null;
+    }>;
     complete: boolean;
   }>;
   readReplicaStream: (path: string) => Promise<ReadableStream<Uint8Array> | null>;
@@ -209,7 +216,7 @@ describe('DavVolumeRemote — reads and writes', () => {
 
   it('stats by asking the parent collection', async () => {
     const target = stub({
-      listReplicaChildren: async (path: string) => (listing(path === 'sub' ? [{ ...ENTRY, path: 'sub/a.txt' }] : [])),
+      listReplicaChildren: async (path: string) => listing(path === 'sub' ? [{ ...ENTRY, path: 'sub/a.txt' }] : []),
     });
     const { remote } = adapter(target, { remotePath: 'sub' });
     expect((await remote.stat('a.txt'))?.path).toBe('a.txt');

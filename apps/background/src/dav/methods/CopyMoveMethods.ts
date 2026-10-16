@@ -1,5 +1,12 @@
 import type { DofsFs } from '@durable-dav/dav-store';
-import { createdResponse, getParentPath, getRequestLockTokens, isSameOrDescendantPath, parseDestinationPath, renderMultiStatusFailures } from '@durable-dav/webdav';
+import {
+  createdResponse,
+  getParentPath,
+  getRequestLockTokens,
+  isSameOrDescendantPath,
+  parseDestinationPath,
+  renderMultiStatusFailures,
+} from '@durable-dav/webdav';
 import { MAX_PATH_DEPTH, fsPathOf, hrefOf, isValidInnerPath, stripBase } from '../DavContext';
 import type { DavBases } from '../DavContext';
 import type { DavLockGuard } from '../DavLockGuard';

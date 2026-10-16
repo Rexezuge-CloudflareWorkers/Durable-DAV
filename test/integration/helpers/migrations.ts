@@ -195,9 +195,10 @@ async function applyMigrationFile(db: D1Database, file: MigrationFile): Promise<
   } catch (error) {
     // A batch reports only the file's single failure, so name the statement.
     throw new Error(
-      `${file.name}: batch of ${statements.length} statements failed: ${
-        stripLeadingComments(statements.at(-1) ?? '').slice(0, 200)
-      }\n${error instanceof Error ? error.message : String(error)}`,
+      `${file.name}: batch of ${statements.length} statements failed: ${stripLeadingComments(statements.at(-1) ?? '').slice(
+        0,
+        200,
+      )}\n${error instanceof Error ? error.message : String(error)}`,
       { cause: error },
     );
   }

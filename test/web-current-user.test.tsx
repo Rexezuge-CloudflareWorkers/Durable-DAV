@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { render, waitFor } from '@testing-library/react';
 import type { CurrentUser } from '~/types';
@@ -31,7 +30,7 @@ const ME: CurrentUser = {
 Models `SpaApp`: an inline arrow, i.e. a new identity on every render.
 */
 function UnstableCaller({ onRender }: { onRender: () => void }) {
-  const { user } = useCurrentUser(() => undefined);
+  const { user } = useCurrentUser(() => {});
   onRender();
   return <span>{user?.username ?? 'loading'}</span>;
 }
@@ -64,7 +63,7 @@ describe('useCurrentUser', () => {
     const reload = vi.fn();
 
     function StableCaller() {
-      const api = useCurrentUser(() => undefined);
+      const api = useCurrentUser(() => {});
       reload.mockImplementation(api.reload);
       return <span>{api.user?.username ?? 'loading'}</span>;
     }

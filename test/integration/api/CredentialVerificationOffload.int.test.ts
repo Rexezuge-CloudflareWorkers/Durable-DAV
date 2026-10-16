@@ -3,7 +3,6 @@ import { DavCredentialUtil } from '../../../packages/shared/src/utils/DavCredent
 import { SELF, env } from 'cloudflare:test';
 import { setupIntegrationTest, ensureUser } from '../helpers/setup';
 
-
 /**
  * Password verification offload, end-to-end over real D1 and a real DO.
  *
@@ -133,10 +132,10 @@ describe('credential verification offload over real D1 + DO', () => {
     // on every request even when the derivation is served from the memo.
     const cred = await mintCredential('revoked');
     expect((await propfind(basic(cred.username, cred.password))).status).toBe(207);
-    const deleted = await SELF.fetch(
-      `https://example.com/user/volumes/${ownerHandle}/${VOLUME}/credentials/${cred.credentialId}`,
-      { method: 'DELETE', headers: JSON_HEADERS },
-    );
+    const deleted = await SELF.fetch(`https://example.com/user/volumes/${ownerHandle}/${VOLUME}/credentials/${cred.credentialId}`, {
+      method: 'DELETE',
+      headers: JSON_HEADERS,
+    });
     expect(deleted.status).toBe(200);
     expect((await propfind(basic(cred.username, cred.password))).status).toBe(401);
   });
@@ -146,10 +145,11 @@ describe('credential verification offload over real D1 + DO', () => {
     // request, so the memo cannot serve a stale authorization decision.
     const cred = await mintCredential('flag-flip', true);
     expect((await propfind(basic(cred.username, cred.password))).status).toBe(207);
-    const patched = await SELF.fetch(
-      `https://example.com/user/volumes/${ownerHandle}/${VOLUME}/credentials/${cred.credentialId}`,
-      { method: 'PATCH', headers: JSON_HEADERS, body: JSON.stringify({ readOnly: false }) },
-    );
+    const patched = await SELF.fetch(`https://example.com/user/volumes/${ownerHandle}/${VOLUME}/credentials/${cred.credentialId}`, {
+      method: 'PATCH',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ readOnly: false }),
+    });
     expect(patched.status).toBe(200);
     const put = await SELF.fetch(`https://example.com/${ownerHandle}/${VOLUME}/allowed.txt`, {
       method: 'PUT',
@@ -162,13 +162,10 @@ describe('credential verification offload over real D1 + DO', () => {
   it('rehashes a legacy digest in place on first use', async () => {
     const cred = await mintCredential('legacy-upgrade');
     const testEnv = env as unknown as TestEnv;
-    const legacy = Array.from(
-      new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cred.password))),
-      (byte) => byte.toString(16).padStart(2, '0'),
+    const legacy = Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(cred.password))), (byte) =>
+      byte.toString(16).padStart(2, '0'),
     ).join('');
-    await testEnv.DB.prepare('UPDATE dav_credentials SET password_hash = ? WHERE credential_id = ?')
-      .bind(legacy, cred.credentialId)
-      .run();
+    await testEnv.DB.prepare('UPDATE dav_credentials SET password_hash = ? WHERE credential_id = ?').bind(legacy, cred.credentialId).run();
 
     // First use: the legacy digest verifies and is upgraded.
     expect((await propfind(basic(cred.username, cred.password))).status).toBe(207);

@@ -49,7 +49,9 @@ left behind in the old Durable Object.
 */
 async function snapshotOwnedVolumes(c: ApiContext, userId: string | null, email: string): Promise<Array<{ id: string; name: string }>> {
   const dao = await BaseRoute.getScope(c).get(Tokens.DavVolumeDAO)();
-  const rows = userId ? await dao.listByOwnerUserId(userId, RENAME_SNAPSHOT_LIMIT) : await dao.listByOwnerEmail(email, RENAME_SNAPSHOT_LIMIT);
+  const rows = userId
+    ? await dao.listByOwnerUserId(userId, RENAME_SNAPSHOT_LIMIT)
+    : await dao.listByOwnerEmail(email, RENAME_SNAPSHOT_LIMIT);
   const seen = new Set<string>();
   const out: Array<{ id: string; name: string }> = [];
   for (const row of rows) {
@@ -193,9 +195,7 @@ async function handleUserProfile(c: ApiContext): Promise<Response> {
   const username = (c.req.param('username') ?? '').trim();
   const user = await BaseRoute.getScope(c).get(Tokens.UserService).getByUsername(username);
   const resolved = user?.username;
-  return typeof resolved === 'string' && resolved !== ''
-    ? c.json({ username: resolved })
-    : BaseRoute.jsonError(c, 'User not found', 404);
+  return typeof resolved === 'string' && resolved !== '' ? c.json({ username: resolved }) : BaseRoute.jsonError(c, 'User not found', 404);
 }
 
 function registerUserProfileRoutes(app: App): void {

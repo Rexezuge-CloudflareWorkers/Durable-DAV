@@ -20,9 +20,12 @@ class DavCredentialDAO extends BaseDAO {
   ): Promise<DavCredentialMetadata> {
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const credentialId = UUIDUtil.getRandomUUID();
-    await this.run(`INSERT INTO dav_credentials
+    await this.run(
+      `INSERT INTO dav_credentials
               (credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, read_only)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [credentialId, volumeId, username, passwordHash, name, passwordPrefix, passwordLastFour, now, expiresAt, readOnly ? 1 : 0]);
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [credentialId, volumeId, username, passwordHash, name, passwordPrefix, passwordLastFour, now, expiresAt, readOnly ? 1 : 0],
+    );
     const credential = await this.getById(credentialId);
     if (!credential) throw new Error('Failed to load DAV credential after create.');
     return credential;
@@ -49,35 +52,41 @@ class DavCredentialDAO extends BaseDAO {
     username: string,
   ): Promise<(DavCredentialMetadata & { volumeId: string; passwordHash: string }) | undefined> {
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
-    // `firstWithRetry`, not a bare `.first()`: this is the auth hot path, and
-    // `DavAuth` maps a `DatabaseError` here to a 503 "Authentication
-    // unavailable". A bare `.first()` rejects with a raw `D1_ERROR` — not a
-    // `DatabaseError` — so that documented branch was unreachable and a D1 blip
-    // surfaced as an opaque 500. Retrying also matches every write in this DAO,
-    // which always went through `withRetry`.
-    const row = await this.first<DavCredentialInternal>(`SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+    // `BaseDAO.first` is the retrying read: it classifies the failure and
+    // normalizes it to a `DatabaseError`, which is exactly what this path
+    // depends on — `DavAuth` maps a `DatabaseError` to a 503 "Authentication
+    // unavailable", and a raw `D1_ERROR` is not one.
+    const row = await this.first<DavCredentialInternal>(
+      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
              FROM dav_credentials
              WHERE username = ? AND expires_at > ?
-             LIMIT 1`, [username, now]);
+             LIMIT 1`,
+      [username, now],
+    );
     if (!row) return undefined;
     const metadata = this.toMetadata(row);
     return metadata ? { ...metadata, passwordHash: row.password_hash } : undefined;
   }
 
   public async getById(credentialId: string): Promise<DavCredentialMetadata | undefined> {
-    // `firstWithRetry` per this package's rule that no read calls `.first()`
-    // bare: a raw `D1_ERROR` is not a `DatabaseError`, so every documented
-    // `DatabaseError` handler above this read — the 503s in `BaseRoute` — would
-    // be unreachable and a D1 blip would surface as an opaque 500. Three lines
-    // below `getActiveByUsername`, which documents the rule in full.
-    const row = await this.first<DavCredentialInternal>(`SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
-             FROM dav_credentials WHERE credential_id = ? LIMIT 1`, [credentialId]);
+    // `BaseDAO.first` retries and normalizes to a `DatabaseError`, which is what
+    // every documented handler above this read — the 503s in `BaseRoute` — is
+    // written for. Three lines below `getActiveByUsername`, which documents the
+    // rule in full.
+    const row = await this.first<DavCredentialInternal>(
+      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+             FROM dav_credentials WHERE credential_id = ? LIMIT 1`,
+      [credentialId],
+    );
     return row ? this.toMetadata(row) : undefined;
   }
 
   public async listByVolume(volumeId: string): Promise<DavCredentialMetadata[]> {
-    const rows = await this.all<DavCredentialInternal>(`SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
-             FROM dav_credentials WHERE volume_id = ? ORDER BY created_at DESC`, [volumeId]);
+    const rows = await this.all<DavCredentialInternal>(
+      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+             FROM dav_credentials WHERE volume_id = ? ORDER BY created_at DESC`,
+      [volumeId],
+    );
     return rows.map((row) => this.toMetadata(row));
   }
 
@@ -96,9 +105,10 @@ class DavCredentialDAO extends BaseDAO {
   /**
    * Whether a username is already claimed anywhere in D1.
    *
-   * A uniqueness probe, so it is read through `firstWithRetry` like every other
-   * read: the two callers (`ensureUsername`, credential creation) both treat a
-   * throw as "cannot proceed" rather than as "available".
+   * A uniqueness probe, so it fails like every other read rather than
+   * answering: the two callers (`ensureUsername`, credential creation) both
+   * treat a throw as "cannot proceed", where a `false` invented from a failed
+   * query would claim the name is free.
    */
   public async usernameExists(username: string): Promise<boolean> {
     const row = await this.first<{ found: number }>('SELECT 1 AS found FROM dav_credentials WHERE username = ? LIMIT 1', [username]);
@@ -125,11 +135,18 @@ class DavCredentialDAO extends BaseDAO {
    * cannot be used to smuggle a new secret past the copy-once reveal.
    */
   public async updateReadOnly(credentialId: string, volumeId: string, readOnly: boolean): Promise<void> {
-    await this.run('UPDATE dav_credentials SET read_only = ? WHERE credential_id = ? AND volume_id = ?', [readOnly ? 1 : 0, credentialId, volumeId]);
+    await this.run('UPDATE dav_credentials SET read_only = ? WHERE credential_id = ? AND volume_id = ?', [
+      readOnly ? 1 : 0,
+      credentialId,
+      volumeId,
+    ]);
   }
 
   public async updateLastUsed(credentialId: string): Promise<void> {
-    await this.run('UPDATE dav_credentials SET last_used_at = ? WHERE credential_id = ?', [TimestampUtil.getCurrentUnixTimestampInSeconds(), credentialId]);
+    await this.run('UPDATE dav_credentials SET last_used_at = ? WHERE credential_id = ?', [
+      TimestampUtil.getCurrentUnixTimestampInSeconds(),
+      credentialId,
+    ]);
   }
 
   public async deleteForVolume(credentialId: string, volumeId: string): Promise<void> {

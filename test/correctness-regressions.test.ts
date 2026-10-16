@@ -64,7 +64,7 @@ describe('VolumeService.createVolume owner check fails closed', () => {
             countByOwnerUserId: async () => 0,
             getByOwnerName: async () => null,
             getById: async () => null,
-            create: async () => undefined,
+            create: async () => {},
           } as never),
         identity: () => Promise.resolve({ resolveAccount } as never),
         credentialDAO: () => Promise.resolve({} as never),

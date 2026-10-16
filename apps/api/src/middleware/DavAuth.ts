@@ -78,7 +78,7 @@ export interface DavAuthResult {
 function getBasicCredentials(header: string | null): { username: string; password: string } | null {
   if (!header) return null;
   const separator = header.indexOf(' ');
-  if ((separator === -1) || (header.slice(0, separator).toLowerCase() !== 'basic')) return null;
+  if (separator === -1 || header.slice(0, separator).toLowerCase() !== 'basic') return null;
   try {
     const decoded = atob(header.slice(separator + 1).trim());
     const idx = decoded.indexOf(':');
@@ -141,7 +141,10 @@ function hrefModeOf(volume: { href_prefix_mode: string }): DavHrefPrefixMode {
  * A lookup failure is not fatal: the anchor is a safe (if stale) fallback, and
  * this runs after the request has already been authorized.
  */
-async function ownerIdentity(scope: ReturnType<typeof getScope>, volume: DavVolumeRow): Promise<{ userEmail: string; userId: string | null }> {
+async function ownerIdentity(
+  scope: ReturnType<typeof getScope>,
+  volume: DavVolumeRow,
+): Promise<{ userEmail: string; userId: string | null }> {
   const ownerUserId = volume.owner_user_id;
   if (!ownerUserId) return { userEmail: volume.owner_email, userId: null };
   try {
@@ -234,7 +237,7 @@ async function davAuthForVolumeInner(
     }
     // `last_used_at` is genuinely best-effort telemetry; a failure here must
     // not fail an otherwise-valid request.
-    await credentialDAO.updateLastUsed(credential.credentialId).catch(() => undefined);
+    await credentialDAO.updateLastUsed(credential.credentialId).catch(() => {});
     const identity = await ownerIdentity(scope, volume);
     return { ...identity, owner: volume.owner, volume: volume.name, hrefPrefixMode: hrefModeOf(volume) };
   }
@@ -246,7 +249,9 @@ async function davAuthForVolumeInner(
     // An anonymous read is anonymous even on a public bucket: there is no
     // caller to attribute, so this reports no owner identity rather than
     // claiming the volume's owner made the request.
-    return role ? { userEmail: null, userId: null, owner: volume.owner, volume: volume.name, hrefPrefixMode: hrefModeOf(volume) } : unauthorizedDav();
+    return role
+      ? { userEmail: null, userId: null, owner: volume.owner, volume: volume.name, hrefPrefixMode: hrefModeOf(volume) }
+      : unauthorizedDav();
   }
   return unauthorizedDav();
 }

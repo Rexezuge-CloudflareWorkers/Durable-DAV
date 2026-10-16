@@ -41,7 +41,9 @@ async function foreignKeyViolations(): Promise<unknown[]> {
  */
 async function seedPrePullOnly(): Promise<void> {
   const now = nowSeconds();
-  await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)').bind('alice@example.com', now, 'alice', now).run();
+  await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)')
+    .bind('alice@example.com', now, 'alice', now)
+    .run();
   await DB.prepare(
     'INSERT INTO dav_volumes (id, owner_email, owner, name, is_private, created_at, updated_at, owner_ci, name_ci) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)',
   )
@@ -111,7 +113,9 @@ describe('migration 0007 — pull-only replication', () => {
     });
 
     it('copies each mode verbatim and defaults a pre-0007 row to a safe copy', async () => {
-      const rows = await DB.prepare('SELECT replication_id, mode, mirror_deletions, enabled, last_status, created_by FROM dav_replications ORDER BY replication_id').all<{
+      const rows = await DB.prepare(
+        'SELECT replication_id, mode, mirror_deletions, enabled, last_status, created_by FROM dav_replications ORDER BY replication_id',
+      ).all<{
         replication_id: string;
         mode: string;
         mirror_deletions: number;
@@ -129,7 +133,9 @@ describe('migration 0007 — pull-only replication', () => {
     });
 
     it('preserves conflict rows with both kinds and a resolved one', async () => {
-      const rows = await DB.prepare('SELECT conflict_id, kind, kept_path, resolved_at FROM dav_replication_conflicts ORDER BY conflict_id').all<{
+      const rows = await DB.prepare(
+        'SELECT conflict_id, kind, kept_path, resolved_at FROM dav_replication_conflicts ORDER BY conflict_id',
+      ).all<{
         conflict_id: string;
         kind: string;
         kept_path: string | null;
@@ -159,7 +165,9 @@ describe('migration 0007 — pull-only replication', () => {
     beforeEach(async () => {
       await applyMigrations(DB);
       const now = nowSeconds();
-      await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)').bind('a@example.com', now, 'a', now).run();
+      await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)')
+        .bind('a@example.com', now, 'a', now)
+        .run();
       await DB.prepare(
         'INSERT INTO dav_volumes (id, owner_email, owner, name, is_private, created_at, updated_at, owner_ci, name_ci) VALUES (?, ?, ?, ?, 1, ?, ?, ?, ?)',
       )

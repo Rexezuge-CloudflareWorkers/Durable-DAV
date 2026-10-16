@@ -67,7 +67,8 @@ function makeD1(db: Db) {
         run: async () => {
           if (query.startsWith('INSERT INTO namespaces ')) {
             const [usernameCi, kind, userEmail, userId, createdAt] = bindings as [string, string, string | null, string | null, number];
-            if (db.namespaces.some((n) => n.username_ci === usernameCi)) throw new Error('UNIQUE constraint failed: namespaces.username_ci');
+            if (db.namespaces.some((n) => n.username_ci === usernameCi))
+              throw new Error('UNIQUE constraint failed: namespaces.username_ci');
             db.namespaces.push({ username_ci: usernameCi, kind, user_email: userEmail, user_id: userId, created_at: createdAt });
             return { success: true } as never;
           }
@@ -213,9 +214,14 @@ describe('UserService rename with volume cascade', () => {
       userDAO: () =>
         Promise.resolve({
           getById: async () => null,
-          getByCurrentEmail: async () => ({ id: 'usr_alice', email: 'alice@example.com', current_email: 'alice@example.com', username: 'alice' }),
+          getByCurrentEmail: async () => ({
+            id: 'usr_alice',
+            email: 'alice@example.com',
+            current_email: 'alice@example.com',
+            username: 'alice',
+          }),
           getByUsernameCi: async () => null,
-          setUsername: async () => undefined,
+          setUsername: async () => {},
         }) as never,
       userEmailDAO: () => Promise.resolve({ get: async () => null } as never),
       namespaceDAO: () =>
@@ -236,7 +242,7 @@ describe('UserService rename with volume cascade', () => {
             released += 1;
           },
         }) as never,
-      volumeDAO: () => Promise.resolve({ renameOwner: async () => undefined }) as never,
+      volumeDAO: () => Promise.resolve({ renameOwner: async () => {} }) as never,
     });
     await expect(svc.renameUsername('alice@example.com', 'alice2')).resolves.toEqual({
       id: 'usr_alice',
@@ -252,7 +258,12 @@ describe('UserService rename with volume cascade', () => {
       userDAO: () =>
         Promise.resolve({
           getById: async () => null,
-          getByCurrentEmail: async () => ({ id: 'usr_alice', email: 'alice@example.com', current_email: 'alice@example.com', username: 'alice' }),
+          getByCurrentEmail: async () => ({
+            id: 'usr_alice',
+            email: 'alice@example.com',
+            current_email: 'alice@example.com',
+            username: 'alice',
+          }),
           getByUsernameCi: async () => null,
           setUsername: async () => {
             throw new Error('D1 busy');
@@ -262,13 +273,13 @@ describe('UserService rename with volume cascade', () => {
       namespaceDAO: () =>
         Promise.resolve({
           isTaken: async () => false,
-          claim: async () => undefined,
+          claim: async () => {},
           get: async () => null,
           release: async (ci: string) => {
             released = ci;
           },
         }) as never,
-      volumeDAO: () => Promise.resolve({ renameOwner: async () => undefined }) as never,
+      volumeDAO: () => Promise.resolve({ renameOwner: async () => {} }) as never,
     });
     await expect(svc.renameUsername('alice@example.com', 'alice2')).rejects.toThrow('D1 busy');
     expect(released).toBe('alice2');

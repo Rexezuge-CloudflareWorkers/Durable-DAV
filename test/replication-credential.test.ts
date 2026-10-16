@@ -75,7 +75,10 @@ function serviceWith(dao: ReturnType<typeof fakeDAO>): VolumeReplicationService 
   // has to be stated. The service's env interface is deliberately narrow and takes
   // no `ENVIRONMENT`.
   const config = AppConfiguration.fromEnv({ ENVIRONMENT: 'development' });
-  return new VolumeReplicationService({ DB: {} as never, REPLICATION_ENCRYPTION_KEY: KEY }, { replicationDAO: async () => dao as never, config });
+  return new VolumeReplicationService(
+    { DB: {} as never, REPLICATION_ENCRYPTION_KEY: KEY },
+    { replicationDAO: async () => dao as never, config },
+  );
 }
 
 async function openStoredBasic(ciphertext: string, iv: string): Promise<string> {

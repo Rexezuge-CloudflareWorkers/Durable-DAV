@@ -15,7 +15,7 @@ function useVolumeFiles(owner: string, volume: string, path: string, requestedPa
   const [reloadKey, setReloadKey] = useState(0);
   const [notice, setNotice] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   // Server-authoritative paging. `total` is null when the server does not page,
-// which is what switches the view to slicing the full listing client-side.
+  // which is what switches the view to slicing the full listing client-side.
   // `limit` is the limit the *server* applied, not the one we asked for: it is
   // clamped independently in the DO (`MAX_PAGE_SIZE`), so a request for more
   // than that comes back smaller. The view needs the effective value for the

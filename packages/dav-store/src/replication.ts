@@ -129,7 +129,6 @@ function toReplicaState(row: SqlRow): ReplicaStateRow {
   };
 }
 
-
 /**
  * The recorded base for one replication, keyed by path.
  *
@@ -142,12 +141,7 @@ function toReplicaState(row: SqlRow): ReplicaStateRow {
 function loadReplicaState(sql: DurableSqlStorage, replicationId: string): Map<string, ReplicaStateRow> {
   let rows: SqlRow[];
   try {
-    rows = sql
-      .exec(
-        'SELECT * FROM dav_replica_state WHERE replication_id = ? ORDER BY path ASC',
-        replicationId,
-      )
-      .toArray();
+    rows = sql.exec('SELECT * FROM dav_replica_state WHERE replication_id = ? ORDER BY path ASC', replicationId).toArray();
   } catch (error) {
     if (isMissingSchemaError(error)) return new Map();
     throw error;
@@ -234,21 +228,12 @@ function replicaPaths(sql: DurableSqlStorage, replicationId: string): string[] {
   try {
     const rows = sql.exec('SELECT path FROM dav_replica_state WHERE replication_id = ? ORDER BY path ASC', replicationId).toArray();
     return rows.map((row) => text(row, 'path')).filter((path) => path !== '');
-
   } catch (error) {
     if (isMissingSchemaError(error)) return [];
     throw error;
   }
 }
 
-export {
-  ensureReplicationSchema,
-  loadReplicaState,
-  saveReplicaState,
-  forgetReplicaPaths,
-  forgetReplication,
-  replicaPaths,
-  
-};
-export type { ReplicaStateRow, ReplicaStateWrite,  };
-export {subtreePredicate, type DurableSqlStorage} from './meta';
+export { ensureReplicationSchema, loadReplicaState, saveReplicaState, forgetReplicaPaths, forgetReplication, replicaPaths };
+export type { ReplicaStateRow, ReplicaStateWrite };
+export { subtreePredicate, type DurableSqlStorage } from './meta';

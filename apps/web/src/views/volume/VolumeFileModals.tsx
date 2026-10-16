@@ -1,8 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import type { DavEntry } from '../../types';
-import { Button } from '../../components/ui/Button';
-import { Input } from '../../components/ui/Input';
-import { ModalShell } from '@rexezuge/web';
+import { Button, Input, ModalShell } from '@rexezuge/web';
 import { ConfirmDeleteModal } from '../../components/modals/ConfirmDeleteModal';
 
 function VolumeFileModals({
@@ -87,7 +85,12 @@ function VolumeFileModals({
         />
       )}
       {preview && (
-        <ModalShell onClose={onClosePreview} widthClass="w-full max-w-2xl max-h-[82vh] overflow-hidden mx-4" ariaLabel={preview.entry.name} closeLabel={t('common.close', 'Close')}>
+        <ModalShell
+          onClose={onClosePreview}
+          widthClass="w-full max-w-2xl max-h-[82vh] overflow-hidden mx-4"
+          ariaLabel={preview.entry.name}
+          closeLabel={t('common.close', 'Close')}
+        >
           <div className="flex items-center justify-between px-5 py-4 border-b border-[var(--color-border)]">
             <h2 className="text-base font-semibold text-[var(--color-text-primary)] truncate">{preview.entry.name}</h2>
           </div>

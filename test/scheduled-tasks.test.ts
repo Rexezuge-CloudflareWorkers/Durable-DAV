@@ -12,9 +12,10 @@
  *    prune down with it.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-// `TaskRegistry` is imported dynamically *after* the mocks above, so the
-// factories it captures are the mocked tasks rather than the real ones. A static
-// top-level import would be hoisted above `vi.mock` and load the real classes.
+// `TaskRegistry` is imported dynamically *after* the mocks above, so the task
+// classes it instantiates are the mocked ones rather than the real ones. A
+// static top-level import would be hoisted above `vi.mock` and load the real
+// classes.
 
 const runPrune = vi.fn<() => Promise<void>>();
 const runReplication = vi.fn<() => Promise<void>>();
@@ -40,7 +41,7 @@ vi.mock('../apps/background/src/scheduled/ReplicationSyncTask', () => ({
   },
 }));
 
-const { CRON_TASK_FACTORIES, runScheduledTasks: run, tasksForPhase } = await import('../apps/background/src/scheduled/TaskRegistry');
+const { registry, runScheduledTasks: run, tasksForPhase } = await import('../apps/background/src/scheduled/TaskRegistry');
 
 beforeEach(() => {
   // The mocks are module-level, so their call counts would otherwise accumulate
@@ -53,11 +54,12 @@ beforeEach(() => {
 
 describe('task registry', () => {
   it('registers the credential prune in phase 1 and replication in phase 2', () => {
-    const names = CRON_TASK_FACTORIES.map((task) => task.name);
-    expect(names).toContain('ExpiredCredentialPruningTask');
-    expect(names).toContain('ReplicationSyncTask');
-    expect(CRON_TASK_FACTORIES.find((t) => t.name === 'ExpiredCredentialPruningTask')?.phase).toBe(1);
-    expect(CRON_TASK_FACTORIES.find((t) => t.name === 'ReplicationSyncTask')?.phase).toBe(2);
+    // Phase is declared in the registration — the kit's `TaskRegistry` is the
+    // only place that decides it — so this asserts the registry's own view
+    // rather than a `phase` field on each task.
+    expect(registry.phases()).toEqual([1, 2]);
+    expect(tasksForPhase(1).map((t) => t.name)).toEqual(['ExpiredCredentialPruningTask']);
+    expect(tasksForPhase(2).map((t) => t.name)).toEqual(['ReplicationSyncTask']);
   });
 
   it('builds only the requested phase', () => {
@@ -68,7 +70,7 @@ describe('task registry', () => {
   it('adds no cron trigger for replication — it shares the existing sweep', () => {
     // Replication adding a second trigger would give it its own budget, which is
     // what the shared `*/10` budget and the slicing exist to avoid.
-    expect(CRON_TASK_FACTORIES).toHaveLength(2);
+    expect(registry.phases().flatMap((phase) => [...tasksForPhase(phase)])).toHaveLength(2);
   });
 });
 

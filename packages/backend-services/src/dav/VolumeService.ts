@@ -28,10 +28,7 @@ interface VolumeServiceDeps {
 class VolumeService {
   private readonly deps: Required<Pick<VolumeServiceDeps, 'volumeDAO' | 'credentialDAO' | 'identity' | 'config'>>;
 
-  constructor(
-    env: VolumeServiceEnv,
-    deps: VolumeServiceDeps = {},
-  ) {
+  constructor(env: VolumeServiceEnv, deps: VolumeServiceDeps = {}) {
     // One `UserIdentityService` for this instance, not one per call. Its
     // address→account memo is the point of the class — `serviceBindings` binds a
     // single shared instance per request scope for exactly this reason, and this
@@ -236,7 +233,7 @@ class VolumeService {
     // Best-effort credential cleanup. FK cascades cover D1, but explicit
     // deletes keep fake-DB tests honest.
     const credentialDAO = await this.deps.credentialDAO();
-    await credentialDAO.deleteByVolume(volume.id).catch(() => undefined);
+    await credentialDAO.deleteByVolume(volume.id).catch(() => {});
     const dao = await this.deps.volumeDAO();
     await dao.deleteById(volume.id);
   }

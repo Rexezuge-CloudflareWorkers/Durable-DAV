@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 
@@ -17,7 +16,7 @@ vi.mock('react-i18next', () => ({
 
 import { VolumeFilePager } from '../apps/web/src/views/volume/VolumeFilePager';
 
-const NOOP = () => undefined;
+const NOOP = () => {};
 
 /**
  * The pager only renders for a collection that has rows — a folder that failed
@@ -29,12 +28,16 @@ describe('VolumeFilePager', () => {
   it('renders nothing when the server does not page', () => {
     // An older backend behind a router returns a full listing with no paging
     // headers. Showing a pager there would imply more pages than exist.
-    const { container } = render(<VolumeFilePager entries={ROWS} page={1} limit={100} total={null} paged={false} onPageChange={NOOP} onPageSizeChange={NOOP} />);
+    const { container } = render(
+      <VolumeFilePager entries={ROWS} page={1} limit={100} total={null} paged={false} onPageChange={NOOP} onPageSizeChange={NOOP} />,
+    );
     expect(container.firstChild).toBeNull();
   });
 
   it('renders nothing when the whole collection fits on one page', () => {
-    const { container } = render(<VolumeFilePager entries={ROWS} page={1} limit={100} total={12} paged onPageChange={NOOP} onPageSizeChange={NOOP} />);
+    const { container } = render(
+      <VolumeFilePager entries={ROWS} page={1} limit={100} total={12} paged onPageChange={NOOP} onPageSizeChange={NOOP} />,
+    );
     expect(container.firstChild).toBeNull();
   });
 
@@ -47,7 +50,9 @@ describe('VolumeFilePager', () => {
   it('disables Previous on the first page and Next on the last', () => {
     // The accessible names are the long forms ("Previous Page" / "Next Page");
     // the visible labels are the short ones.
-    const { unmount } = render(<VolumeFilePager entries={ROWS} page={1} limit={100} total={250} paged onPageChange={NOOP} onPageSizeChange={NOOP} />);
+    const { unmount } = render(
+      <VolumeFilePager entries={ROWS} page={1} limit={100} total={250} paged onPageChange={NOOP} onPageSizeChange={NOOP} />,
+    );
     expect(screen.getByLabelText('Previous Page').hasAttribute('disabled')).toBe(true);
     expect(screen.getByLabelText('Next Page').hasAttribute('disabled')).toBe(false);
     unmount();
@@ -59,7 +64,9 @@ describe('VolumeFilePager', () => {
 
   it('advances and rewinds by one page', () => {
     const onPageChange = vi.fn();
-    render(<VolumeFilePager entries={ROWS} page={2} limit={100} total={12_431} paged onPageChange={onPageChange} onPageSizeChange={NOOP} />);
+    render(
+      <VolumeFilePager entries={ROWS} page={2} limit={100} total={12_431} paged onPageChange={onPageChange} onPageSizeChange={NOOP} />,
+    );
     fireEvent.click(screen.getByLabelText('Next Page'));
     expect(onPageChange).toHaveBeenCalledWith(3);
     fireEvent.click(screen.getByLabelText('Previous Page'));
@@ -75,7 +82,9 @@ describe('VolumeFilePager', () => {
 
   it('reports a page-size change with the selected value', () => {
     const onPageSizeChange = vi.fn();
-    render(<VolumeFilePager entries={ROWS} page={1} limit={100} total={12_431} paged onPageChange={NOOP} onPageSizeChange={onPageSizeChange} />);
+    render(
+      <VolumeFilePager entries={ROWS} page={1} limit={100} total={12_431} paged onPageChange={NOOP} onPageSizeChange={onPageSizeChange} />,
+    );
     fireEvent.change(screen.getByLabelText('Per Page'), { target: { value: '250' } });
     expect(onPageSizeChange).toHaveBeenCalledWith(250);
   });
@@ -90,7 +99,9 @@ describe('VolumeFilePager', () => {
     // `total` still describes the previous folder, so a pager here would read
     // "Page 1 of 3 - 1-100 of 300" under "This Folder Does Not Exist", and Next
     // would page a folder that is not there.
-    const { container } = render(<VolumeFilePager entries={[]} page={1} limit={100} total={300} paged onPageChange={NOOP} onPageSizeChange={NOOP} />);
+    const { container } = render(
+      <VolumeFilePager entries={[]} page={1} limit={100} total={300} paged onPageChange={NOOP} onPageSizeChange={NOOP} />,
+    );
     expect(container.firstChild).toBeNull();
   });
 });

@@ -87,7 +87,19 @@ function recordRunStatement(
          cursor_remaining = ?,
          updated_at = ?
        WHERE replication_id = ?`,
-    bindings: [now, status, trimmedError, failed ? 1 : 0, failed ? 1 : 0, maxFailures, closePass ? 1 : 0, cursorPath, remaining, now, replicationId],
+    bindings: [
+      now,
+      status,
+      trimmedError,
+      failed ? 1 : 0,
+      failed ? 1 : 0,
+      maxFailures,
+      closePass ? 1 : 0,
+      cursorPath,
+      remaining,
+      now,
+      replicationId,
+    ],
   };
 }
 

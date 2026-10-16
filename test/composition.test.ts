@@ -86,9 +86,7 @@ describe('Tokens registry', () => {
     // per request instead of one per comparison. Two instances would each pay it.
     const scope = createRequestScope(makeEnv() as never);
     expect(scope.get(Tokens.UserIdentityService)).toBe(scope.get(Tokens.UserIdentityService));
-    expect(createRequestScope(makeEnv() as never).get(Tokens.UserIdentityService)).not.toBe(
-      scope.get(Tokens.UserIdentityService),
-    );
+    expect(createRequestScope(makeEnv() as never).get(Tokens.UserIdentityService)).not.toBe(scope.get(Tokens.UserIdentityService));
   });
 
   it('hands VolumeService the very instance the container memoizes', async () => {

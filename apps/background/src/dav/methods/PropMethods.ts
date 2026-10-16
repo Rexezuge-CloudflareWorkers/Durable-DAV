@@ -1,7 +1,18 @@
 import type { DurableSqlStorage } from '@durable-dav/dav-store';
 import { upsertDeadProperty } from '@durable-dav/dav-store';
 import { ErrorSanitizationUtil } from '@rexezuge/shared';
-import { MAX_XML_BODY_BYTES, escapeXml, generatePropfindResponse, isProtectedProperty, parsePropfindRequest, parseProppatchRequest, readCappedText, renderEmptyPropertyElement, renderPropstat, type DeadProperty } from '@durable-dav/webdav';
+import {
+  MAX_XML_BODY_BYTES,
+  escapeXml,
+  generatePropfindResponse,
+  isProtectedProperty,
+  parsePropfindRequest,
+  parseProppatchRequest,
+  readCappedText,
+  renderEmptyPropertyElement,
+  renderPropstat,
+  type DeadProperty,
+} from '@durable-dav/webdav';
 
 /**
  * Read a request body as UTF-8 XML, refusing anything over the cap.
@@ -56,7 +67,10 @@ async function handlePropfind(request: Request, innerPath: string, bases: DavBas
       // names only. The unpaged branch is the one below, and its cost is the
       // reason this branch exists — `nodeInfo` is a `statInner` plus a
       // `dav_nodes` read, a `dav_locks` query and a `dav_props` read, per child.
-      const directChildren = paging === null ? repo.listChildren(innerPath) : repo.listChildPage(innerPath, paging.offset, paging.limit).map((child) => child.name);
+      const directChildren =
+        paging === null
+          ? repo.listChildren(innerPath)
+          : repo.listChildPage(innerPath, paging.offset, paging.limit).map((child) => child.name);
       for (const name of directChildren) {
         const childInner = repo.childInner(innerPath, name);
         seen.add(childInner);

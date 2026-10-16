@@ -1,12 +1,9 @@
 import { FolderArchive, Lock, Zap } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
-import { Button } from '../components/ui/Button';
-import { Card } from '../components/ui/Card';
-import { AppPage } from '@rexezuge/web';
-import { ZERO_TRUST_AUTHENTICATION_PATH } from '@rexezuge/web';
+import { AppPage, Button, Card, ZERO_TRUST_AUTHENTICATION_PATH } from '@rexezuge/web';
 
 function signIn() {
-  globalThis.location.assign(ZERO_TRUST_AUTHENTICATION_PATH);
+  location.assign(ZERO_TRUST_AUTHENTICATION_PATH);
 }
 
 export function LandingView() {
@@ -20,7 +17,7 @@ export function LandingView() {
         <p className="mt-4 text-[var(--color-text-secondary)]">
           {t(
             'landing.subtitle',
-            'Volumes Backed By Durable Objects, Served Over WebDAV. Public Volumes Allow Anonymous Reads; Private Volumes Stay Protected.',
+            'Buckets Backed By Durable Objects, Served Over WebDAV. Each Bucket Has Its Own Credentials; Private Buckets Stay Protected.',
           )}
         </p>
         <div className="mt-8">
@@ -42,14 +39,14 @@ export function LandingView() {
           <Zap className="h-5 w-5 text-[var(--color-accent)] mb-3" />
           <h2 className="font-semibold text-[var(--color-text-primary)] mb-1">{t('landing.edgeStorage', 'Edge Storage')}</h2>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {t('landing.edgeStorageDescription', 'One Durable Object Per Volume, SQLite-Backed.')}
+            {t('landing.edgeStorageDescription', 'One Durable Object Per Bucket, SQLite-Backed.')}
           </p>
         </Card>
         <Card>
           <Lock className="h-5 w-5 text-[var(--color-accent)] mb-3" />
           <h2 className="font-semibold text-[var(--color-text-primary)] mb-1">{t('landing.accessControl', 'Access Control')}</h2>
           <p className="text-sm text-[var(--color-text-secondary)]">
-            {t('landing.accessControlDescription', 'Personal Access Tokens For WebDAV; Cloudflare Access For The Web UI.')}
+            {t('landing.accessControlDescription', 'Per-Bucket Credentials For WebDAV; Cloudflare Access For The Web UI.')}
           </p>
         </Card>
       </div>

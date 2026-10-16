@@ -102,7 +102,13 @@ function mkdir(dofs: DofsFs, repo: DavRepository, path: string): void {
  * over-quota replication write reports 507 instead of truncating the file it was
  * replacing — the ordering that makes the quota failure safe rather than destructive.
  */
-async function write(dofs: DofsFs, repo: DavRepository, path: string, contentType: string | null, data: ReadableStream<Uint8Array> | Uint8Array): Promise<void> {
+async function write(
+  dofs: DofsFs,
+  repo: DavRepository,
+  path: string,
+  contentType: string | null,
+  data: ReadableStream<Uint8Array> | Uint8Array,
+): Promise<void> {
   if (path === '' || !isValidInnerPath(path)) throw new Error(`replication write: invalid path ${JSON.stringify(path)}`);
   const parent = getParentPath(path);
   if (parent !== '') mkdir(dofs, repo, parent);

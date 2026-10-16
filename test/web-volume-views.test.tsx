@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
@@ -13,7 +12,7 @@ vi.mock('react-i18next', () => ({
   }),
   // `apps/web/src/i18n.ts` initialises i18next at import time; the init plugin
   // is inert here so the import side effect stays a no-op.
-  initReactI18next: { type: '3rdParty', init: () => undefined },
+  initReactI18next: { type: '3rdParty', init: () => {} },
 }));
 
 import { Logo } from '../apps/web/src/components/layout/Logo';
@@ -26,7 +25,7 @@ import { VolumeFilePager } from '../apps/web/src/views/volume/VolumeFilePager';
 import { VolumeOverwritePrompt } from '../apps/web/src/views/volume/VolumeOverwritePrompt';
 import type { DavEntry } from '../apps/web/src/types';
 
-const noop = () => undefined;
+const noop = () => {};
 
 function fileEntry(overrides: Partial<DavEntry> = {}): DavEntry {
   return {
@@ -44,7 +43,16 @@ function fileEntry(overrides: Partial<DavEntry> = {}): DavEntry {
 
 describe('volume views render from props alone', () => {
   it('shows the spinner while loading and the empty states after', () => {
-    const base = { owner: 'alice', volume: 'photos', entries: [], busy: false, onPreview: noop, onRename: noop, onDuplicate: noop, onDelete: noop };
+    const base = {
+      owner: 'alice',
+      volume: 'photos',
+      entries: [],
+      busy: false,
+      onPreview: noop,
+      onRename: noop,
+      onDuplicate: noop,
+      onDelete: noop,
+    };
     const { unmount } = render(<VolumeFileList {...base} status="loading" />);
     expect(screen.getByRole('status')).toBeTruthy();
     unmount();
@@ -82,7 +90,9 @@ describe('volume views render from props alone', () => {
     unmount();
 
     const onPageChange = vi.fn();
-    render(<VolumeFilePager entries={[fileEntry()]} page={2} limit={25} total={100} paged onPageChange={onPageChange} onPageSizeChange={noop} />);
+    render(
+      <VolumeFilePager entries={[fileEntry()]} page={2} limit={25} total={100} paged onPageChange={onPageChange} onPageSizeChange={noop} />,
+    );
     expect(screen.getByTestId('volume-pager-range').textContent).toContain('26–50 of 100');
     fireEvent.click(screen.getByRole('button', { name: 'Next Page' }));
     expect(onPageChange).toHaveBeenCalledWith(3);

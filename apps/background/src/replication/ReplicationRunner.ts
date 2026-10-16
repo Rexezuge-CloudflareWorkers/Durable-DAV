@@ -328,4 +328,4 @@ function truncateToRow(error: unknown): string {
 export { ReplicationRunner };
 export type { RunResult, ReplicationRunnerDeps };
 
-export {type LocalReplicaStub} from './collectSlice';
+export { type LocalReplicaStub } from './collectSlice';

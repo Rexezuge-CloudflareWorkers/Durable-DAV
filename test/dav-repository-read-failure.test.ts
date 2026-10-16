@@ -86,7 +86,7 @@ function dofs(failWith: { armed: boolean }, files: Record<string, string[]> = {}
 SQLite that answers every query with no rows, which is what a fresh volume looks like.
 */
 function sql(): DurableSqlStorage {
-  return { exec: () => ({ toArray: () => [], one: () => undefined }) } as unknown as DurableSqlStorage;
+  return { exec: () => ({ toArray: () => [], one: () => {} }) } as unknown as DurableSqlStorage;
 }
 
 function repository(failWith?: { armed: boolean }, files?: Record<string, string[]>): DavRepository {

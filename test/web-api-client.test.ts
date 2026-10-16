@@ -61,7 +61,11 @@ afterEach(() => {
 
 describe('the volume and credential calls', () => {
   it('lists volumes and maps each row onto the client shape', async () => {
-    const calls = stubFetch(() => json({ volumes: [{ owner: 'alice', name: 'demo', description: null, isPrivate: true, hrefPrefixMode: 'base', href: '/alice/demo' }] }));
+    const calls = stubFetch(() =>
+      json({
+        volumes: [{ owner: 'alice', name: 'demo', description: null, isPrivate: true, hrefPrefixMode: 'base', href: '/alice/demo' }],
+      }),
+    );
 
     await expect(listMyVolumes()).resolves.toEqual([
       expect.objectContaining({ owner: 'alice', name: 'demo', fullName: 'alice/demo', hrefPrefixMode: 'base' }),
@@ -70,7 +74,9 @@ describe('the volume and credential calls', () => {
   });
 
   it('reads and writes one volume by encoded path segments', async () => {
-    const calls = stubFetch(() => json({ owner: 'alice', name: 'demo', description: 'd', isPrivate: false, hrefPrefixMode: 'root', href: '/alice/demo' }));
+    const calls = stubFetch(() =>
+      json({ owner: 'alice', name: 'demo', description: 'd', isPrivate: false, hrefPrefixMode: 'root', href: '/alice/demo' }),
+    );
 
     await loadVolume('alice', 'my volume');
     await updateVolume('alice', 'my volume', { isPrivate: true });
@@ -114,7 +120,12 @@ describe('the replication calls', () => {
     const calls = stubFetch(() => json({}));
 
     await listReplications('alice', 'demo');
-    await createReplication('alice', 'demo', { targetKind: 'dav', remoteUrl: 'https://remote.example.com/dav', remotePath: 'docs', mode: 'copy-only' } as never);
+    await createReplication('alice', 'demo', {
+      targetKind: 'dav',
+      remoteUrl: 'https://remote.example.com/dav',
+      remotePath: 'docs',
+      mode: 'copy-only',
+    } as never);
     await updateReplication('alice', 'demo', 'rep_1', { intervalMinutes: 15 } as never);
     await rotateReplicationCredential('alice', 'demo', 'rep_1', { username: 'u', secret: 'p' } as never);
     await runReplicationNow('alice', 'demo', 'rep_1');

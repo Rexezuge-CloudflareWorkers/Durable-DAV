@@ -64,9 +64,7 @@ interface WranglerConfig {
  * `"constructor"` would appear provisionable and then call `Object` as a
  * function.
  */
-const SECRET_GENERATORS = new Map<string, () => string>([
-  ['durable-dav-replication-encryption-key', generateReplicationKey],
-]);
+const SECRET_GENERATORS = new Map<string, () => string>([['durable-dav-replication-encryption-key', generateReplicationKey]]);
 
 /**
  * `wrangler secrets-store secret list` renders a `cli-table3` table and offers no
@@ -215,9 +213,17 @@ function runWrangler(args: readonly string[], input?: string): CommandResult {
  */
 export function secretExists(storeId: string, secretName: string): boolean {
   for (let page = 1; page <= MAX_LIST_PAGES; page += 1) {
-    const result = runWrangler(
-      ['secrets-store', 'secret', 'list', storeId, '--remote', '--per-page', String(LIST_PAGE_SIZE), '--page', String(page)],
-    );
+    const result = runWrangler([
+      'secrets-store',
+      'secret',
+      'list',
+      storeId,
+      '--remote',
+      '--per-page',
+      String(LIST_PAGE_SIZE),
+      '--page',
+      String(page),
+    ]);
     if (!result.ok) {
       if (`${result.stdout}${result.stderr}`.includes(EMPTY_STORE_MARKER)) {
         return false;

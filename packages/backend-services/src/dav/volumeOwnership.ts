@@ -34,5 +34,7 @@ export interface ViewerIdentity {
  */
 export function isVolumeOwner(viewer: ViewerIdentity | null, volume: DavVolumeRow): boolean {
   if (!viewer) return false;
-  return volume.owner_user_id ? viewer.userId !== null && viewer.userId === volume.owner_user_id : viewer.email.toLowerCase() === volume.owner_email.toLowerCase();
+  return volume.owner_user_id
+    ? viewer.userId !== null && viewer.userId === volume.owner_user_id
+    : viewer.email.toLowerCase() === volume.owner_email.toLowerCase();
 }

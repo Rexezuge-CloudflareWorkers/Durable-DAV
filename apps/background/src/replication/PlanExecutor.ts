@@ -194,10 +194,7 @@ class PlanExecutor {
     const [localBytes, remoteStream] = await Promise.all([localStub.readReplicaBytes(path), remote.readFile(path)]);
     if (localBytes === null || remoteStream === null) return null;
     const remoteBytes = new Uint8Array(await new Response(remoteStream).arrayBuffer());
-    const [localHash, remoteHash] = await Promise.all([
-      CryptoUtil.sha256HexOfBytes(localBytes),
-      CryptoUtil.sha256HexOfBytes(remoteBytes),
-    ]);
+    const [localHash, remoteHash] = await Promise.all([CryptoUtil.sha256HexOfBytes(localBytes), CryptoUtil.sha256HexOfBytes(remoteBytes)]);
     if (localHash === remoteHash) {
       logger.info(`replication content hash matched for ${path}`);
       return 0;
@@ -266,7 +263,9 @@ class PlanExecutor {
     const operations: unknown[] = [...records.map((state) => ({ op: 'record', state })), ...forget.map((path) => ({ op: 'forget', path }))];
     if (operations.length === 0) return { errors: 0, firstError: null };
     const result = await localStub.applyReplicaOperations(replicationId, operations);
-    return result.failed === 0 ? { errors: 0, firstError: null } : { errors: result.failed, firstError: truncate(result.error ?? 'recording the sync base failed') };
+    return result.failed === 0
+      ? { errors: 0, firstError: null }
+      : { errors: result.failed, firstError: truncate(result.error ?? 'recording the sync base failed') };
   }
 }
 
@@ -277,4 +276,4 @@ function truncate(message: string): string {
 export { PlanExecutor, truncate };
 export type { ApplyOptions, ApplyOutcome };
 
-export {RemoteUnavailableError} from '@durable-dav/backend-services/replication';
+export { RemoteUnavailableError } from '@durable-dav/backend-services/replication';

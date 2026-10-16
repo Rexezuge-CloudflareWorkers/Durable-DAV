@@ -160,7 +160,10 @@ async function listing(pair: Pair, side: 'source' | 'target', inner: string): Pr
   const name = pair[side];
   const base = `/${OWNER}/${name}/${inner}/`;
   const children = [...body.matchAll(/<href>([^<]*)<\/href>/g)].map((match) => decodeURIComponent(match[1] ?? ''));
-  return children.filter((href) => href.startsWith(base)).map((href) => href.slice(base.length)).filter((entry) => entry !== '');
+  return children
+    .filter((href) => href.startsWith(base))
+    .map((href) => href.slice(base.length))
+    .filter((entry) => entry !== '');
 }
 
 /**
@@ -267,7 +270,10 @@ async function syncNow(pair: Pair, replicationId: string): Promise<ReplicationRo
   const opened = await waitFor(replicationId, (row) => row.passInFlight);
   expect(opened, `replication ${replicationId} never opened a pass — row: ${JSON.stringify(await status(replicationId))}`).not.toBeNull();
   const finished = await waitFor(replicationId, (row) => !row.passInFlight && row.lastRunAt !== null);
-  expect(finished, `replication ${replicationId} never finished a pass — row: ${JSON.stringify(await status(replicationId))}`).not.toBeNull();
+  expect(
+    finished,
+    `replication ${replicationId} never finished a pass — row: ${JSON.stringify(await status(replicationId))}`,
+  ).not.toBeNull();
   return finished as ReplicationRow;
 }
 
@@ -306,7 +312,14 @@ async function status(replicationId: string): Promise<ReplicationRow> {
   const row = await db
     .prepare('SELECT last_run_at, last_status, last_error, pass_started_at, mode, enabled FROM dav_replications WHERE replication_id = ?')
     .bind(replicationId)
-    .first<{ last_run_at: number | null; last_status: string | null; last_error: string | null; pass_started_at: number | null; mode: string; enabled: number }>();
+    .first<{
+      last_run_at: number | null;
+      last_status: string | null;
+      last_error: string | null;
+      pass_started_at: number | null;
+      mode: string;
+      enabled: number;
+    }>();
   expect(row, `replication ${replicationId} row`).toBeDefined();
   return {
     replicationId,
@@ -422,7 +435,14 @@ describe('replication: configuration', { timeout: CASE_TIMEOUT_MS }, () => {
     const again = await api(`/user/volumes/${OWNER}/${pair.source}/replications`, {
       method: 'POST',
       headers: JSON_HEADERS,
-      body: JSON.stringify({ targetKind: 'dav-volume', remoteOwner: OWNER, remoteVolume: pair.target, remotePath: 'dupe', mode: 'sync', intervalMinutes: 360 }),
+      body: JSON.stringify({
+        targetKind: 'dav-volume',
+        remoteOwner: OWNER,
+        remoteVolume: pair.target,
+        remotePath: 'dupe',
+        mode: 'sync',
+        intervalMinutes: 360,
+      }),
     });
     // The unique index would turn this into a constraint 500. Reporting the conflict it
     // is keeps the API's error contract intact.
@@ -448,7 +468,7 @@ describe('replication: configuration', { timeout: CASE_TIMEOUT_MS }, () => {
     expect(rejected.status).toBe(400);
   });
 
-  it('drops a paused target off the cron\'s due list', async () => {
+  it("drops a paused target off the cron's due list", async () => {
     const pair = pairOf('config');
     const created = await replicate(pair, 'paused', 'sync');
     const patched = await api(`/user/volumes/${OWNER}/${pair.source}/replications/${created.replicationId}`, {
@@ -643,13 +663,23 @@ describe('replication: modes', { timeout: CASE_TIMEOUT_MS }, () => {
     // Timestamps need no arranging: `keep-both` never consults them. That is the
     // mode's whole point, and it is why it is the default — a conflict resolved by two
     // servers' clocks is a conflict resolved by whichever server is wrong.
-    expect((await dav(pair, 'source', '/conflict/contested.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'source edited' })).status).toBe(204);
     expect(
-      (await dav(pair, 'target', `/${inTarget('conflict', 'conflict/contested.txt')}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'text/plain' },
-        body: 'target edited',
-      })).status,
+      (
+        await dav(pair, 'source', '/conflict/contested.txt', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'text/plain' },
+          body: 'source edited',
+        })
+      ).status,
+    ).toBe(204);
+    expect(
+      (
+        await dav(pair, 'target', `/${inTarget('conflict', 'conflict/contested.txt')}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'text/plain' },
+          body: 'target edited',
+        })
+      ).status,
     ).toBe(204);
     await syncNow(pair, source.replicationId);
 
@@ -665,7 +695,9 @@ describe('replication: modes', { timeout: CASE_TIMEOUT_MS }, () => {
     expect(await getBody(pair, 'source', 'conflict/contested.txt')).toBe('source edited');
     expect(await getBody(pair, 'source', recorded?.keptPath ?? '')).toBe('target edited');
     expect(await getBody(pair, 'target', inTarget('conflict', 'conflict/contested.txt'))).toBe('target edited');
-    const targetCopies = (await listing(pair, 'target', inTarget('conflict', 'conflict'))).filter((name) => name.startsWith('contested.txt.conflict-'));
+    const targetCopies = (await listing(pair, 'target', inTarget('conflict', 'conflict'))).filter((name) =>
+      name.startsWith('contested.txt.conflict-'),
+    );
     expect(targetCopies).toHaveLength(1);
     expect(await getBody(pair, 'target', inTarget('conflict', `conflict/${targetCopies[0]}`))).toBe('source edited');
   });
@@ -680,10 +712,19 @@ describe('replication: modes', { timeout: CASE_TIMEOUT_MS }, () => {
     // The recorded mtimes come from two different servers, so the ordering is made
     // unambiguous by spacing the edits rather than by assuming a clock's resolution.
     await new Promise((resolve) => setTimeout(resolve, 1100));
-    expect((await dav(pair, 'source', '/raced/file.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'source edit' })).status).toBe(204);
+    expect(
+      (await dav(pair, 'source', '/raced/file.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'source edit' }))
+        .status,
+    ).toBe(204);
     await new Promise((resolve) => setTimeout(resolve, 1100));
     expect(
-      (await dav(pair, 'target', `/${inTarget('raced', 'raced/file.txt')}`, { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'target edit' })).status,
+      (
+        await dav(pair, 'target', `/${inTarget('raced', 'raced/file.txt')}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'text/plain' },
+          body: 'target edit',
+        })
+      ).status,
     ).toBe(204);
     await syncNow(pair, source.replicationId);
 
@@ -764,13 +805,18 @@ describe('replication: pull-only', { timeout: CASE_TIMEOUT_MS }, () => {
     // server's clock was ahead. The source PUT replaces what the sync pulled down
     // (204); the target's is a 201 because `pull-only` never pushed the file there,
     // so the target holds no prior copy of it at all.
-    expect((await dav(pair, 'source', '/contested/file.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'source edit' })).status).toBe(204);
     expect(
-      (await dav(pair, 'target', `/${inTarget('contested', 'contested/file.txt')}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'text/plain' },
-        body: 'target edit',
-      })).status,
+      (await dav(pair, 'source', '/contested/file.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'source edit' }))
+        .status,
+    ).toBe(204);
+    expect(
+      (
+        await dav(pair, 'target', `/${inTarget('contested', 'contested/file.txt')}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'text/plain' },
+          body: 'target edit',
+        })
+      ).status,
     ).toBe(201);
     await syncNow(pair, source.replicationId);
 
@@ -786,7 +832,9 @@ describe('replication: pull-only', { timeout: CASE_TIMEOUT_MS }, () => {
 
     // The invariant, asserted on the real buckets: the target holds no conflict copy
     // of its own, because nothing was written to it.
-    const targetCopies = (await listing(pair, 'target', inTarget('contested', 'contested'))).filter((name) => name.startsWith('file.txt.conflict-'));
+    const targetCopies = (await listing(pair, 'target', inTarget('contested', 'contested'))).filter((name) =>
+      name.startsWith('file.txt.conflict-'),
+    );
     expect(targetCopies).toEqual([]);
   });
 

@@ -32,7 +32,12 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { chooseSecretStore, isEmptyAccountListing, parseSecretStoresTable, type SecretStoreChoice } from '../scripts/wrangler-config/resources';
+import {
+  chooseSecretStore,
+  isEmptyAccountListing,
+  parseSecretStoresTable,
+  type SecretStoreChoice,
+} from '../scripts/wrangler-config/resources';
 
 /**
  * A `cli-table3` rendering of `wrangler secrets-store store list`, which is all
@@ -58,15 +63,11 @@ const store = (name: string): { name: string; id: string } => ({ name, id: name.
 
 describe('parseSecretStoresTable', () => {
   it('reads the name and id columns, skipping the header and the frame', () => {
-    expect(parseSecretStoresTable(storeTable({ name: 'default', id: 'a'.repeat(32) }))).toEqual([
-      { name: 'default', id: 'a'.repeat(32) },
-    ]);
+    expect(parseSecretStoresTable(storeTable({ name: 'default', id: 'a'.repeat(32) }))).toEqual([{ name: 'default', id: 'a'.repeat(32) }]);
   });
 
   it('returns every row, so a later match is not shadowed by an earlier one', () => {
-    const stores = parseSecretStoresTable(
-      storeTable({ name: 'alpha', id: 'a'.repeat(32) }, { name: 'default', id: 'b'.repeat(32) }),
-    );
+    const stores = parseSecretStoresTable(storeTable({ name: 'alpha', id: 'a'.repeat(32) }, { name: 'default', id: 'b'.repeat(32) }));
     expect(stores.map((candidate) => candidate.name)).toEqual(['alpha', 'default']);
   });
 
@@ -84,18 +85,13 @@ describe('parseSecretStoresTable', () => {
 });
 
 describe('isEmptyAccountListing', () => {
-  it('reads wrangler\'s empty-account message as a confirmed absence', () => {
+  it("reads wrangler's empty-account message as a confirmed absence", () => {
     // The mirror of `EMPTY_STORE_MARKER` in `scripts/init-secrets.ts`, applied to
     // `store list` instead of `secret list`.
-    expect(isEmptyAccountListing(new Error('Command failed: pnpm exec wrangler secrets-store store list --remote'))).toBe(
-      false,
-    );
+    expect(isEmptyAccountListing(new Error('Command failed: pnpm exec wrangler secrets-store store list --remote'))).toBe(false);
     expect(
       isEmptyAccountListing(
-        new Error(
-          'Command failed: pnpm exec wrangler secrets-store store list --remote\n' +
-            '✘ ERROR: List request returned no stores.',
-        ),
+        new Error('Command failed: pnpm exec wrangler secrets-store store list --remote\n✘ ERROR: List request returned no stores.'),
       ),
     ).toBe(true);
   });
@@ -149,7 +145,10 @@ describe('chooseSecretStore', () => {
     // The property `508a477` removed the fallback to preserve: binding an
     // arbitrary store would put the replication key somewhere unrelated, and the
     // store_id would not be reproducible from the config alone.
-    const choice = chooseSecretStore([{ name: 'alpha', id: 'a'.repeat(32) }, { name: 'beta', id: 'b'.repeat(32) }]);
+    const choice = chooseSecretStore([
+      { name: 'alpha', id: 'a'.repeat(32) },
+      { name: 'beta', id: 'b'.repeat(32) },
+    ]);
     expect(choice.kind).toBe('ambiguous');
     expect(choice.kind === 'ambiguous' && choice.names).toEqual(['alpha', 'beta']);
   });

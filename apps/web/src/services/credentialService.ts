@@ -21,7 +21,9 @@ export async function createBucketCredential(
 }
 
 export async function setBucketCredentialReadOnly(owner: string, volume: string, credentialId: string, readOnly: boolean): Promise<void> {
-  await apiPatch<{ credentialId: string; readOnly: boolean }>(`${credentialBase(owner, volume)}/${encodeURIComponent(credentialId)}`, { readOnly });
+  await apiPatch<{ credentialId: string; readOnly: boolean }>(`${credentialBase(owner, volume)}/${encodeURIComponent(credentialId)}`, {
+    readOnly,
+  });
 }
 
 export async function revokeBucketCredential(owner: string, volume: string, credentialId: string): Promise<void> {

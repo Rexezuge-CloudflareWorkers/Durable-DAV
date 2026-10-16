@@ -59,7 +59,9 @@ const RATE_LIMIT_DEFS: readonly RateLimitDef[] = [
   },
 ];
 
-function registerRateLimits(app: Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId?: string } }>): void {
+function registerRateLimits(
+  app: Hono<{ Bindings: Env; Variables: { AuthenticatedUserEmailAddress: string; AuthenticatedUserId?: string } }>,
+): void {
   for (const def of RATE_LIMIT_DEFS) {
     app.use(def.path, async (c, next) => {
       return def.exclude?.(new URL(c.req.url).pathname) ? next() : limiterFor(def)(c, next);
@@ -70,14 +72,12 @@ function registerRateLimits(app: Hono<{ Bindings: Env; Variables: { Authenticate
 /**
  * The live limiter per bucket, created lazily and shared isolate-wide.
  *
- * The kit's limiter holds its buckets in a closure with no reset handle —
- * which is the right shape for production (one app per isolate, so one
- * limiter per bucket per isolate) but leaves the suites with no isolation:
- * `registerRateLimits` runs once per worker while a test file makes hundreds
- * of requests, so the 60/min `volumes` bucket trips mid-file for reasons that
- * have nothing to do with what is under test. Clearing this map drops every
- * bucket without touching the kit's fixed internals (per-request cap,
- * deferred sweep, `Retry-After`).
+ * The cache is load-bearing, not an optimization: the kit's limiter holds its
+ * buckets in a closure, so building one per request would hand every request a
+ * fresh budget and enforce nothing. Isolation for the suites comes from the
+ * kit's own `resetRateLimitForTests`, which reaches every limiter it created
+ * through its registry — so a handler cached here is cleared exactly like a
+ * freshly built one. This map holds the handlers; the kit owns the state.
  */
 const liveLimiters = new Map<string, RateLimitHandler>();
 
@@ -89,9 +89,5 @@ function limiterFor(def: RateLimitDef): RateLimitHandler {
   return created;
 }
 
-function resetRateLimitForTests(): void {
-  liveLimiters.clear();
-}
-
-export { RATE_LIMIT_DEFS, registerRateLimits, resetRateLimitForTests };
+export { RATE_LIMIT_DEFS, registerRateLimits };
 export type { RateLimitDef };

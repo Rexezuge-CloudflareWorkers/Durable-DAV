@@ -8,7 +8,20 @@ import { resolveReplicationKey } from '@durable-dav/backend-data/crypto';
 import type { ReplicationKeyProvider, SecretsStoreKeyBinding } from '@durable-dav/backend-data/crypto';
 import type { ReplicationMode } from '../replication/types';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
-import { normalizeInterval, normalizeRemotePath, oneOf, optionalBoolean, optionalString, requireRemoteUrl, MAX_NAME_LENGTH, REPLICATION_AUTH_KINDS, REPLICATION_INTERVALS, REPLICATION_MODES, REPLICATION_TARGET_KINDS, readMirrorDeletions } from './replicationInput';
+import {
+  normalizeInterval,
+  normalizeRemotePath,
+  oneOf,
+  optionalBoolean,
+  optionalString,
+  requireRemoteUrl,
+  MAX_NAME_LENGTH,
+  REPLICATION_AUTH_KINDS,
+  REPLICATION_INTERVALS,
+  REPLICATION_MODES,
+  REPLICATION_TARGET_KINDS,
+  readMirrorDeletions,
+} from './replicationInput';
 import type { ReplicationAuthKind, ReplicationCreateInput, ReplicationPatchInput } from './replicationInput';
 import { buildCredentialEnvelope, credentialPlaintext } from './replicationCredential';
 
@@ -228,7 +241,12 @@ class VolumeReplicationService {
   ): Promise<DavReplicationRow> {
     const dao = await this.deps.replicationDAO();
     const existing = await this.requireReplication(volumeId, replicationId);
-    const authKind = oneOf(input.authKind, REPLICATION_AUTH_KINDS, 'authKind', existing.auth_kind === 'none' ? undefined : (existing.auth_kind as ReplicationAuthKind));
+    const authKind = oneOf(
+      input.authKind,
+      REPLICATION_AUTH_KINDS,
+      'authKind',
+      existing.auth_kind === 'none' ? undefined : (existing.auth_kind as ReplicationAuthKind),
+    );
     // Validated and sealed in one step here, unlike create which validates before its
     // quota and duplicate-target checks: rotation has no such checks to order against.
     const envelope = await buildCredentialEnvelope(authKind, input.username, input.secret, (plaintext) => this.seal(plaintext));
@@ -282,4 +300,4 @@ export { VolumeReplicationService };
 
 export { type ReplicationMode } from '../replication/types';
 
-export {type ReplicationCreateInput, type ReplicationPatchInput, type ReplicationAuthKind} from './replicationInput';
+export { type ReplicationCreateInput, type ReplicationPatchInput, type ReplicationAuthKind } from './replicationInput';

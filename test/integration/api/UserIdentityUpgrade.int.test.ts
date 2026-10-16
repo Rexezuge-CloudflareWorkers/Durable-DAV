@@ -86,10 +86,18 @@ async function applyThrough(file: string): Promise<void> {
  */
 async function seedPreIdentity(): Promise<void> {
   const now = nowSeconds();
-  await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)').bind('alice@example.com', now, 'alice', now).run();
-  await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)').bind('bob@example.com', now, 'bob', now).run();
-  await DB.prepare('INSERT INTO namespaces (username_ci, kind, user_email, created_at) VALUES (?, ?, ?, ?)').bind('alice', 'user', 'alice@example.com', now).run();
-  await DB.prepare('INSERT INTO namespaces (username_ci, kind, user_email, created_at) VALUES (?, ?, ?, ?)').bind('bob', 'user', 'bob@example.com', now).run();
+  await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)')
+    .bind('alice@example.com', now, 'alice', now)
+    .run();
+  await DB.prepare('INSERT INTO users (email, created_at, username, updated_at) VALUES (?, ?, ?, ?)')
+    .bind('bob@example.com', now, 'bob', now)
+    .run();
+  await DB.prepare('INSERT INTO namespaces (username_ci, kind, user_email, created_at) VALUES (?, ?, ?, ?)')
+    .bind('alice', 'user', 'alice@example.com', now)
+    .run();
+  await DB.prepare('INSERT INTO namespaces (username_ci, kind, user_email, created_at) VALUES (?, ?, ?, ?)')
+    .bind('bob', 'user', 'bob@example.com', now)
+    .run();
   // One volume per user, and one credential on Alice's, so the whole cascade
   // graph below `users` is populated.
   await DB.prepare(
@@ -161,7 +169,11 @@ describe('0004 preserves existing data', () => {
     await seedPreIdentity();
     await applyMigrations(DB, { from: IDENTITY, to: IDENTITY });
 
-    const rows = await DB.prepare('SELECT email, id, current_email FROM users ORDER BY email').all<{ email: string; id: string; current_email: string }>();
+    const rows = await DB.prepare('SELECT email, id, current_email FROM users ORDER BY email').all<{
+      email: string;
+      id: string;
+      current_email: string;
+    }>();
     expect(rows.results).toHaveLength(2);
     const ids = new Set<string>();
     for (const row of rows.results ?? []) {
@@ -179,9 +191,9 @@ describe('0004 preserves existing data', () => {
     await seedPreIdentity();
     await applyMigrations(DB, { from: IDENTITY, to: IDENTITY });
 
-    const rows = await DB
-      .prepare('SELECT ue.email, ue.is_verified, u.email AS anchor FROM user_emails ue JOIN users u ON u.id = ue.user_id ORDER BY ue.email')
-      .all<{ email: string; is_verified: number; anchor: string }>();
+    const rows = await DB.prepare(
+      'SELECT ue.email, ue.is_verified, u.email AS anchor FROM user_emails ue JOIN users u ON u.id = ue.user_id ORDER BY ue.email',
+    ).all<{ email: string; is_verified: number; anchor: string }>();
     expect(rows.results?.map((r) => [r.email, r.is_verified, r.anchor])).toEqual([
       ['alice@example.com', 1, 'alice@example.com'],
       ['bob@example.com', 1, 'bob@example.com'],
@@ -193,9 +205,9 @@ describe('0004 preserves existing data', () => {
     await seedPreIdentity();
     await applyMigrations(DB, { from: IDENTITY, to: IDENTITY });
 
-    const volumes = await DB
-      .prepare('SELECT owner_email, owner_user_id, (SELECT email FROM users WHERE id = dav_volumes.owner_user_id) AS resolved FROM dav_volumes ORDER BY owner_email')
-      .all<{ owner_email: string; owner_user_id: string | null; resolved: string | null }>();
+    const volumes = await DB.prepare(
+      'SELECT owner_email, owner_user_id, (SELECT email FROM users WHERE id = dav_volumes.owner_user_id) AS resolved FROM dav_volumes ORDER BY owner_email',
+    ).all<{ owner_email: string; owner_user_id: string | null; resolved: string | null }>();
     // The join is the assertion: the key resolves back to the same account whose
     // anchor the row already held.
     expect(volumes.results?.map((v) => [v.owner_email, v.resolved])).toEqual([
@@ -203,9 +215,9 @@ describe('0004 preserves existing data', () => {
       ['bob@example.com', 'bob@example.com'],
     ]);
 
-    const namespaces = await DB
-      .prepare('SELECT username_ci, user_id, (SELECT email FROM users WHERE id = namespaces.user_id) AS resolved FROM namespaces ORDER BY username_ci')
-      .all<{ username_ci: string; user_id: string | null; resolved: string | null }>();
+    const namespaces = await DB.prepare(
+      'SELECT username_ci, user_id, (SELECT email FROM users WHERE id = namespaces.user_id) AS resolved FROM namespaces ORDER BY username_ci',
+    ).all<{ username_ci: string; user_id: string | null; resolved: string | null }>();
     expect(namespaces.results?.map((n) => [n.username_ci, n.resolved])).toEqual([
       ['alice', 'alice@example.com'],
       ['bob', 'bob@example.com'],
@@ -228,7 +240,9 @@ describe('0004 preserves existing data', () => {
       .run();
     await applyMigrations(DB, { from: IDENTITY, to: IDENTITY });
 
-    const row = await DB.prepare('SELECT user_id, user_email FROM namespaces WHERE username_ci = ?').bind('ghost').first<{ user_id: string | null }>();
+    const row = await DB.prepare('SELECT user_id, user_email FROM namespaces WHERE username_ci = ?')
+      .bind('ghost')
+      .first<{ user_id: string | null }>();
     expect(row?.user_id).toBeNull();
     // No dangling reference was introduced.
     expect(await foreignKeyViolations()).toEqual([]);
@@ -259,7 +273,12 @@ describe('0004 preserves existing data', () => {
     await seedPreIdentity();
     await applyMigrations(DB, { from: IDENTITY, to: IDENTITY });
 
-    const fks = await DB.prepare('PRAGMA foreign_key_list(dav_volumes)').all<{ table: string; from: string; to: string; on_delete: string }>();
+    const fks = await DB.prepare('PRAGMA foreign_key_list(dav_volumes)').all<{
+      table: string;
+      from: string;
+      to: string;
+      on_delete: string;
+    }>();
     const anchorFk = (fks.results ?? []).find((fk) => fk.from === 'owner_email' && fk.table === 'users');
     expect(anchorFk).toMatchObject({ from: 'owner_email', to: 'email', on_delete: 'CASCADE' });
 
@@ -306,7 +325,9 @@ describe('an address change after 0004', () => {
 
     // The account key on the volume is untouched, so ownership is intact even
     // though the owner now signs in with a different address.
-    const volume = await DB.prepare('SELECT owner_email, owner_user_id FROM dav_volumes WHERE id = ?').bind('vol-alice').first<{ owner_email: string; owner_user_id: string }>();
+    const volume = await DB.prepare('SELECT owner_email, owner_user_id FROM dav_volumes WHERE id = ?')
+      .bind('vol-alice')
+      .first<{ owner_email: string; owner_user_id: string }>();
     expect(volume?.owner_user_id).toBe(userId);
     // The anchor is what it always was — never rewritten.
     expect(volume?.owner_email).toBe('alice@example.com');
@@ -321,7 +342,9 @@ describe('an address change after 0004', () => {
     expect(owned.results?.map((r) => r.id)).toEqual(['vol-alice']);
     // The old-address lookup no longer finds it, which is why nothing may key
     // on the address any more.
-    const byOldAddress = await DB.prepare('SELECT id FROM dav_volumes WHERE owner_email = ?').bind('alice.new@example.com').all<{ id: string }>();
+    const byOldAddress = await DB.prepare('SELECT id FROM dav_volumes WHERE owner_email = ?')
+      .bind('alice.new@example.com')
+      .all<{ id: string }>();
     expect(byOldAddress.results).toEqual([]);
   });
 
@@ -331,7 +354,10 @@ describe('an address change after 0004', () => {
     await changePrimaryEmail(userId, 'alice.new@example.com');
     // `dav_credentials` binds to `volume_id` only, so a credential survives its
     // owner's address change untouched.
-    const cred = await DB.prepare('SELECT credential_id, volume_id FROM dav_credentials').first<{ credential_id: string; volume_id: string }>();
+    const cred = await DB.prepare('SELECT credential_id, volume_id FROM dav_credentials').first<{
+      credential_id: string;
+      volume_id: string;
+    }>();
     expect(cred).toMatchObject({ credential_id: 'cred-1', volume_id: 'vol-alice' });
   });
 
@@ -339,7 +365,9 @@ describe('an address change after 0004', () => {
     const userId = await seedAndUpgrade();
     await changePrimaryEmail(userId, 'alice.new@example.com');
 
-    const rows = await DB.prepare('SELECT email, is_verified FROM user_emails WHERE user_id = ?').bind(userId).all<{ email: string; is_verified: number }>();
+    const rows = await DB.prepare('SELECT email, is_verified FROM user_emails WHERE user_id = ?')
+      .bind(userId)
+      .all<{ email: string; is_verified: number }>();
     // The new address authenticates; the old one is retained at 0, so rows
     // written before the change still resolve to this account while the address
     // stops being a login and is released for a later legitimate holder.
@@ -354,7 +382,9 @@ describe('an address change after 0004', () => {
     // address would hand one account to a different person.
     const userId = await seedAndUpgrade();
     const bobId = (await DB.prepare('SELECT id FROM users WHERE email = ?').bind('bob@example.com').first<{ id: string }>())?.id ?? '';
-    const holder = await DB.prepare('SELECT user_id FROM user_emails WHERE email = ? AND is_verified = 1').bind('bob@example.com').first<{ user_id: string }>();
+    const holder = await DB.prepare('SELECT user_id FROM user_emails WHERE email = ? AND is_verified = 1')
+      .bind('bob@example.com')
+      .first<{ user_id: string }>();
     expect(holder?.user_id).toBe(bobId);
     expect(holder?.user_id).not.toBe(userId);
   });
@@ -366,11 +396,15 @@ describe('an address change after 0004', () => {
     // Resolution is address -> `user_emails` -> `users.id`, and only a verified
     // address resolves. A reassigned address must not keep authenticating the
     // previous holder's account.
-    const revoked = await DB.prepare('SELECT * FROM user_emails WHERE email = ?').bind('alice@example.com').first<{ is_verified: number }>();
+    const revoked = await DB.prepare('SELECT * FROM user_emails WHERE email = ?')
+      .bind('alice@example.com')
+      .first<{ is_verified: number }>();
     expect(revoked?.is_verified).toBe(0);
     // But the account it pointed at is unchanged, which is what keeps the
     // pre-change volume attributable.
-    const stillOwned = await DB.prepare('SELECT user_id FROM user_emails WHERE email = ?').bind('alice@example.com').first<{ user_id: string }>();
+    const stillOwned = await DB.prepare('SELECT user_id FROM user_emails WHERE email = ?')
+      .bind('alice@example.com')
+      .first<{ user_id: string }>();
     expect(stillOwned?.user_id).toBe(userId);
   });
 });
@@ -410,10 +444,8 @@ describe('the API authorizes id-keyed access after an address change', () => {
       .bind(ANCHOR, now, userId, API_USER, OWNER_HANDLE, now)
       .run();
     await DB.batch([
-      DB.prepare('INSERT INTO user_emails (email, user_id, is_verified, created_at) VALUES (?, ?, 0, ?)')
-        .bind(ANCHOR, userId, now),
-      DB.prepare('INSERT INTO user_emails (email, user_id, is_verified, created_at) VALUES (?, ?, 1, ?)')
-        .bind(API_USER, userId, now),
+      DB.prepare('INSERT INTO user_emails (email, user_id, is_verified, created_at) VALUES (?, ?, 0, ?)').bind(ANCHOR, userId, now),
+      DB.prepare('INSERT INTO user_emails (email, user_id, is_verified, created_at) VALUES (?, ?, 1, ?)').bind(API_USER, userId, now),
     ]);
     await DB.prepare('INSERT INTO namespaces (username_ci, kind, user_email, user_id, created_at) VALUES (?, ?, ?, ?, ?)')
       .bind(OWNER_HANDLE, 'user', ANCHOR, userId, now)
@@ -456,7 +488,11 @@ describe('the API authorizes id-keyed access after an address change', () => {
 
     // No fork: the request resolved to the existing account rather than
     // provisioning a second, empty one for the address it presented.
-    const users = await DB.prepare('SELECT id, email, current_email FROM users').all<{ id: string; email: string; current_email: string }>();
+    const users = await DB.prepare('SELECT id, email, current_email FROM users').all<{
+      id: string;
+      email: string;
+      current_email: string;
+    }>();
     expect(users.results).toHaveLength(1);
     expect(users.results?.[0]?.id).toBe(userId);
     // The anchor never moved — that is what kept `owner_email` valid.
@@ -482,7 +518,9 @@ describe('the API authorizes id-keyed access after an address change', () => {
     // Free address, so it became the anchor.
     expect(row?.email).toBe(API_USER);
     // And it authenticates: the registry row is verified.
-    const registered = await DB.prepare('SELECT is_verified FROM user_emails WHERE email = ?').bind(API_USER).first<{ is_verified: number }>();
+    const registered = await DB.prepare('SELECT is_verified FROM user_emails WHERE email = ?')
+      .bind(API_USER)
+      .first<{ is_verified: number }>();
     expect(registered?.is_verified).toBe(1);
   });
 

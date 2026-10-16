@@ -40,7 +40,14 @@ function fakeIdentityDb(seed: Array<{ id: string; anchor: string; current: strin
       if (users.some((u) => u.email === input.anchor.toLowerCase())) return null;
       anchorSeq += 1;
       const id = `usr_gen_${anchorSeq}`;
-      users.push({ id, email: input.anchor.toLowerCase(), current_email: input.loginEmail.toLowerCase(), created_at: 1, username: null, updated_at: 1 });
+      users.push({
+        id,
+        email: input.anchor.toLowerCase(),
+        current_email: input.loginEmail.toLowerCase(),
+        created_at: 1,
+        username: null,
+        updated_at: 1,
+      });
       return id;
     },
   };
@@ -71,7 +78,11 @@ function fakeIdentityDb(seed: Array<{ id: string; anchor: string; current: strin
   // Cast at the boundary: these fakes implement the handful of methods
   // `accountLookup` actually calls, not the full DAO surface, and the structural
   // mismatch on `BaseDAO`'s `database` field is not what these tests are about.
-  return { users, userEmails, deps: { userDAO: async () => userDAO, userEmailDAO: async () => userEmailDAO } as unknown as AccountLookupDeps };
+  return {
+    users,
+    userEmails,
+    deps: { userDAO: async () => userDAO, userEmailDAO: async () => userEmailDAO } as unknown as AccountLookupDeps,
+  };
 }
 
 /**
@@ -94,7 +105,11 @@ describe('UserEmailDAO statements', () => {
             return {
               first: () => Promise.resolve(null),
               all: () => Promise.resolve({ results: [] }),
-              run: () => Promise.resolve({ success: true, meta: {} }),
+              // A real `run` reports affected rows in `meta.changes`, and the
+              // kit's `register` reads it: 0 there means the conditional upsert
+              // refused (it lost the race to a verified claim), which is a
+              // different answer from "the address was free".
+              run: () => Promise.resolve({ success: true, meta: { changes: 1 } }),
             };
           },
         };
@@ -133,14 +148,14 @@ describe('UserEmailDAO statements', () => {
         return {
           bind: () => ({
             first: () => Promise.resolve({ email: 'a@x.co', user_id: 'usr_other', is_verified: 1, created_at: 1 }),
-            run: () => Promise.resolve({ success: true, meta: {} }),
+            run: () => Promise.resolve({ success: true, meta: { changes: 1 } }),
           }),
         };
       },
     };
-    expect(await new UserEmailDAO(occupied as unknown as D1Database).register({ email: 'a@x.co', userId: 'usr_a', isVerified: true, now: 7 })).toBe(
-      'already-claimed',
-    );
+    expect(
+      await new UserEmailDAO(occupied as unknown as D1Database).register({ email: 'a@x.co', userId: 'usr_a', isVerified: true, now: 7 }),
+    ).toBe('already-claimed');
     expect(statements).toEqual([]);
   });
 
@@ -152,16 +167,40 @@ describe('UserEmailDAO statements', () => {
         return {
           bind: () => ({
             first: () => Promise.resolve({ email: 'a@x.co', user_id: 'usr_old', is_verified: 0, created_at: 1 }),
-            run: () => Promise.resolve({ success: true, meta: {} }),
+            run: () => Promise.resolve({ success: true, meta: { changes: 1 } }),
           }),
         };
       },
     };
-    expect(await new UserEmailDAO(revoked as unknown as D1Database).register({ email: 'a@x.co', userId: 'usr_new', isVerified: true, now: 7 })).toBe(
-      'claimed',
-    );
+    expect(
+      await new UserEmailDAO(revoked as unknown as D1Database).register({ email: 'a@x.co', userId: 'usr_new', isVerified: true, now: 7 }),
+    ).toBe('claimed');
     // The upsert is what hands the address to its new holder.
     expect(statements[0]).toMatch(/ON CONFLICT\(email\) DO UPDATE SET user_id/u);
+  });
+
+  it('register answers already-claimed when the conditional upsert refuses', async () => {
+    // The read above the write and the write itself are two statements, so the
+    // write can still lose a race another claim won: `user_emails.is_verified = 0`
+    // in the upsert's `WHERE` refuses to re-point a row that is verified *now*,
+    // and D1 reports that as `meta.changes === 0`. Treating "no rows changed"
+    // as "claimed" would report success for an address this account never got.
+    const statements: string[] = [];
+    const racing = {
+      prepare: (sql: string) => {
+        if (sql.startsWith('INSERT')) statements.push(sql);
+        return {
+          bind: () => ({
+            first: () => Promise.resolve({ email: 'a@x.co', user_id: 'usr_old', is_verified: 0, created_at: 1 }),
+            run: () => Promise.resolve({ success: true, meta: { changes: 0 } }),
+          }),
+        };
+      },
+    };
+    expect(
+      await new UserEmailDAO(racing as unknown as D1Database).register({ email: 'a@x.co', userId: 'usr_new', isVerified: true, now: 7 }),
+    ).toBe('already-claimed');
+    expect(statements[0]).toMatch(/WHERE user_emails\.is_verified = 0/u);
   });
 
   it('resolveVerified filters on the verified flag', async () => {
@@ -268,7 +307,13 @@ describe('UserIdentityService', () => {
     const db = fakeIdentityDb([{ id: 'usr_a', anchor: 'a@x.co', current: 'a@x.co' }]);
     const svc = new UserIdentityService({ DB: {} as never }, db.deps);
     let calls = 0;
-    const counting = { ...db.deps, userEmailDAO: async () => { calls += 1; return db.deps.userEmailDAO(); } };
+    const counting = {
+      ...db.deps,
+      userEmailDAO: async () => {
+        calls += 1;
+        return db.deps.userEmailDAO();
+      },
+    };
     const memoized = new UserIdentityService({ DB: {} as never }, counting);
     expect((await memoized.resolveAccount('a@x.co'))?.id).toBe('usr_a');
     expect((await memoized.resolveAccount('a@x.co'))?.id).toBe('usr_a');

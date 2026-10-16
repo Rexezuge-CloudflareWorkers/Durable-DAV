@@ -75,11 +75,13 @@ interface Fakes {
   service: VolumeReplicationService;
 }
 
-function serviceWith(overrides: {
-  replications?: DavReplicationRow[];
-  conflicts?: DavReplicationConflictRow[];
-  allowedHosts?: string[];
-} = {}): Fakes {
+function serviceWith(
+  overrides: {
+    replications?: DavReplicationRow[];
+    conflicts?: DavReplicationConflictRow[];
+    allowedHosts?: string[];
+  } = {},
+): Fakes {
   const fakes: Fakes = {
     replication: { rows: overrides.replications ?? [], updates: [], deleted: [] },
     conflicts: { rows: overrides.conflicts ?? [], resolved: [] },
@@ -113,9 +115,7 @@ function serviceWith(overrides: {
       conflictDAO: () =>
         Promise.resolve({
           listByReplication: async (replicationId: string, includeResolved: boolean) =>
-            fakes.conflicts.rows.filter(
-              (c) => c.replication_id === replicationId && (includeResolved || c.resolved_at === null),
-            ),
+            fakes.conflicts.rows.filter((c) => c.replication_id === replicationId && (includeResolved || c.resolved_at === null)),
           markResolved: async (replicationId: string, conflictId: string, now: number) => {
             fakes.conflicts.resolved.push({ replicationId, conflictId, now });
             return true;
@@ -125,17 +125,17 @@ function serviceWith(overrides: {
         } as never),
       // The egress allowlist is configuration, never the request body; the
       // config is injected so a test can see the service read it from there.
-      config: AppConfiguration.fromEnv(
-        overrides.allowedHosts ? { REPLICATION_ALLOWED_HOSTS: overrides.allowedHosts.join(',') } : {},
-      ),
+      config: AppConfiguration.fromEnv(overrides.allowedHosts ? { REPLICATION_ALLOWED_HOSTS: overrides.allowedHosts.join(',') } : {}),
     },
   );
   return fakes;
 }
 
 describe('VolumeReplicationService reads', () => {
-  it('lists a volume\'s replications', async () => {
-    const fakes = serviceWith({ replications: [row(), row({ replication_id: 'rep_2', volume_id: 'vol_1' }), row({ replication_id: 'rep_9', volume_id: 'vol_other' })] });
+  it("lists a volume's replications", async () => {
+    const fakes = serviceWith({
+      replications: [row(), row({ replication_id: 'rep_2', volume_id: 'vol_1' }), row({ replication_id: 'rep_9', volume_id: 'vol_other' })],
+    });
 
     await expect(fakes.service.listReplications('vol_1')).resolves.toHaveLength(2);
   });
@@ -153,7 +153,7 @@ describe('VolumeReplicationService reads', () => {
     expect(fakes.replication.deleted).toEqual([]);
   });
 
-  it('reads a replication inside the caller\'s volume', async () => {
+  it("reads a replication inside the caller's volume", async () => {
     const fakes = serviceWith({ replications: [row()] });
 
     await expect(fakes.service.getReplication('vol_1', 'rep_1')).resolves.toMatchObject({
@@ -185,14 +185,14 @@ describe('VolumeReplicationService writes', () => {
     expect(updated.mirror_deletions).toBe(0);
   });
 
-  it('deletes a replication inside the caller\'s volume', async () => {
+  it("deletes a replication inside the caller's volume", async () => {
     const fakes = serviceWith({ replications: [row()] });
 
     await expect(fakes.service.deleteReplication('vol_1', 'rep_1')).resolves.toBeUndefined();
     expect(fakes.replication.deleted).toEqual(['rep_1']);
   });
 
-  it('lists and resolves a replication\'s conflicts', async () => {
+  it("lists and resolves a replication's conflicts", async () => {
     const fakes = serviceWith({
       replications: [row()],
       conflicts: [conflict(), conflict({ conflict_id: 'cf_2', resolved_at: 5 })],

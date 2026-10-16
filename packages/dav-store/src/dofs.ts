@@ -1,6 +1,5 @@
 import { Fs } from 'dofs';
 
-
 type DofsFs = Fs;
 
 type DofsContext = {

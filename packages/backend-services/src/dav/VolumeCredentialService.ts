@@ -30,10 +30,7 @@ const MAX_USERNAME_GENERATION_ATTEMPTS = 5;
 class VolumeCredentialService {
   private readonly deps: Required<VolumeCredentialServiceDeps>;
 
-  constructor(
-    env: VolumeCredentialServiceEnv,
-    deps: VolumeCredentialServiceDeps = {},
-  ) {
+  constructor(env: VolumeCredentialServiceEnv, deps: VolumeCredentialServiceDeps = {}) {
     this.deps = {
       credentialDAO: () => Promise.resolve(new DavCredentialDAO(env.DB)),
       config: AppConfiguration.fromEnv(env),

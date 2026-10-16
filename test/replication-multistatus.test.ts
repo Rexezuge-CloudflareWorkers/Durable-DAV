@@ -21,7 +21,8 @@ const MULTISTATUS_CLOSE = '</D:multistatus>';
 
 describe('parseMultiStatus', () => {
   it('reads a file entry with a strong ETag', () => {
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/notes.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/notes.txt</D:href>` +
       `<D:propstat><D:prop><D:resourcetype/><D:getetag>"abc123"</D:getetag>` +
       `<D:getlastmodified>Wed, 21 Oct 2015 07:28:00 GMT</D:getlastmodified>` +
       `<D:getcontentlength>1234</D:getcontentlength><D:getcontenttype>text/plain</D:getcontenttype></D:prop>` +
@@ -40,7 +41,8 @@ describe('parseMultiStatus', () => {
   });
 
   it('identifies a collection from resourcetype', () => {
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/docs/</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/docs/</D:href>` +
       `<D:propstat><D:prop><D:resourcetype><D:collection/></D:resourcetype></D:prop>` +
       `<D:status>HTTP/1.1 200 OK</D:status></D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     expect(parse(body)?.[0]?.isCollection).toBe(true);
@@ -49,7 +51,8 @@ describe('parseMultiStatus', () => {
   it('does not treat a trailing slash as a collection when resourcetype is absent', () => {
     // Defaulting to `true` on the href shape would make a server that omits the
     // property receive `MKCOL` over its own files.
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/weird/</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/weird/</D:href>` +
       `<D:propstat><D:prop><D:getetag>"x"</D:getetag></D:prop><D:status>HTTP/1.1 200 OK</D:status>` +
       `</D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     expect(parse(body)?.[0]?.isCollection).toBe(false);
@@ -58,7 +61,8 @@ describe('parseMultiStatus', () => {
   it('keeps the weak marker on a weak ETag', () => {
     // Dropping `W/` would let a weak validator compare equal to a strong one, and
     // the planner treats a strong match as proof the two sides hold the same bytes.
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
       `<D:propstat><D:prop><D:getetag>W/"weak-1"</D:getetag></D:prop><D:status>HTTP/1.1 200 OK</D:status>` +
       `</D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     expect(parse(body)?.[0]?.etag).toBe('W/weak-1');
@@ -67,7 +71,8 @@ describe('parseMultiStatus', () => {
   it('merges properties across several 2xx propstats', () => {
     // Splitting a response's properties across propstat blocks is conforming and
     // common; taking only the first block loses half the resource.
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
       `<D:propstat><D:prop><D:getetag>"e"</D:getetag></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>` +
       `<D:propstat><D:prop><D:getcontentlength>7</D:getcontentlength></D:prop><D:status>HTTP/1.1 200 OK</D:status></D:propstat>` +
       `<D:propstat><D:prop><D:displayname>a</D:displayname></D:prop><D:status>HTTP/1.1 404 Not Found</D:status></D:propstat>` +
@@ -81,7 +86,8 @@ describe('parseMultiStatus', () => {
     // "Listed, but every property 404s" is a real shape and must stay
     // distinguishable from "not listed at all" — the difference between a
     // resource and a deletion.
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
       `<D:propstat><D:prop><D:displayname>a</D:displayname></D:prop><D:status>HTTP/1.1 404 Not Found</D:status>` +
       `</D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     const entry = parse(body)?.[0];
@@ -93,13 +99,15 @@ describe('parseMultiStatus', () => {
   it('accepts a propstat with no status element', () => {
     // RFC 4918 §14.22 requires it, but real servers omit it; treating the omitted
     // case as a failure would drop every property such a server does return.
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
       `<D:propstat><D:prop><D:getetag>"e"</D:getetag></D:prop></D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     expect(parse(body)?.[0]?.etag).toBe('e');
   });
 
   it('percent-decodes the href', () => {
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a%20b%2Bc.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a%20b%2Bc.txt</D:href>` +
       `<D:propstat><D:prop><D:getetag>"e"</D:getetag></D:prop><D:status>HTTP/1.1 200 OK</D:status>` +
       `</D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     expect(parse(body)?.[0]?.pathname).toBe('/remote.php/dav/files/me/backup/a b+c.txt');
@@ -108,7 +116,8 @@ describe('parseMultiStatus', () => {
   it('resolves a relative href against the request URL', () => {
     // Some proxies answer with relative hrefs; assuming absolute ones mismaps
     // every path in the tree.
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>a.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>a.txt</D:href>` +
       `<D:propstat><D:prop><D:getetag>"e"</D:getetag></D:prop><D:status>HTTP/1.1 200 OK</D:status>` +
       `</D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     expect(parse(body, `${BASE}/`)?.[0]?.pathname).toBe('/remote.php/dav/files/me/backup/a.txt');
@@ -141,7 +150,8 @@ describe('parseMultiStatus', () => {
   });
 
   it('leaves an unparseable content length null rather than NaN', () => {
-    const body = `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
+    const body =
+      `${MULTISTATUS_OPEN}<D:response><D:href>/remote.php/dav/files/me/backup/a.txt</D:href>` +
       `<D:propstat><D:prop><D:getcontentlength>many</D:getcontentlength></D:prop><D:status>HTTP/1.1 200 OK</D:status>` +
       `</D:propstat></D:response>${MULTISTATUS_CLOSE}`;
     expect(parse(body)?.[0]?.size).toBeNull();

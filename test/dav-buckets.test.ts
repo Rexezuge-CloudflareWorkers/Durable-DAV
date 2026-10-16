@@ -11,9 +11,9 @@ function fakeVolumeDb(opts: { ownedCount?: number; username?: string | null; exi
     countByOwnerUserId: async () => opts.ownedCount ?? 0,
     listByOwnerUserId: async () => Array.from({ length: opts.ownedCount ?? 0 }, (_, i) => ({ id: `v${i}` })),
     listByOwnerEmail: async () => Array.from({ length: opts.ownedCount ?? 0 }, (_, i) => ({ id: `v${i}` })),
-    create: async () => undefined,
-    update: async () => undefined,
-    deleteById: async () => undefined,
+    create: async () => {},
+    update: async () => {},
+    deleteById: async () => {},
   };
   // The caller's account, as `UserIdentityService` would resolve it: a stable
   // id plus the handle the bucket URL namespace is keyed on.
@@ -88,8 +88,8 @@ describe('VolumeService user-only buckets', () => {
             create: async (input: { isPrivate: boolean; ownerEmail: string; ownerUserId: string }) => {
               seen.push({ isPrivate: input.isPrivate, ownerEmail: input.ownerEmail, ownerUserId: input.ownerUserId });
             },
-            update: async () => undefined,
-            deleteById: async () => undefined,
+            update: async () => {},
+            deleteById: async () => {},
           } as never),
       },
     );
@@ -112,9 +112,9 @@ describe('VolumeService user-only buckets', () => {
             countByOwnerUserId: async () => 0,
             listByOwnerUserId: async () => [],
             listByOwnerEmail: async () => [],
-            create: async () => undefined,
-            update: async () => undefined,
-            deleteById: async () => undefined,
+            create: async () => {},
+            update: async () => {},
+            deleteById: async () => {},
           } as never),
       },
     );
@@ -144,15 +144,22 @@ describe('VolumeService user-only buckets', () => {
             countByOwnerUserId: async () => 0,
             listByOwnerUserId: async () => [],
             listByOwnerEmail: async () => [],
-            create: async () => undefined,
-            update: async () => undefined,
-            deleteById: async () => undefined,
+            create: async () => {},
+            update: async () => {},
+            deleteById: async () => {},
           } as never),
       },
     );
-    const updated = await svc.updateVolume('alice', 'photos', { userId: 'usr_alice', email: 'a@x.co' }, { description: 'hi', isPrivate: false });
+    const updated = await svc.updateVolume(
+      'alice',
+      'photos',
+      { userId: 'usr_alice', email: 'a@x.co' },
+      { description: 'hi', isPrivate: false },
+    );
     expect(updated.description).toBe('hi');
-    await expect(svc.updateVolume('alice', 'photos', { userId: 'usr_other', email: 'other@x.co' }, { isPrivate: true })).rejects.toThrow(/owner/);
+    await expect(svc.updateVolume('alice', 'photos', { userId: 'usr_other', email: 'other@x.co' }, { isPrivate: true })).rejects.toThrow(
+      /owner/,
+    );
   });
 
   it('keeps ownership after the owner changes their email address', async () => {
@@ -176,7 +183,7 @@ describe('VolumeService user-only buckets', () => {
           Promise.resolve({
             getByOwnerName: async () => stored as never,
             getById: async () => ({ ...stored, description: 'renamed' }) as never,
-            update: async () => undefined,
+            update: async () => {},
           } as never),
       },
     );
@@ -188,12 +195,21 @@ describe('VolumeService user-only buckets', () => {
     // A pre-0004 row (no `owner_user_id`) may be matched on the address; a
     // 0004 row must not, or an address re-registered by a different account
     // would inherit the bucket.
-    const stored = { id: 'v', owner_email: 'shared@x.co', owner_user_id: 'usr_real', owner: 'real', name: 'n', is_private: 1 } as DavVolumeRow;
+    const stored = {
+      id: 'v',
+      owner_email: 'shared@x.co',
+      owner_user_id: 'usr_real',
+      owner: 'real',
+      name: 'n',
+      is_private: 1,
+    } as DavVolumeRow;
     const svc = new VolumeService(
       { DB: {} as never },
       { ...fakeVolumeDb().deps, volumeDAO: () => Promise.resolve({ getByOwnerName: async () => stored } as never) },
     );
-    await expect(svc.updateVolume('real', 'n', { userId: 'usr_imposter', email: 'shared@x.co' }, { description: 'x' })).rejects.toThrow(/owner/);
+    await expect(svc.updateVolume('real', 'n', { userId: 'usr_imposter', email: 'shared@x.co' }, { description: 'x' })).rejects.toThrow(
+      /owner/,
+    );
   });
 });
 

@@ -1,4 +1,3 @@
-// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { BackendError, extractErrorMessage } from '~/lib/api';
 import { copyEntry, createDirectory, deleteEntry, downloadUrl, listDirectory, moveEntry, uploadFile } from '~/services/davClient';

@@ -27,7 +27,7 @@ import { SUPPORT_METHODS } from '../packages/webdav/src/constants';
  * why this stub is deliberately shaped rather than a loose object.
  */
 function stateStub(overrides: { sqlExec?: (statement: string) => void } = {}) {
-  const sqlExec = overrides.sqlExec ?? (() => undefined);
+  const sqlExec = overrides.sqlExec ?? (() => {});
   const statements: string[] = [];
   const emptyCursor = () => {
     let done = false;
@@ -175,38 +175,41 @@ describe('DavVolumeWorker per-isolate memoization', () => {
 
 describe('DavVolumeWorker error boundary', () => {
   /**
- * A worker whose lock lookup fails.
- *
- * `DavRepository.nodeInfo` deliberately *rethrows* a lock-lookup failure rather
- * than reporting the resource as unlocked — "a client that cannot see the real
- * lock state will attempt a write and be refused, which is worse than a 500".
- * That rethrow is the documented unguarded path the worker's error boundary
- * exists for, and it is only reached once `statInner` reports the resource as
- * present, so the fake filesystem has to agree that `a.txt` exists.
- *
- * Schema DDL and the metadata reads still succeed; only `dav_locks` fails.
- */
-function workerWithFailingLockLookup() {
-  const { DavVolumeWorker } = workerModule;
-  const state = stateStub({
-    sqlExec: (statement) => {
-      if (/FROM dav_locks/i.test(statement)) throw new Error('lock lookup failed');
-    },
-  });
-  const worker = new DavVolumeWorker(state as never, { DB: {} } as never);
-  // The resource exists as far as the filesystem is concerned.
-  (worker as unknown as { dofs: { stat: unknown } }).dofs.stat = () => ({ type: 'file', size: 5, mtime: new Date() });
-  return worker;
-}
+   * A worker whose lock lookup fails.
+   *
+   * `DavRepository.nodeInfo` deliberately *rethrows* a lock-lookup failure rather
+   * than reporting the resource as unlocked — "a client that cannot see the real
+   * lock state will attempt a write and be refused, which is worse than a 500".
+   * That rethrow is the documented unguarded path the worker's error boundary
+   * exists for, and it is only reached once `statInner` reports the resource as
+   * present, so the fake filesystem has to agree that `a.txt` exists.
+   *
+   * Schema DDL and the metadata reads still succeed; only `dav_locks` fails.
+   */
+  function workerWithFailingLockLookup() {
+    const { DavVolumeWorker } = workerModule;
+    const state = stateStub({
+      sqlExec: (statement) => {
+        if (/FROM dav_locks/i.test(statement)) throw new Error('lock lookup failed');
+      },
+    });
+    const worker = new DavVolumeWorker(state as never, { DB: {} } as never);
+    // The resource exists as far as the filesystem is concerned.
+    (worker as unknown as { dofs: { stat: unknown } }).dofs.stat = () => ({ type: 'file', size: 5, mtime: new Date() });
+    return worker;
+  }
 
   it('turns a handler fault into a 500 carrying DAV and Allow headers', async () => {
     // Without the boundary a rejected body read escaped as a bare runtime 500
     // with no `DAV`/`Allow`, which a native client cannot interpret.
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const worker = workerWithFailingLockLookup();
 
     const response = await worker.fetch(
-      new Request('https://dav.example.com/alice/photos/a.txt', { method: 'PROPFIND', headers: { 'X-Dav-Base': '/alice/photos', 'X-Dav-Path': 'a.txt', Depth: '0' } }),
+      new Request('https://dav.example.com/alice/photos/a.txt', {
+        method: 'PROPFIND',
+        headers: { 'X-Dav-Base': '/alice/photos', 'X-Dav-Path': 'a.txt', Depth: '0' },
+      }),
     );
     expect(response.status).toBe(500);
     expect(response.headers.get('DAV')).toBe('1, 2');
@@ -215,11 +218,14 @@ function workerWithFailingLockLookup() {
   });
 
   it('logs the failing method', async () => {
-    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
     const worker = workerWithFailingLockLookup();
 
     await worker.fetch(
-      new Request('https://dav.example.com/alice/photos/a.txt', { method: 'PROPFIND', headers: { 'X-Dav-Base': '/alice/photos', 'X-Dav-Path': 'a.txt', Depth: '0' } }),
+      new Request('https://dav.example.com/alice/photos/a.txt', {
+        method: 'PROPFIND',
+        headers: { 'X-Dav-Base': '/alice/photos', 'X-Dav-Path': 'a.txt', Depth: '0' },
+      }),
     );
     // `console.error(payload, cause)` — the payload is the first argument, but
     // searching the whole call is robust to that shape.

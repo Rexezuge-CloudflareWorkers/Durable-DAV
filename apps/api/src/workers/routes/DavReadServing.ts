@@ -2,7 +2,17 @@ import type { KvCache } from '@rexezuge/runtime';
 import type { ApiContext } from '@/types/ApiContext';
 import type { DavAuthResult } from '@/middleware/DavAuth';
 import { applyDavForwardHeaders } from './davForwardHeaders';
-import { MAX_CACHED_FILE_BYTES, cacheControlFor, etagForPropfind, getCachedFile, getCachedPropfind, hashBody, isFresh, putCachedFile, putCachedPropfind } from './DavReadCache';
+import {
+  MAX_CACHED_FILE_BYTES,
+  cacheControlFor,
+  etagForPropfind,
+  getCachedFile,
+  getCachedPropfind,
+  hashBody,
+  isFresh,
+  putCachedFile,
+  putCachedPropfind,
+} from './DavReadCache';
 
 type DavContext = ApiContext;
 
@@ -172,7 +182,7 @@ async function serveGet(args: ServeReadArgs): Promise<Response> {
   const buf = await response.arrayBuffer().catch(() => null);
   if (!buf) return response;
   if (buf.byteLength <= MAX_CACHED_FILE_BYTES) {
-    await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag, ttls.file).catch(() => undefined);
+    await putCachedFile(cache, auth.owner, auth.volume, inner, new Uint8Array(buf), contentType, etag, ttls.file).catch(() => {});
   }
   // Build an explicit header set: `buf` is the runtime-*decoded* body, so
   // cloning the DO's headers verbatim could carry a now-wrong `Content-Length`,
@@ -213,7 +223,7 @@ async function servePropfind(args: Omit<ServeReadArgs, 'headOnly'>): Promise<Res
   if (text === null) return response;
   const etag =
     response.headers.get('ETag') ?? etagForPropfind(`${auth.owner}/${auth.volume}`.toLowerCase(), inner, depth, hashBody(bodyText));
-  await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag }, ttls.prop).catch(() => undefined);
+  await putCachedPropfind(cache, auth.owner, auth.volume, inner, depth, bodyText, { body: text, etag }, ttls.prop).catch(() => {});
   return respondFromBytes('propfind', 207, text, etag, {}, c.req.raw, false);
 }
 

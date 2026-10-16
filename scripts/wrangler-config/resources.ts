@@ -158,9 +158,7 @@ export function listSecretStores(): SecretStore[] {
  * not even be allowed to perform.
  */
 export type SecretStoreChoice =
-  | { kind: 'use'; id: string; name: string; adopted: boolean }
-  | { kind: 'ambiguous'; names: string[] }
-  | { kind: 'absent' };
+  { kind: 'use'; id: string; name: string; adopted: boolean } | { kind: 'ambiguous'; names: string[] } | { kind: 'absent' };
 
 /**
  * Pick the store to bind, from what the account already holds.

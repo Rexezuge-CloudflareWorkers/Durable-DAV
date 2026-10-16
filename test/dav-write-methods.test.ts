@@ -84,7 +84,14 @@ describe('handlePut — creation and overwrite', () => {
 
   it('409s when the parent does not exist', async () => {
     const repo = seeded();
-    const response = await handlePut(put('missing/x.txt'), 'missing/x.txt', repo as never, fakeLocks() as never, fakeDofs(repo) as never, 1024);
+    const response = await handlePut(
+      put('missing/x.txt'),
+      'missing/x.txt',
+      repo as never,
+      fakeLocks() as never,
+      fakeDofs(repo) as never,
+      1024,
+    );
     expect(response.status).toBe(409);
   });
 
@@ -115,7 +122,14 @@ describe('handlePut — creation and overwrite', () => {
 
   it('423s when the target is locked by another client', async () => {
     const repo = seeded();
-    const response = await handlePut(put('a.txt', 'x'), 'a.txt', repo as never, fakeLocks({ lockedPaths: ['a.txt'] }) as never, fakeDofs(repo) as never, 1024);
+    const response = await handlePut(
+      put('a.txt', 'x'),
+      'a.txt',
+      repo as never,
+      fakeLocks({ lockedPaths: ['a.txt'] }) as never,
+      fakeDofs(repo) as never,
+      1024,
+    );
     expect(response.status).toBe(423);
   });
 
@@ -242,13 +256,25 @@ describe('handleMkcol', () => {
 
   it('409s when the parent does not exist', async () => {
     const repo = seeded();
-    const response = await handleMkcol(mkcol('missing/child'), 'missing/child', repo as never, fakeLocks() as never, fakeDofs(repo) as never);
+    const response = await handleMkcol(
+      mkcol('missing/child'),
+      'missing/child',
+      repo as never,
+      fakeLocks() as never,
+      fakeDofs(repo) as never,
+    );
     expect(response.status).toBe(409);
   });
 
   it('423s when the target is locked', async () => {
     const repo = seeded();
-    const response = await handleMkcol(mkcol('newdir'), 'newdir', repo as never, fakeLocks({ lockedPaths: ['newdir'] }) as never, fakeDofs(repo) as never);
+    const response = await handleMkcol(
+      mkcol('newdir'),
+      'newdir',
+      repo as never,
+      fakeLocks({ lockedPaths: ['newdir'] }) as never,
+      fakeDofs(repo) as never,
+    );
     expect(response.status).toBe(423);
   });
 });

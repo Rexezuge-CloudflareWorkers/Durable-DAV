@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { VolumeReplicationService, normalizeRemotePath, normalizeInterval, oneOf, readMirrorDeletions, REPLICATION_INTERVALS, REPLICATION_MODES } from '@durable-dav/backend-services/dav';
+import {
+  VolumeReplicationService,
+  normalizeRemotePath,
+  normalizeInterval,
+  oneOf,
+  readMirrorDeletions,
+  REPLICATION_INTERVALS,
+  REPLICATION_MODES,
+} from '@durable-dav/backend-services/dav';
 import { AesGcmKeyError, decryptSecret, encryptSecret } from '@rexezuge/d1';
 import { generateReplicationKey } from '@durable-dav/backend-data/crypto';
 import { BadRequestError } from '@rexezuge/errors';
@@ -148,7 +156,7 @@ describe('VolumeReplicationService.allowedIntervals', () => {
  * as `AesGcmKeyError`. What stays this repo's is the boundary: a row that
  * cannot be decrypted must reach the owner as a message that says *decrypt*,
  * which `replication-runner.test.ts` pins through the run's error string.
- */describe('replication credential envelope', () => {
+ */ describe('replication credential envelope', () => {
   it('round-trips a secret', async () => {
     const key = generateReplicationKey();
     const envelope = await encryptSecret('user:hunter2', key);

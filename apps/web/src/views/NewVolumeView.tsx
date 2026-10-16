@@ -3,10 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { createVolume } from '../services/volumeService';
 import { toLocalizedErrorMessage } from '../lib/backendErrors';
-import { Button } from '../components/ui/Button';
-import { Card, CardHeader, CardTitle } from '../components/ui/Card';
-import { Input, Label } from '../components/ui/Input';
-import { AppPage, ContextBar } from '@rexezuge/web';
+import { AppPage, Button, Card, CardHeader, CardTitle, ContextBar, Input, Label } from '@rexezuge/web';
 import { Logo } from '../components/layout/Logo';
 
 export function NewVolumeView({
@@ -32,7 +29,7 @@ export function NewVolumeView({
         name: name.trim(),
         isPrivate,
       });
-      showNotice('success', t('volumes.volumeCreated', 'Volume {{fullName}} Created.', { fullName: volume.fullName }));
+      showNotice('success', t('volumes.volumeCreated', 'Bucket {{fullName}} Created.', { fullName: volume.fullName }));
       void navigate(`/${volume.owner}/${volume.name}`);
     } catch (error) {
       showNotice('error', toLocalizedErrorMessage(t, error, 'errors.failedToCreateVolume', 'Failed To Create Volume.'));
@@ -50,13 +47,13 @@ export function NewVolumeView({
           </Link>
         }
         crumb={
-          <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">{t('volumes.newVolume', 'New Volume')}</span>
+          <span className="text-xl font-semibold text-[var(--color-text-primary)] truncate">{t('volumes.newVolume', 'New Bucket')}</span>
         }
       />
       <AppPage variant="narrow">
         <Card>
           <CardHeader>
-            <CardTitle>{t('volumes.newVolume', 'New Volume')}</CardTitle>
+            <CardTitle>{t('volumes.newVolume', 'New Bucket')}</CardTitle>
           </CardHeader>
           <form onSubmit={submit} className="space-y-4">
             <div>
@@ -64,7 +61,7 @@ export function NewVolumeView({
               <Input value={owner} onChange={(e) => setOwner(e.target.value)} required />
             </div>
             <div>
-              <Label className="mb-1.5">{t('volumes.volumeName', 'Volume Name')}</Label>
+              <Label className="mb-1.5">{t('volumes.volumeName', 'Bucket Name')}</Label>
               <Input
                 placeholder={t('volumes.volumeNamePlaceholder', 'my-files')}
                 value={name}
@@ -74,10 +71,10 @@ export function NewVolumeView({
             </div>
             <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]">
               <input type="checkbox" checked={isPrivate} onChange={(e) => setIsPrivate(e.target.checked)} />
-              {t('volumes.privateVolume', 'Private Volume')}
+              {t('volumes.privateVolume', 'Private Bucket')}
             </label>
             <Button type="submit" variant="primary" loading={saving}>
-              {t('volumes.createVolume', 'Create Volume')}
+              {t('volumes.createVolume', 'Create Bucket')}
             </Button>
           </form>
         </Card>

@@ -60,36 +60,43 @@ class DavVolumeDAO extends BaseDAO {
   }): Promise<void> {
     const ownerCi = input.owner.toLowerCase();
     const nameCi = input.name.toLowerCase();
-    await this.run('INSERT INTO dav_volumes (id, owner_email, owner_user_id, owner, name, description, is_private, href_prefix_mode, created_at, updated_at, owner_ci, name_ci) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)', [input.id,
-            input.ownerEmail,
-            input.ownerUserId,
-            input.owner,
-            input.name,
-            input.description,
-            input.isPrivate ? 1 : 0,
-            input.hrefPrefixMode ?? DEFAULT_DAV_HREF_PREFIX_MODE,
-            input.now,
-            input.now,
-            ownerCi,
-            nameCi,]);
+    await this.run(
+      'INSERT INTO dav_volumes (id, owner_email, owner_user_id, owner, name, description, is_private, href_prefix_mode, created_at, updated_at, owner_ci, name_ci) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+      [
+        input.id,
+        input.ownerEmail,
+        input.ownerUserId,
+        input.owner,
+        input.name,
+        input.description,
+        input.isPrivate ? 1 : 0,
+        input.hrefPrefixMode ?? DEFAULT_DAV_HREF_PREFIX_MODE,
+        input.now,
+        input.now,
+        ownerCi,
+        nameCi,
+      ],
+    );
   }
 
   public async getByOwnerName(owner: string, name: string): Promise<DavVolumeRow | null> {
-    // `firstWithRetry`, not a bare `.first()`: this is the first query on every
-    // DAV request, and `DavAuth` documents a `DatabaseError` -> 503 contract for
-    // exactly this lookup. A bare `.first()` rejects with a raw `D1_ERROR`,
-    // which is not a `DatabaseError`, so that branch could never fire.
-    return this.first<DavVolumeRow>('SELECT * FROM dav_volumes WHERE owner_ci = ? AND name_ci = ? LIMIT 1', [owner.toLowerCase(), name.toLowerCase()]);
+    // `BaseDAO.first` retries and normalizes a failure to a `DatabaseError`:
+    // this is the first query on every DAV request, and `DavAuth` documents a
+    // `DatabaseError` -> 503 contract for exactly this lookup.
+    return this.first<DavVolumeRow>('SELECT * FROM dav_volumes WHERE owner_ci = ? AND name_ci = ? LIMIT 1', [
+      owner.toLowerCase(),
+      name.toLowerCase(),
+    ]);
   }
 
   /**
    * By stable key. Used by the replication routes, which reach a volume from the
    * `volume_id` on a `dav_replications` row rather than by owner and name.
    *
-   * `firstWithRetry` per this package's rule that no read calls `.first()` bare —
-   * a raw `D1_ERROR` is not a `DatabaseError`, so the 503 that `BaseRoute` maps it
-   * to would be unreachable and a D1 blip would surface as an opaque 500 on the
-   * "Sync Now" button.
+   * Read through `BaseDAO.first`, which retries and normalizes to a
+   * `DatabaseError` — the shape the 503 that `BaseRoute` maps it to is written
+   * for. Anything less surfaces a D1 blip as an opaque 500 on the "Sync Now"
+   * button.
    */
   public async getById(id: string): Promise<DavVolumeRow | null> {
     return this.first<DavVolumeRow>('SELECT * FROM dav_volumes WHERE id = ? LIMIT 1', [id]);
@@ -125,7 +132,10 @@ class DavVolumeDAO extends BaseDAO {
    * findable by its old one.
    */
   public async listByOwnerUserId(ownerUserId: string, limit = 1000): Promise<DavVolumeRow[]> {
-    return this.all<DavVolumeRow>('SELECT * FROM dav_volumes WHERE owner_user_id = ? ORDER BY updated_at DESC LIMIT ?', [ownerUserId, limit]);
+    return this.all<DavVolumeRow>('SELECT * FROM dav_volumes WHERE owner_user_id = ? ORDER BY updated_at DESC LIMIT ?', [
+      ownerUserId,
+      limit,
+    ]);
   }
 
   /**
@@ -134,7 +144,7 @@ class DavVolumeDAO extends BaseDAO {
    * The one count where degrading on failure would be a security-relevant
    * decision rather than an inconvenience: `VolumeService.createVolume` reads this
    * to decide whether to allow a creation, so a count that silently answered `0`
-   * would let the quota be bypassed. `firstWithRetry` turns a D1 blip into a
+   * would let the quota be bypassed. `BaseDAO.first` turns a D1 blip into a
    * `DatabaseError` the caller turns into a 503.
    */
   public async countByOwnerUserId(ownerUserId: string): Promise<number> {
@@ -156,14 +166,21 @@ class DavVolumeDAO extends BaseDAO {
   }
 
   public async renameOwner(oldOwnerCi: string, newOwner: string, now: number): Promise<void> {
-    await this.run('UPDATE dav_volumes SET owner = ?, owner_ci = ?, updated_at = ? WHERE owner_ci = ?', [newOwner, newOwner.toLowerCase(), now, oldOwnerCi.toLowerCase()]);
+    await this.run('UPDATE dav_volumes SET owner = ?, owner_ci = ?, updated_at = ? WHERE owner_ci = ?', [
+      newOwner,
+      newOwner.toLowerCase(),
+      now,
+      oldOwnerCi.toLowerCase(),
+    ]);
   }
 
   /**
   @deprecated Pre-0004 fallback; prefer `countByOwnerUserId`.
   */
   public async countByOwnerEmail(ownerEmail: string): Promise<number> {
-    const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE owner_email = ?', [ownerEmail.toLowerCase()]);
+    const row = await this.first<{ cnt: number }>('SELECT COUNT(*) AS cnt FROM dav_volumes WHERE owner_email = ?', [
+      ownerEmail.toLowerCase(),
+    ]);
     return row?.cnt ?? 0;
   }
 

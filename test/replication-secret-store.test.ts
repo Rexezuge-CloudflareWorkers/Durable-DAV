@@ -87,9 +87,7 @@ describe('production warning for the superseded var', () => {
   });
 
   it('does not warn outside production, where the var is the supported path', () => {
-    expect(
-      new AppConfiguration({ ENVIRONMENT: 'development', REPLICATION_ENCRYPTION_KEY: 'plaintext-key' }).validate(),
-    ).toEqual([]);
+    expect(new AppConfiguration({ ENVIRONMENT: 'development', REPLICATION_ENCRYPTION_KEY: 'plaintext-key' }).validate()).toEqual([]);
   });
 });
 

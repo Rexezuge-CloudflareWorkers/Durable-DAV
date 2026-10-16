@@ -26,9 +26,7 @@ import { stripSlashes } from '@durable-dav/webdav';
 
 export type DestinationFailure = 'absent' | 'invalid' | 'cross-origin';
 
-export type DestinationResolution =
-  | { ok: true; destination: string }
-  | { ok: false; reason: DestinationFailure; status: number };
+export type DestinationResolution = { ok: true; destination: string } | { ok: false; reason: DestinationFailure; status: number };
 
 /**
  * The path portion of the header *before* URL resolution.
@@ -63,18 +61,16 @@ function rawPathOf(header: string): string | null {
  * `isValidInnerPath`, which runs after the DO's per-segment decode.
  */
 function hasDotSegment(pathname: string): boolean {
-  return pathname
-    .split('/')
-    .some((segment) => {
-      if (segment === '') return false;
-      let decoded = segment;
-      try {
-        decoded = decodeURIComponent(segment);
-      } catch {
-        // Keep the raw segment; only a literal all-dots value can match.
-      }
-      return /^\.{1,2}$/.test(decoded);
-    });
+  return pathname.split('/').some((segment) => {
+    if (segment === '') return false;
+    let decoded = segment;
+    try {
+      decoded = decodeURIComponent(segment);
+    } catch {
+      // Keep the raw segment; only a literal all-dots value can match.
+    }
+    return /^\.{1,2}$/.test(decoded);
+  });
 }
 
 /**

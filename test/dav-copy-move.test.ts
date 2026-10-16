@@ -13,7 +13,12 @@ import { handleCopy, handleMove } from '../apps/background/src/dav/methods/CopyM
 import { BASES, destination, fakeDofs, fakeLocks, fakeRepo } from './helpers/dav-fakes';
 import type { FakeRepo } from './helpers/dav-fakes';
 
-function request(method: string, srcInner: string, headers: Record<string, string> = {}, url = 'https://dav.example.com/alice/photos'): Request {
+function request(
+  method: string,
+  srcInner: string,
+  headers: Record<string, string> = {},
+  url = 'https://dav.example.com/alice/photos',
+): Request {
   return new Request(`${url}/${srcInner}`, { method, headers });
 }
 

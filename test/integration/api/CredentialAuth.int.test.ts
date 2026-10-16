@@ -3,7 +3,6 @@ import { describe, expect, it } from 'vitest';
 import { SELF, env } from 'cloudflare:test';
 import { setupIntegrationTest, ensureUser } from '../helpers/setup';
 
-
 /**
  * Bucket-credential authentication against real D1.
  *

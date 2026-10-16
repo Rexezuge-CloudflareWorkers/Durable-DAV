@@ -95,8 +95,14 @@ async function pullAndPreserve(context: TransferContext, path: string, conflictP
   if (remoteIsCollection) {
     // Collection replacing file: there is no remote bytes to write, and the local
     // file is preserved whole rather than being lost to a directory that replaced it.
-    context.applied(await localStub.applyReplicaOperations(replicationId, [{ op: 'mkdir', path: conflictPath }]), 'writing the conflict collection');
-    context.applied(await localStub.applyReplicaOperations(replicationId, [{ op: 'unlink', path, recursive: false }]), 'replacing a file with a collection');
+    context.applied(
+      await localStub.applyReplicaOperations(replicationId, [{ op: 'mkdir', path: conflictPath }]),
+      'writing the conflict collection',
+    );
+    context.applied(
+      await localStub.applyReplicaOperations(replicationId, [{ op: 'unlink', path, recursive: false }]),
+      'replacing a file with a collection',
+    );
     context.applied(await localStub.applyReplicaOperations(replicationId, [{ op: 'mkdir', path }]), 'local mkdir');
     return;
   }
@@ -109,7 +115,9 @@ async function pullAndPreserve(context: TransferContext, path: string, conflictP
     return;
   }
   context.applied(
-    await localStub.applyReplicaOperations(replicationId, [{ op: 'write', path: conflictPath, contentType: localEntry.contentType, data: localStream }]),
+    await localStub.applyReplicaOperations(replicationId, [
+      { op: 'write', path: conflictPath, contentType: localEntry.contentType, data: localStream },
+    ]),
     'preserving the local version',
   );
   await remoteToLocal(context, path, contentType);
@@ -145,7 +153,10 @@ async function preserveConflictingCollection(context: TransferContext, path: str
   // Nothing to preserve when the local side holds the bytes — that is the
   // file-vs-file case, handled by the caller.
   if (!remoteIsCollection || slice.localByPath.has(path)) return false;
-  context.applied(await localStub.applyReplicaOperations(replicationId, [{ op: 'mkdir', path: conflictPath }]), 'writing the conflict collection');
+  context.applied(
+    await localStub.applyReplicaOperations(replicationId, [{ op: 'mkdir', path: conflictPath }]),
+    'writing the conflict collection',
+  );
   return true;
 }
 

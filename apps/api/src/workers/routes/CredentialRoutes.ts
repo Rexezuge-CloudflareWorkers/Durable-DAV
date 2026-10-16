@@ -53,9 +53,7 @@ class UpdateCredential extends VolumeScopedRoute {
     // `"true"` to full access is the one outcome that must not happen by
     // accident.
     if (typeof body.readOnly !== 'boolean') return BaseRoute.jsonError(c, 'readOnly must be a boolean', 400);
-    const updated = await scope
-      .get(Tokens.VolumeCredentialService)
-      .setCredentialReadOnly(row.id, c.req.param('id') ?? '', body.readOnly);
+    const updated = await scope.get(Tokens.VolumeCredentialService).setCredentialReadOnly(row.id, c.req.param('id') ?? '', body.readOnly);
     // Reuses the listing projection rather than restating a third field set.
     return c.json(toCredentialJson(updated));
   }

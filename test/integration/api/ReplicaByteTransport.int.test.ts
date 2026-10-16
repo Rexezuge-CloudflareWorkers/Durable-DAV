@@ -34,11 +34,19 @@ beforeAll(async () => {
   await ensureUser(testEnv.DB, EMAIL, OWNER);
   const row = await testEnv.DB.prepare('SELECT username FROM users WHERE email = ?').bind(EMAIL).first<{ username: string | null }>();
   OWNER = row?.username ?? OWNER;
-  expect((await api('/user/volumes', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ owner: OWNER, name: VOLUME }) })).status).toBe(201);
-  const cred = await api(`/user/volumes/${OWNER}/${VOLUME}/credentials`, { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ name: 'probe' }) });
+  expect(
+    (await api('/user/volumes', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ owner: OWNER, name: VOLUME }) })).status,
+  ).toBe(201);
+  const cred = await api(`/user/volumes/${OWNER}/${VOLUME}/credentials`, {
+    method: 'POST',
+    headers: JSON_HEADERS,
+    body: JSON.stringify({ name: 'probe' }),
+  });
   const { username, password } = (await cred.json()) as { username: string; password: string };
   auth = { Authorization: `Basic ${btoa(`${username}:${password}`)}` };
-  expect((await dav('/payload.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'stream payload' })).status).toBe(201);
+  expect((await dav('/payload.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'stream payload' })).status).toBe(
+    201,
+  );
 });
 
 describe('Durable Object RPC — byte transport', () => {
@@ -94,7 +102,9 @@ describe('DavVolumeRemote — reading through a configured subdirectory', () => 
       replicationId: 'probe',
     });
     expect((await dav('/sub', { method: 'MKCOL' })).status).toBe(201);
-    expect((await dav('/sub/inner.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'inner payload' })).status).toBe(201);
+    expect((await dav('/sub/inner.txt', { method: 'PUT', headers: { 'Content-Type': 'text/plain' }, body: 'inner payload' })).status).toBe(
+      201,
+    );
 
     const listing = await adapter.list('');
     expect(listing.entries.map((entry) => entry.path)).toEqual(['inner.txt']);

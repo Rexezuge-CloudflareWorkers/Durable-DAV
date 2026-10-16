@@ -12,7 +12,10 @@ import { MiddlewareHandlers } from '../apps/api/src/middleware/MiddlewareHandler
  * read an identity instead of re-running authentication. A failure answers in
  * the AWS envelope rather than throwing into `app.onError` as a masked 500.
  */
-function buildApp(auth: { getAuthenticatedUserEmail: () => Promise<string> }, upsert: (email: string) => Promise<{ id: string }>): Hono<{
+function buildApp(
+  auth: { getAuthenticatedUserEmail: () => Promise<string> },
+  upsert: (email: string) => Promise<{ id: string }>,
+): Hono<{
   Bindings: Env;
   Variables: { AuthenticatedUserEmailAddress: string };
 }> {
@@ -35,9 +38,8 @@ const EXEC_CTX = {} as never;
 
 describe('userAuthentication', () => {
   it('stores both the sign-in address and the account key, then continues', async () => {
-    const app = buildApp(
-      { getAuthenticatedUserEmail: () => Promise.resolve('Alice@Example.com') },
-      (email: string) => Promise.resolve({ id: 'usr_alice', email }),
+    const app = buildApp({ getAuthenticatedUserEmail: () => Promise.resolve('Alice@Example.com') }, (email: string) =>
+      Promise.resolve({ id: 'usr_alice', email }),
     );
     const res = await app.request('https://h/user/me', {}, {} as never, EXEC_CTX);
     expect(res.status).toBe(200);

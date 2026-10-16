@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { DavCredentialDAO, DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
+import {
+  DavCredentialDAO,
+  DavReplicationConflictDAO,
+  DavReplicationDAO,
+  DavVolumeDAO,
+  NamespaceDAO,
+  UserDAO,
+  UserEmailDAO,
+} from '@durable-dav/backend-data/dao';
 import { DatabaseError } from '@rexezuge/errors';
 
 /**
@@ -8,11 +16,13 @@ import { DatabaseError } from '@rexezuge/errors';
  *
  * ## Why this is asserted per-read rather than once on `BaseDAO`
  *
- * `packages/backend-data/AGENTS.md` states the rule — reads go through
- * `firstWithRetry`/`allWithRetry`, never a bare `.first()`/`.all()` — and it was
- * documented, load-bearing, and then violated in nine places. `getByOwnerName`
- * carries a ten-line comment justifying it while `getById`, three lines below,
- * did not use it.
+ * The rule — a failed read arrives as a `DatabaseError`, never as a raw
+ * `D1_ERROR` — is carried by the kit's `BaseDAO.first`/`all`, which classify the
+ * failure and wrap it. What the kit cannot see is a DAO that goes around it, and
+ * that is the shape this repo shipped: `getByOwnerName` carried a ten-line
+ * comment justifying the retrying read while `getById`, three lines below, called
+ * the binding's `.first()` directly — the rule was documented, load-bearing, and
+ * violated in nine places.
  *
  * A rule that can be forgotten one method at a time is not enforced by a comment,
  * so this walks the actual public surface instead.
@@ -20,10 +30,10 @@ import { DatabaseError } from '@rexezuge/errors';
  * ## One failure shape for a read, and it is a throw
  *
  * A read reports failure by rejecting. `.first()` and `.all()` have no `success`
- * flag to inspect — that is on `run()` — so `executeD1WithRetry`'s
- * `result.success` check applies to writes, and `firstWithRetry`/`allWithRetry`
- * classify the rejection's message. Asserting a `success: false` read here would
- * be asserting a shape D1 does not produce.
+ * flag to inspect — that is on `run()` — so the retry helper's `result.success`
+ * check applies to writes, and the read paths classify the rejection's message
+ * instead. Asserting a `success: false` read here would be asserting a shape D1
+ * does not produce.
  *
  * What matters is that the throw becomes a `DatabaseError` (so `DavAuth`'s 503 and
  * `BaseRoute`'s 500 are reachable), that a *transient* throw is retried rather
@@ -55,18 +65,28 @@ const READS: Array<{ name: string; run: (dao: never) => Promise<unknown> }> = [
   { name: 'DavCredentialDAO.countByVolume', run: (dao: never) => new DavCredentialDAO(dao as never).countByVolume('vol_1') },
   { name: 'DavCredentialDAO.usernameExists', run: (dao: never) => new DavCredentialDAO(dao as never).usernameExists('alice') },
   { name: 'DavReplicationDAO.getById', run: (dao: never) => new DavReplicationDAO(dao as never).getById('rep_1') },
-  { name: 'DavReplicationDAO.getByVolumeAndTarget', run: (dao: never) => new DavReplicationDAO(dao as never).getByVolumeAndTarget('vol_1', {
-    targetKind: 'dav',
-    remoteUrl: 'https://example.com',
-    remoteOwner: '',
-    remoteVolume: '',
-    remotePath: '',
-  }) },
+  {
+    name: 'DavReplicationDAO.getByVolumeAndTarget',
+    run: (dao: never) =>
+      new DavReplicationDAO(dao as never).getByVolumeAndTarget('vol_1', {
+        targetKind: 'dav',
+        remoteUrl: 'https://example.com',
+        remoteOwner: '',
+        remoteVolume: '',
+        remotePath: '',
+      }),
+  },
   { name: 'DavReplicationDAO.listByVolume', run: (dao: never) => new DavReplicationDAO(dao as never).listByVolume('vol_1') },
   { name: 'DavReplicationDAO.countByVolume', run: (dao: never) => new DavReplicationDAO(dao as never).countByVolume('vol_1') },
   { name: 'DavReplicationDAO.listDue', run: (dao: never) => new DavReplicationDAO(dao as never).listDue(1, 10) },
-  { name: 'DavReplicationConflictDAO.listByReplication', run: (dao: never) => new DavReplicationConflictDAO(dao as never).listByReplication('rep_1', false) },
-  { name: 'DavReplicationConflictDAO.countUnresolved', run: (dao: never) => new DavReplicationConflictDAO(dao as never).countUnresolved('rep_1') },
+  {
+    name: 'DavReplicationConflictDAO.listByReplication',
+    run: (dao: never) => new DavReplicationConflictDAO(dao as never).listByReplication('rep_1', false),
+  },
+  {
+    name: 'DavReplicationConflictDAO.countUnresolved',
+    run: (dao: never) => new DavReplicationConflictDAO(dao as never).countUnresolved('rep_1'),
+  },
 ];
 
 const TRANSIENT = 'D1_ERROR: database is temporarily busy';
@@ -168,7 +188,10 @@ describe('every DAO read normalizes a failure to DatabaseError', () => {
     // correct but needlessly fails a request D1 would have answered. The retry is
     // why the schedule lives in one place shared by reads and writes.
     for (const read of READS) {
-      await expect(read.run(failingDatabase(TRANSIENT) as never), `${read.name} should recover from a busy database`).resolves.not.toThrow();
+      await expect(
+        read.run(failingDatabase(TRANSIENT) as never),
+        `${read.name} should recover from a busy database`,
+      ).resolves.not.toThrow();
     }
   });
 

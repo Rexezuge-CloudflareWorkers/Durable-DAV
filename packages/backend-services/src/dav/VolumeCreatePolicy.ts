@@ -56,7 +56,7 @@ function parseVolumePatch(input: VolumePatchInput): VolumePatch {
     throw new BadRequestError(`hrefPrefixMode must be one of: ${DAV_HREF_PREFIX_MODES.join(', ')}`);
   }
   return {
-    description: (input.description ?? null),
+    description: input.description ?? null,
     isPrivate: input.isPrivate,
     hrefPrefixMode: input.hrefPrefixMode,
   };

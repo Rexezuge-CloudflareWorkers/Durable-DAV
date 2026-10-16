@@ -121,10 +121,7 @@ abstract class BaseRoute {
    * away from the kit catalog that decides the `Type`. Returns `null`
    * for a body that parsed, so a handler is one `if` rather than two.
    */
-  public static rejectUnreadableBody(
-    c: HonoContext,
-    read: { malformed: boolean; oversized: boolean },
-  ): Response | null {
+  public static rejectUnreadableBody(c: HonoContext, read: { malformed: boolean; oversized: boolean }): Response | null {
     if (read.oversized) return this.jsonError(c, 'Payload too large', 413);
     return read.malformed ? this.jsonError(c, 'Invalid JSON body', 400) : null;
   }
@@ -137,10 +134,7 @@ abstract class BaseRoute {
       // 500. `DavAuth` already answers 503 for the same type, so this aligns the
       // JSON plane with the DAV plane instead of leaving a retryable outage
       // indistinguishable from a permanent one.
-      return Response.json(
-        { Exception: { Type: error.type, Message: error.message } },
-        { status: error.retryable ? 503 : error.status },
-      );
+      return Response.json({ Exception: { Type: error.type, Message: error.message } }, { status: error.retryable ? 503 : error.status });
     }
     if (error instanceof ServiceError) {
       const code = error.status;

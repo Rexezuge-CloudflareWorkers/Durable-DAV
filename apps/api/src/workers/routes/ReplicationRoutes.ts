@@ -122,14 +122,12 @@ class UpdateReplication extends VolumeScopedRoute {
     const read = await BaseRoute.readJson<Record<string, unknown>>(c);
     const unreadable = BaseRoute.rejectUnreadableBody(c, read);
     if (unreadable) return unreadable;
-    const updated = await scope
-      .get(Tokens.VolumeReplicationService)
-      .updateReplication(row.id, c.req.param('replicationId') ?? '', {
-        mode: read.body?.['mode'],
-        mirrorDeletions: read.body?.['mirrorDeletions'],
-        intervalMinutes: read.body?.['intervalMinutes'],
-        enabled: read.body?.['enabled'],
-      });
+    const updated = await scope.get(Tokens.VolumeReplicationService).updateReplication(row.id, c.req.param('replicationId') ?? '', {
+      mode: read.body?.['mode'],
+      mirrorDeletions: read.body?.['mirrorDeletions'],
+      intervalMinutes: read.body?.['intervalMinutes'],
+      enabled: read.body?.['enabled'],
+    });
     return c.json({ replication: toReplicationJson(updated) });
   }
 }
@@ -187,7 +185,9 @@ class ListReplicationConflicts extends VolumeScopedRoute {
 
   protected async run(c: ApiContext, { scope, row }: VolumeRequestContext): Promise<Response> {
     const includeResolved = c.req.query('includeResolved') === 'true';
-    const conflicts = await scope.get(Tokens.VolumeReplicationService).listConflicts(row.id, c.req.param('replicationId') ?? '', includeResolved);
+    const conflicts = await scope
+      .get(Tokens.VolumeReplicationService)
+      .listConflicts(row.id, c.req.param('replicationId') ?? '', includeResolved);
     return c.json({ conflicts: conflicts.map(toConflictJson) });
   }
 }
@@ -231,7 +231,7 @@ class RunReplicationNow extends VolumeScopedRoute {
     const work = runReplicaSliceNow(scope, c.env, replicationId);
     const executionCtx = (c as unknown as { executionCtx?: { waitUntil?: (p: Promise<unknown>) => void } }).executionCtx;
     if (typeof executionCtx?.waitUntil === 'function') {
-      executionCtx.waitUntil(work.catch(() => undefined));
+      executionCtx.waitUntil(work.catch(() => {}));
       return c.json({ sync: 'started' }, 202);
     }
     const result = await work;
@@ -270,7 +270,7 @@ async function runReplicaSliceNow(scope: Container, env: Env, replicationId: str
 
 async function forgetReplicaState(c: ApiContext, owner: string, volume: string, replicationId: string): Promise<void> {
   const stub = getVolumeStub(c.env, owner, volume) as unknown as { forgetReplication: (id: string) => Promise<void> };
-  await stub.forgetReplication(replicationId).catch(() => undefined);
+  await stub.forgetReplication(replicationId).catch(() => {});
 }
 
 function registerReplicationRoutes(app: App): void {

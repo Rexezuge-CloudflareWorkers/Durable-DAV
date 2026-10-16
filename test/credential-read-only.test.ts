@@ -65,16 +65,16 @@ function fakeDb(row: Record<string, unknown> | null): { db: D1Queryable; queries
       queries.push(normalized);
       const statement = {
         bind: () => statement,
-        first: async <T,>(): Promise<T | null> => {
+        first: async <T>(): Promise<T | null> => {
           if (!row) return null;
           // The auth lookup filters on the username and an unexpired row; the
           // password is verified in the worker, never in SQL.
           if (normalized.includes('WHERE username = ? AND expires_at > ?')) {
-            return (Number(row.expires_at) > 1 ? (row as T) : null);
+            return Number(row.expires_at) > 1 ? (row as T) : null;
           }
           return row as T;
         },
-        all: async <T,>(): Promise<{ results: T[] }> => ({ results: (row ? [row] : []) as T[] }),
+        all: async <T>(): Promise<{ results: T[] }> => ({ results: (row ? [row] : []) as T[] }),
         run: async () => ({ success: true, meta: { changes: 1 } }),
       };
       return statement;
@@ -213,6 +213,8 @@ describe('read-only bucket credentials (migration 0005)', () => {
     const response = davErrorResponse(403, 'cannot-modify-protected-property');
     expect(response.status).toBe(403);
     expect(response.headers.get('Content-Type')).toBe('application/xml; charset=utf-8');
-    expect(await response.text()).toBe('<?xml version="1.0" encoding="utf-8"?>\n<D:error xmlns:D="DAV:"><D:cannot-modify-protected-property/></D:error>');
+    expect(await response.text()).toBe(
+      '<?xml version="1.0" encoding="utf-8"?>\n<D:error xmlns:D="DAV:"><D:cannot-modify-protected-property/></D:error>',
+    );
   });
 });

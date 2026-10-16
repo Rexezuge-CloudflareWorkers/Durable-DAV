@@ -1,4 +1,12 @@
-import type { DavCredentialDAO, DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO, NamespaceDAO, UserDAO, UserEmailDAO } from '@durable-dav/backend-data/dao';
+import type {
+  DavCredentialDAO,
+  DavReplicationConflictDAO,
+  DavReplicationDAO,
+  DavVolumeDAO,
+  NamespaceDAO,
+  UserDAO,
+  UserEmailDAO,
+} from '@durable-dav/backend-data/dao';
 import type { D1Queryable } from '@rexezuge/d1';
 import type { Token } from '@rexezuge/runtime';
 import type { AppConfiguration } from '@durable-dav/backend-runtime/config';

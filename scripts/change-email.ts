@@ -212,9 +212,7 @@ function main(): void {
     args,
     `SELECT ue.user_id, ue.is_verified, u.current_email FROM user_emails ue JOIN users u ON u.id = ue.user_id WHERE ue.email = ${target} LIMIT 1`,
   );
-  const existing = (holder.results ?? [])[0] as
-    | { user_id: string; is_verified: number; current_email: string | null }
-    | undefined;
+  const existing = (holder.results ?? [])[0] as { user_id: string; is_verified: number; current_email: string | null } | undefined;
   if (existing && existing.is_verified === 1 && existing.user_id !== account.id) {
     die(
       `${args.to} is already a live login for account ${existing.user_id} (current_email ${existing.current_email ?? '?'}). ` +

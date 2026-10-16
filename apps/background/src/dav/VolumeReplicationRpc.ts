@@ -162,7 +162,13 @@ class VolumeReplicationRpc {
    * inside it — and so a new operation is added by adding a case, not by growing
    * a nested block.
    */
-  private async applyOne(repo: DavRepository, replicationId: string, operation: ReplicaOperation, records: ReplicaStateWrite[], forgetPaths: string[]): Promise<void> {
+  private async applyOne(
+    repo: DavRepository,
+    replicationId: string,
+    operation: ReplicaOperation,
+    records: ReplicaStateWrite[],
+    forgetPaths: string[],
+  ): Promise<void> {
     switch (operation.op) {
       case 'mkdir': {
         ops.mkdir(this.dofs, repo, operation.path);
@@ -272,7 +278,6 @@ class VolumeReplicationRpc {
   private ensure(): void {
     ensureReplicationSchema(this.sql);
   }
-
 }
 
 export { VolumeReplicationRpc };

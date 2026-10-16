@@ -3,10 +3,7 @@ import { useTranslation } from 'react-i18next';
 import type { VolumeDetail } from '../../types';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
 import { loadVolume, updateVolume, deleteVolume } from '../../services/volumeService';
-import { Button } from '../ui/Button';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
-import { Label, Textarea } from '../ui/Input';
-import { RefreshButton, TypeToConfirmModal } from '@rexezuge/web';
+import { Button, Card, CardHeader, CardTitle, Label, RefreshButton, Textarea, TypeToConfirmModal } from '@rexezuge/web';
 import { VolumeCredentialsCard } from './VolumeCredentialsCard';
 import { VolumeReplicationCard } from './VolumeReplicationCard';
 import { HrefPrefixModeCard } from './HrefPrefixModeCard';
@@ -139,9 +136,7 @@ export function VolumeSettingsTab({
         </form>
       </Card>
 
-      {detail && (
-        <HrefPrefixModeCard owner={owner} volume={volume} detail={detail} showNotice={showNotice} onUpdated={onUpdated} />
-      )}
+      {detail && <HrefPrefixModeCard owner={owner} volume={volume} detail={detail} showNotice={showNotice} onUpdated={onUpdated} />}
 
       <VolumeCredentialsCard owner={owner} volume={volume} showNotice={showNotice} />
 

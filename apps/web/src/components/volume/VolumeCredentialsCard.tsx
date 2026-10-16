@@ -2,14 +2,15 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KeyRound } from 'lucide-react';
 import type { BucketCredential } from '../../types';
-import { createBucketCredential, listBucketCredentials, revokeBucketCredential, setBucketCredentialReadOnly } from '../../services/credentialService';
+import {
+  createBucketCredential,
+  listBucketCredentials,
+  revokeBucketCredential,
+  setBucketCredentialReadOnly,
+} from '../../services/credentialService';
 import { formatExpiryTimestamp } from '../../lib/format';
 import { toLocalizedErrorMessage } from '../../lib/backendErrors';
-import { Button } from '../ui/Button';
-import { Badge } from '../ui/Badge';
-import { Card, CardHeader, CardTitle } from '../ui/Card';
-import { Input } from '../ui/Input';
-import { ReadOnlyField, RefreshButton } from '@rexezuge/web';
+import { Badge, Button, Card, CardHeader, CardTitle, Input, ReadOnlyField, RefreshButton } from '@rexezuge/web';
 import { ConfirmDeleteModal } from '../modals/ConfirmDeleteModal';
 
 export function VolumeCredentialsCard({
@@ -97,7 +98,10 @@ export function VolumeCredentialsCard({
     setCredentials((rows) => rows.map((row) => (row.credentialId === cred.credentialId ? { ...row, readOnly: next } : row)));
     try {
       await setBucketCredentialReadOnly(owner, volume, cred.credentialId, next);
-      showNotice('success', next ? t('credentials.nowReadOnly', 'Credential Is Now Read-Only.') : t('credentials.nowReadWrite', 'Credential Can Now Write.'));
+      showNotice(
+        'success',
+        next ? t('credentials.nowReadOnly', 'Credential Is Now Read-Only.') : t('credentials.nowReadWrite', 'Credential Can Now Write.'),
+      );
     } catch (error) {
       setCredentials((rows) => rows.map((row) => (row.credentialId === cred.credentialId ? { ...row, readOnly: cred.readOnly } : row)));
       showNotice('error', toLocalizedErrorMessage(t, error, 'errors.failedToUpdateCredential', 'Failed To Update Credential.'));
@@ -147,7 +151,10 @@ export function VolumeCredentialsCard({
               inputMode="numeric"
             />
           </div>
-          <label className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]" title={t('credentials.readOnlyHint', 'Can Browse And Download, But Cannot Upload, Delete, Or Rename.')}>
+          <label
+            className="flex items-center gap-2 text-sm text-[var(--color-text-secondary)]"
+            title={t('credentials.readOnlyHint', 'Can Browse And Download, But Cannot Upload, Delete, Or Rename.')}
+          >
             <input type="checkbox" checked={readOnly} onChange={(e) => setReadOnly(e.target.checked)} />
             {t('credentials.readOnly', 'Read-Only')}
           </label>
@@ -159,11 +166,19 @@ export function VolumeCredentialsCard({
       </form>
       {lastCreated && (
         <div className="mt-4 space-y-2">
-          <ReadOnlyField label={t('credentials.newUsername', 'New Username')} value={lastCreated.username} showCopy copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')} />
-          <ReadOnlyField label={t('credentials.newPassword', 'New Password (Copy Once)')} value={lastCreated.password} showCopy copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')} />
-          {lastCreated.readOnly && (
-            <Badge variant="info">{t('credentials.readOnlyBadge', 'Read-Only Access')}</Badge>
-          )}
+          <ReadOnlyField
+            label={t('credentials.newUsername', 'New Username')}
+            value={lastCreated.username}
+            showCopy
+            copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')}
+          />
+          <ReadOnlyField
+            label={t('credentials.newPassword', 'New Password (Copy Once)')}
+            value={lastCreated.password}
+            showCopy
+            copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')}
+          />
+          {lastCreated.readOnly && <Badge variant="info">{t('credentials.readOnlyBadge', 'Read-Only Access')}</Badge>}
         </div>
       )}
       <ul className="mt-4 divide-y divide-[var(--color-border)]">

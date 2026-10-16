@@ -50,13 +50,10 @@ describe('replication error truncation', () => {
     expect(errorMessageOf({ message: 'boom' })).toBe('[object Object]');
   });
 
-  it('the DAO layer\'s duplicated constant still matches', () => {
+  it("the DAO layer's duplicated constant still matches", () => {
     // Read from the source so the assertion tracks the real constant rather than
     // a copy that could itself drift.
-    const source = readFileSync(
-      new URL('../packages/backend-data/src/dao/replicationPassSql.ts', import.meta.url),
-      'utf8',
-    );
+    const source = readFileSync(new URL('../packages/backend-data/src/dao/replicationPassSql.ts', import.meta.url), 'utf8');
     const match = /MAX_STORED_ERROR_LENGTH = (\d+)/.exec(source);
     expect(match).not.toBeNull();
     expect(Number(match?.[1])).toBe(STORED_ERROR_LENGTH);

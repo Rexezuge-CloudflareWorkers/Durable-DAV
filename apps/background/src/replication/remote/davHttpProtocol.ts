@@ -112,17 +112,7 @@ function basicAuthValue(username: string, password: string): string {
   return bytesToBase64(new TextEncoder().encode(`${username}:${password}`));
 }
 
-export {
-  joinUrl,
-  toInnerEntry,
-  propfindBody,
-  classifyStatus,
-  basicAuthValue,
-  
-  DELETE_FANOUT,
-  MAX_REMOVE_DEPTH,
-  DELETE_SUCCESS,
-};
+export { joinUrl, toInnerEntry, propfindBody, classifyStatus, basicAuthValue, DELETE_FANOUT, MAX_REMOVE_DEPTH, DELETE_SUCCESS };
 export type { DavHttpFetch, DavAuthHeader };
 
-export {stripSlashes as trimSlashes} from '@durable-dav/webdav';
+export { stripSlashes as trimSlashes } from '@durable-dav/webdav';

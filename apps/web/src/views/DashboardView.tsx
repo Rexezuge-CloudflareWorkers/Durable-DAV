@@ -5,10 +5,8 @@ import { FolderArchive, Plus } from 'lucide-react';
 import type { Volume } from '../types';
 import { toLocalizedErrorMessage } from '../lib/backendErrors';
 import { listMyVolumes } from '../services/volumeService';
-import { Button } from '../components/ui/Button';
-import { Card, CardHeader, CardTitle } from '../components/ui/Card';
-import { AppPage, EmptyState, PageHeaderCard, ReadOnlyField, RefreshButton } from '@rexezuge/web';
-import { VisibilityBadge } from '../components/ui/Badge';
+import { AppPage, Button, Card, CardHeader, CardTitle, EmptyState, PageHeaderCard, ReadOnlyField, RefreshButton } from '@rexezuge/web';
+import { VisibilityBadge } from '../components/ui/VisibilityBadge';
 
 export function DashboardView({ showNotice }: { showNotice: (type: 'success' | 'error', text: string) => void }) {
   const { t } = useTranslation();
@@ -72,7 +70,7 @@ export function DashboardView({ showNotice }: { showNotice: (type: 'success' | '
         </CardHeader>
         <div className="space-y-3">
           <ReadOnlyField
-            label={t('dashboard.mountAnyVolume', 'Mount Any Volume')}
+            label={t('dashboard.mountAnyVolume', 'Mount Any Bucket')}
             value={`${globalThis.location?.origin ?? ''}/<owner>/<volume>/`}
             showCopy
             copyLabel={t('common.copyToClipboard', 'Copy To Clipboard')}
@@ -91,13 +89,13 @@ export function DashboardView({ showNotice }: { showNotice: (type: 'success' | '
 
       <Card>
         <CardHeader>
-          <CardTitle>{t('dashboard.volumes', 'Volumes')}</CardTitle>
+          <CardTitle>{t('dashboard.volumes', 'Buckets')}</CardTitle>
           <span className="text-sm text-[var(--color-text-muted)]">{volumes.length}</span>
         </CardHeader>
         {!loading && volumes.length === 0 ? (
           <EmptyState
             icon={<FolderArchive className="h-6 w-6 text-[var(--color-text-muted)]" />}
-            message={t('dashboard.empty', 'No Volumes Yet. Create One To Get Started.')}
+            message={t('dashboard.empty', 'No Buckets Yet. Create One To Get Started.')}
           />
         ) : (
           <ul className="divide-y divide-[var(--color-border)]">

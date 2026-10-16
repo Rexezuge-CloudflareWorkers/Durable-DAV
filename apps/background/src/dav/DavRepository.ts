@@ -319,6 +319,6 @@ class DavRepository {
 }
 
 export { DavRepository };
-export type {  NodeMeta };
+export type { NodeMeta };
 
-export {type StatResult} from './davReadPolicy';
+export { type StatResult } from './davReadPolicy';

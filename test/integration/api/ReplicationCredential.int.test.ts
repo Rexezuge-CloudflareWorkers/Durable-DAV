@@ -61,7 +61,9 @@ async function storedSecret(replicationId: string): Promise<string | null> {
     .prepare('SELECT encrypted_secret, secret_iv FROM dav_replications WHERE replication_id = ?')
     .bind(replicationId)
     .first<{ encrypted_secret: string | null; secret_iv: string | null }>();
-  return row === null || row.encrypted_secret === null || row.secret_iv === null ? null : decryptSecret({ ciphertext: row.encrypted_secret, iv: row.secret_iv }, KEY);
+  return row === null || row.encrypted_secret === null || row.secret_iv === null
+    ? null
+    : decryptSecret({ ciphertext: row.encrypted_secret, iv: row.secret_iv }, KEY);
 }
 
 async function createBasic(input: { label: string; username?: string; secret?: string }): Promise<Response> {
@@ -94,7 +96,11 @@ describe('a basic replication credential, through the API', () => {
     await ensureUser(testEnv.DB, EMAIL, OWNER);
     const row = await testEnv.DB.prepare('SELECT username FROM users WHERE email = ?').bind(EMAIL).first<{ username: string | null }>();
     OWNER = row?.username ?? OWNER;
-    const volume = await api('/user/volumes', { method: 'POST', headers: JSON_HEADERS, body: JSON.stringify({ owner: OWNER, name: VOLUME }) });
+    const volume = await api('/user/volumes', {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({ owner: OWNER, name: VOLUME }),
+    });
     expect(volume.status).toBe(201);
   });
 

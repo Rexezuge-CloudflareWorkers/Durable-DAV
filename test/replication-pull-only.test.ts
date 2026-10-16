@@ -59,13 +59,7 @@ function assertNeverWritesUpstream(decisions: readonly ReplicationDecision[]): v
   expect(upstream.map((d) => `${d.kind} ${d.path}`)).toEqual([]);
 }
 
-function plan(input: {
-  local?: PlanSide[];
-  remote?: PlanSide[];
-  base?: PlanBase[];
-  trustAbsences?: boolean;
-  mirrorDeletions?: boolean;
-}) {
+function plan(input: { local?: PlanSide[]; remote?: PlanSide[]; base?: PlanBase[]; trustAbsences?: boolean; mirrorDeletions?: boolean }) {
   return buildReplicationPlan({
     mode: 'pull-only',
     local: input.local ?? [],
@@ -117,10 +111,10 @@ describe('pull-only — the remote is the sole writer', () => {
     const decision = result.decisions[0];
     if (decision?.kind !== 'pull-and-preserve') throw new Error('expected pull-and-preserve');
     // `<stem>.conflict-<seconds>`: the sibling name the owner looks for when they need
-// the version this bucket did not have.
-// `<name>.conflict-<seconds>` — the stem is the full filename, so the sibling sits
-// next to the original rather than in a `conflict/` subtree.
-expect(decision.conflictPath).toBe(`a.txt.conflict-${Math.floor(NOW / 1000)}`);
+    // the version this bucket did not have.
+    // `<name>.conflict-<seconds>` — the stem is the full filename, so the sibling sits
+    // next to the original rather than in a `conflict/` subtree.
+    expect(decision.conflictPath).toBe(`a.txt.conflict-${Math.floor(NOW / 1000)}`);
     // Recorded as a conflict with the remote as winner, so the decision trail
     // attributes the surviving copy.
     expect(result.conflicts).toEqual([{ path: 'a.txt', winner: 'remote', kind: 'conflict', conflictPath: decision.conflictPath }]);
@@ -257,7 +251,12 @@ describe('pull-only — every shape, exhaustively', () => {
                 now: NOW,
               });
               for (const decision of result.decisions) {
-                if (decision.kind === 'push' || decision.kind === 'delete-remote' || decision.kind === 'keep-both' || decision.kind === 'compare-content') {
+                if (
+                  decision.kind === 'push' ||
+                  decision.kind === 'delete-remote' ||
+                  decision.kind === 'keep-both' ||
+                  decision.kind === 'compare-content'
+                ) {
                   offenders.push(`${decision.kind} ${decision.path} (mirror=${mirrorDeletions} trust=${trustAbsences})`);
                 }
               }
