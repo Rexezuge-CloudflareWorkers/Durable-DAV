@@ -267,6 +267,7 @@
     "hideDecisions": "Hide",
     "noDecisions": "Nothing To Reconcile.",
     "modeHelp": {
+      "copyOnly": "One Way: This Bucket Is The Only Writer. The Remote Is A Mirror Of This Bucket: A File Missing There Is Copied Back, A Change Made There Is Reverted, And Deletions Here Remove Them There.",
       "pullOnly": "One Way: The Remote Is The Only Writer. Changes Here Are Never Sent Back. A Local Version That Would Be Replaced Is Saved Beside It First."
     },
     "mirrorDeletions": "Delete Files Here That The Remote Does Not Have",

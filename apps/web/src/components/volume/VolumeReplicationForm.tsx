@@ -13,12 +13,19 @@ const MODES = REPLICATION_MODES;
  * In the form rather than behind a docs link, because `copy-only` and `keep-both`
  * differ in a way a user has to be told about *before* choosing: one of them will
  * delete files on the remote, and the other will never overwrite anything.
+ *
+ * `copy-only` says what the mode now does to the *remote*, because "changes on
+ * the remote are ignored" was a claim that stopped being true: a remote that
+ * changed on its own is not left alone but **repaired** — this bucket's version
+ * is copied back over it — and a file the remote lost is copied back too. An
+ * owner reading "ignored" would reasonably expect their edit on the remote to
+ * survive, and it does not.
  */
 function modeExplanation(t: (key: string, fallback: string) => string, mode: ReplicationMode): string {
   const HELP = {
     'copy-only': [
       'replication.modeHelp.copyOnly',
-      'One Way: This Bucket Is The Only Writer. Changes On The Remote Are Ignored, And Deletions Here Remove Them There.',
+      'One Way: This Bucket Is The Only Writer. The Remote Is A Mirror Of This Bucket: A File Missing There Is Copied Back, A Change Made There Is Reverted, And Deletions Here Remove Them There.',
     ],
     sync: [
       'replication.modeHelp.sync',
