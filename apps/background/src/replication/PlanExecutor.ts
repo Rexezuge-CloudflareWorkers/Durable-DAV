@@ -1,15 +1,10 @@
-import { createLogger } from '@rexezuge/runtime';
-
-import type { ReplicationDecision, RemoteVolume } from '@durable-dav/backend-services/replication';
+import type { PlanBase, ReplicationDecision, RemoteVolume } from '@durable-dav/backend-services/replication';
 import { truncateReplicationReason } from '@durable-dav/backend-services/replication';
-import { CryptoUtil } from '@rexezuge/shared';
 import type { ReplicaStateRow } from '@durable-dav/dav-store';
-import type { LocalReplicaStub, Slice } from './collectSlice';
-import { parentOf } from './collectSlice';
-import { keepBoth, pullAndPreserve } from './planTransfers';
+import type { LocalReplicaStub, Slice } from './replicaTypes';
+import { parentOf } from './replicaBase';
+import { compareContent, keepBoth, pullAndPreserve, pullTransfer, pushTransfer } from './planTransfers';
 import type { TransferContext } from './planTransfers';
-
-const logger = createLogger('Replication');
 
 type ApplyOptions = {
   localStub: LocalReplicaStub;
@@ -52,7 +47,18 @@ class PlanExecutor {
 
   private firstError: string | null = null;
 
-  constructor(private readonly options: ApplyOptions) {}
+  /**
+  The recorded base, by path.
+  *
+  * Indexed once rather than searched per path: the executor asks "what did the
+  * remote last hold here?" for every push it makes, and a linear search per push
+  * over a base of a few thousand rows is a few thousand comparisons per slice.
+  */
+  private readonly baseByPath = new Map<string, PlanBase>();
+
+  constructor(private readonly options: ApplyOptions) {
+    for (const row of options.slice.base) this.baseByPath.set(row.path, row);
+  }
 
   public async run(decisions: readonly ReplicationDecision[]): Promise<ApplyOutcome> {
     for (const decision of decisions) {
@@ -87,10 +93,10 @@ class PlanExecutor {
     this.touched.add(decision.path);
     switch (decision.kind) {
       case 'push': {
-        return this.push(decision.path);
+        return pushTransfer(this.transferContext(), decision.path);
       }
       case 'pull': {
-        return this.pull(decision.path, decision.contentType);
+        return pullTransfer(this.transferContext(), decision.path, decision.contentType);
       }
       case 'delete-remote': {
         await remote.remove(decision.path, { ifMatch: null, recursive: true });
@@ -110,7 +116,7 @@ class PlanExecutor {
         return 0;
       }
       case 'compare-content': {
-        return this.compareContent(decision.path, decision.winner);
+        return compareContent(this.transferContext(), decision.path, decision.winner);
       }
       case 'agree':
       case 'forget': {
@@ -125,49 +131,11 @@ class PlanExecutor {
   }
 
   /**
-  Local -> remote.
-  */
-  private async push(path: string): Promise<number | null> {
-    const { localStub, remote, slice } = this.options;
-    const localEntry = slice.localByPath.get(path);
-    if (localEntry === undefined) return null;
-    if (localEntry.isCollection) {
-      await remote.makeCollection(path);
-      return 0;
-    }
-    const stream = await localStub.readReplicaStream(path);
-    if (stream === null) return null;
-    await remote.writeFile(path, stream, { contentType: localEntry.contentType, ifMatch: null });
-    return localEntry.size ?? 0;
-  }
-
-  /**
-  Remote -> local.
-  */
-  private async pull(path: string, contentType: string | null): Promise<number | null> {
-    const { localStub, remote, replicationId, slice } = this.options;
-    // `ifMatch` carries the ETag we last saw, so a concurrent human write is
-    // rejected rather than silently overwritten. Absent on a first write, which is
-    // the only time omitting it is correct.
-    const remoteEntry = slice.remoteByPath.get(path) ?? (await remote.stat(path));
-    if (remoteEntry === null) return null;
-    if (remoteEntry.isCollection) {
-      const result = await localStub.applyReplicaOperations(replicationId, [{ op: 'mkdir', path }]);
-      if (result.failed > 0) throw new Error(result.error ?? 'local mkdir failed');
-      return 0;
-    }
-    const stream = await remote.readFile(path);
-    if (stream === null) return null;
-    const result = await localStub.applyReplicaOperations(replicationId, [{ op: 'write', path, contentType, data: stream }]);
-    if (result.failed > 0) throw new Error(result.error ?? 'local write failed');
-    return remoteEntry.size ?? 0;
-  }
-
-  /**
-   * The collaborators the transfer strategies share.
+   * The collaborators the transfers share.
    *
-   * Built per call rather than stored: it is four references wide, and caching it
-   * would add a field to keep in step with `options` for no measurable saving.
+   * Built per call rather than stored: it is a handful of references wide, and
+   * caching it would add a field to keep in step with `options` for no
+   * measurable saving.
    */
   private transferContext(): TransferContext {
     const { localStub, remote, replicationId, slice } = this.options;
@@ -176,31 +144,11 @@ class PlanExecutor {
       remote,
       replicationId,
       slice,
+      baseByPath: this.baseByPath,
       applied: (result, what) => {
         if (result.failed > 0) throw new Error(result.error ?? `${what} failed`);
       },
     };
-  }
-
-  /**
-   * Settle an ambiguous pair by hashing both sides.
-   *
-   * Opt-in, because it costs two full reads of every file whose validators
-   * disagree but whose sizes match. Equal hashes mean the two sides are recorded
-   * as agreeing; different hashes mean the winner takes the path.
-   */
-  private async compareContent(path: string, winner: 'local' | 'remote'): Promise<number | null> {
-    const { localStub, remote } = this.options;
-    const [localBytes, remoteStream] = await Promise.all([localStub.readReplicaBytes(path), remote.readFile(path)]);
-    if (localBytes === null || remoteStream === null) return null;
-    const remoteBytes = new Uint8Array(await new Response(remoteStream).arrayBuffer());
-    const [localHash, remoteHash] = await Promise.all([CryptoUtil.sha256HexOfBytes(localBytes), CryptoUtil.sha256HexOfBytes(remoteBytes)]);
-    if (localHash === remoteHash) {
-      logger.info(`replication content hash matched for ${path}`);
-      return 0;
-    }
-    logger.info(`replication content hash differs for ${path}; applying the ${winner} side`);
-    return winner === 'local' ? this.push(path) : this.pull(path, this.options.slice.remoteByPath.get(path)?.contentType ?? null);
   }
 
   /**

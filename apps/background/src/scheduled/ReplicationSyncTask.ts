@@ -120,7 +120,15 @@ class ReplicationSyncTask extends AbstractScheduledTask {
     // `normalizeVolumeKey` is what makes the sweep and the front door agree on the
     // isolate: a raw-case `getByName` would fork a second object.
     const stub = namespace.getByName(normalizeVolumeKey(volume.owner, volume.name)) as LocalReplicaStub;
-    const runner = new ReplicationRunner(env, replication, volume.owner, volume.name, stub, { replicationDAO, conflictDAO });
+    const runner = new ReplicationRunner(env, replication, volume.owner, volume.name, stub, {
+      replicationDAO,
+      conflictDAO,
+      // The registry, for the target's existence check. Without it a `dav-volume`
+      // target naming a bucket that does not exist would *create* one — a Durable
+      // Object with no `dav_volumes` row, reachable from nowhere, holding the
+      // owner's files, while every run reported `ok`.
+      volumeDAO,
+    });
     return runner.runSlice();
   }
 }

@@ -486,6 +486,60 @@ describe('replication: configuration', { timeout: CASE_TIMEOUT_MS }, () => {
       .first<{ cnt: number }>();
     expect(due?.cnt).toBe(0);
   });
+  it('refuses a target bucket that does not exist', async () => {
+    // The configuration half of the guard. `DAV_VOLUME.getByName` *creates* the
+    // Durable Object it names, so a target naming a bucket that does not exist
+    // would not fail — it would create an orphan bucket with no `dav_volumes` row,
+    // reachable from neither the dashboard nor WebDAV, and the owner's files would
+    // go into it while every run reported `ok`.
+    const pair = pairOf('config');
+    const res = await api(`/user/volumes/${OWNER}/${pair.source}/replications`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: JSON.stringify({
+        targetKind: 'dav-volume',
+        remoteOwner: OWNER,
+        remoteVolume: 'no-such-bucket',
+        mode: 'copy-only',
+        intervalMinutes: 360,
+      }),
+    });
+    expect(res.status).toBe(400);
+    const body = (await res.json()) as { Exception: { Message: string } };
+    expect(body.Exception.Message).toMatch(/does not exist/);
+  });
+
+  it('fails the run when the target bucket is no longer registered', async () => {
+    // The run-time half of the guard, for a bucket that existed when the
+    // replication was configured and does not now — deleted, or renamed under it.
+    //
+    // The check runs *before* the Durable Object is named, so the run fails
+    // instead of quietly writing into an object nobody can reach.
+    const pair = pairOf('config');
+    const created = await replicate(pair, 'vanished', 'copy-only');
+    const db = (env as unknown as TestEnv).DB;
+    await db
+      .prepare('DELETE FROM dav_volumes WHERE owner_ci = ? AND name_ci = ?')
+      .bind(OWNER.toLowerCase(), pair.target.toLowerCase())
+      .run();
+
+    const res = await api(`/user/volumes/${OWNER}/${pair.source}/replications/${created.replicationId}/run`, {
+      method: 'POST',
+      headers: JSON_HEADERS,
+      body: '{}',
+    });
+    expect([200, 202]).toContain(res.status);
+    // The pass opens and closes inside one tick, so the wait is on the outcome
+    // rather than on the pass being in flight.
+    const failed = await waitFor(created.replicationId, (row) => row.lastStatus === 'failed');
+    expect(
+      failed,
+      `replication ${created.replicationId} never failed — row: ${JSON.stringify(await status(created.replicationId))}`,
+    ).not.toBeNull();
+    // The message names the bucket, because that is the field the owner has to fix.
+    expect(failed?.lastError).toMatch(/does not exist/);
+    expect(failed?.lastError).toContain(pair.target);
+  });
 });
 
 describe('replication: two-way transfer', { timeout: CASE_TIMEOUT_MS }, () => {
@@ -646,6 +700,33 @@ describe('replication: modes', { timeout: CASE_TIMEOUT_MS }, () => {
     expect(await getBody(pair, 'source', pulledTo('remote-only.txt'))).toBeNull();
     expect(await getBody(pair, 'source', 'mirror/remote-only.txt')).toBeNull();
     expect(await getBody(pair, 'target', inTarget('mirror', 'mirror/local-only.txt'))).toBe('must go down');
+  });
+
+  it('fills a gap in the mirror instead of deleting the source', async () => {
+    // The rule that was inverted. A file the mirror does not have is a *gap in the
+    // mirror*, not a deletion on this side — and the local copy is the only copy.
+    //
+    // The rule that used to run here read the absent side as "the side that
+    // deleted it" and propagated the deletion the other way: the source's file was
+    // removed, nothing was copied, and the run reported success. Two passes are
+    // needed to reach it, because the first one is what records the base row that
+    // makes the two sides look like they had agreed.
+    const pair = pairOf('modes');
+    const source = await replicate(pair, 'gap', 'copy-only');
+    await ensureDir(pair, 'source', 'gap');
+    await put(pair, 'source', 'gap/only-here.txt', 'the only copy');
+
+    await syncNow(pair, source.replicationId);
+    expect(await getBody(pair, 'target', inTarget('gap', 'gap/only-here.txt'))).toBe('the only copy');
+
+    // The mirror loses it.
+    await remove(pair, 'target', inTarget('gap', 'gap/only-here.txt'));
+    expect(await getBody(pair, 'target', inTarget('gap', 'gap/only-here.txt'))).toBeNull();
+
+    await syncNow(pair, source.replicationId);
+    // The source kept it, and the mirror has it again.
+    expect(await getBody(pair, 'source', 'gap/only-here.txt')).toBe('the only copy');
+    expect(await getBody(pair, 'target', inTarget('gap', 'gap/only-here.txt'))).toBe('the only copy');
   });
 
   it('preserves both versions rather than overwriting, in keep-both', async () => {

@@ -52,6 +52,10 @@ function bindCoreServices(scope: Container, { env, daos, identity }: ServiceGrou
     createService(VolumeReplicationService, env, {
       replicationDAO: daos.davReplicationDAO,
       conflictDAO: daos.davReplicationConflictDAO,
+      // The registry, for the `dav-volume` target's existence check: naming a
+      // bucket that does not exist would create it — an orphan Durable Object no
+      // owner can reach, holding the owner's files, with every run reporting `ok`.
+      volumeDAO: daos.davVolumeDAO,
     }),
   );
 }

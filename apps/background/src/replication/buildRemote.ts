@@ -2,8 +2,9 @@
 // the kit's decryptSecret opens it, so it lands under its own name.
 import { decryptSecret as openSealedEnvelope } from '@rexezuge/d1';
 import { resolveReplicationKey } from '@durable-dav/backend-data/crypto';
-import type { DavReplicationRow } from '@durable-dav/backend-data/dao';
+import type { DavReplicationRow, DavVolumeDAO } from '@durable-dav/backend-data/dao';
 import { RemoteUnavailableError } from '@durable-dav/backend-services/replication';
+import { missingTargetVolume } from '@durable-dav/backend-services/replication';
 import type { RemoteVolume } from '@durable-dav/backend-services/replication';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { normalizeVolumeKey } from '@durable-dav/webdav';
@@ -30,6 +31,14 @@ type BuildRemoteOptions = {
   row: DavReplicationRow;
   config: AppConfiguration;
   fetchImpl: (input: string, init?: RequestInit) => Promise<Response>;
+  /**
+   * The volume registry.
+   *
+   * Required, and required *before* the target's Durable Object is named: the
+   * object is created on demand, so naming one that does not exist is how a
+   * mis-spelled target became an orphan bucket. See `missingTargetVolume`.
+   */
+  volumeDAO: DavVolumeDAO;
 };
 
 /**
@@ -116,8 +125,14 @@ function volumeStub(env: Env, owner: string, volume: string): ReplicaVolumeStub 
  * afternoon on a key problem wearing a target problem's clothes.
  */
 async function buildRemote(options: BuildRemoteOptions): Promise<RemoteVolume> {
-  const { env, row, config, fetchImpl } = options;
+  const { env, row, config, fetchImpl, volumeDAO } = options;
   if (row.target_kind === 'dav-volume') {
+    // Before the transport is built, and therefore before `getByName` is called:
+    // naming the object is what creates the orphan this refuses. The rule and the
+    // reason for it live in `targetVolume`, because the configuration-time check
+    // asks the same question.
+    const missing = await missingTargetVolume(volumeDAO, row.remote_owner, row.remote_volume);
+    if (missing !== null) throw new RemoteUnavailableError(`${missing}; create it before replicating into it`);
     return new DavVolumeRemote({
       getStub: (owner, volume) => volumeStub(env, owner, volume),
       owner: row.remote_owner,
