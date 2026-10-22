@@ -1,7 +1,7 @@
 import { buildReplicationPlan, errorMessageOf, truncateReplicationError } from '@durable-dav/backend-services/replication';
 import type { ReplicationMode } from '@durable-dav/backend-services/replication';
 import { DavReplicationConflictDAO, DavReplicationDAO } from '@durable-dav/backend-data/dao';
-import type { DavReplicationRow } from '@durable-dav/backend-data/dao';
+import type { DavReplicationRow, DavVolumeDAO } from '@durable-dav/backend-data/dao';
 import { KvCache } from '@rexezuge/runtime';
 import { invalidateDavVolumeCaches } from '@durable-dav/backend-runtime/kv';
 import type { KvNamespaceLike } from '@rexezuge/runtime';
@@ -37,6 +37,14 @@ interface ReplicationRunnerDeps {
    */
   replicationDAO: DavReplicationDAO;
   conflictDAO: DavReplicationConflictDAO;
+  /**
+  The volume registry, for the `dav-volume` target's existence check.
+  *
+  Required rather than optional: the check it serves is the difference between a
+  replication that works and one that writes the owner's files into a Durable
+  Object nobody can name. See `missingTargetVolume`.
+  */
+  volumeDAO: DavVolumeDAO;
   /**
   Injected in tests; defaults to the platform `fetch`.
   */
@@ -81,6 +89,8 @@ class ReplicationRunner {
 
   private readonly conflictDAO: DavReplicationConflictDAO;
 
+  private readonly volumeDAO: DavVolumeDAO;
+
   private readonly fetchImpl: (input: string, init?: RequestInit) => Promise<Response>;
 
   constructor(
@@ -101,6 +111,7 @@ class ReplicationRunner {
     // second data path.
     this.replicationDAO = deps.replicationDAO;
     this.conflictDAO = deps.conflictDAO;
+    this.volumeDAO = deps.volumeDAO;
     this.fetchImpl = deps.fetchImpl ?? ((input, init) => fetch(input, init));
   }
 
@@ -116,8 +127,14 @@ class ReplicationRunner {
     const startedAt = Date.now();
 
     try {
-      await this.reconcilePassState(now);
-      const remote = await buildRemote({ env: this.env, row: this.row, config: this.config, fetchImpl: this.fetchImpl });
+      const resumeFrom = await this.reconcilePassState(now);
+      const remote = await buildRemote({
+        env: this.env,
+        row: this.row,
+        config: this.config,
+        fetchImpl: this.fetchImpl,
+        volumeDAO: this.volumeDAO,
+      });
       // Probed once, on the first ever run, because it is the only thing that
       // distinguishes "empty" from "not a WebDAV server" — and it costs a round
       // trip that is pure overhead on every later tick.
@@ -129,6 +146,8 @@ class ReplicationRunner {
         replicationId: this.row.replication_id,
         maxCollections: this.config.getReplicationSlicePaths(),
         deadlineMs: startedAt + this.config.getReplicationSliceMs(),
+        // Where the previous tick stopped. `null` for a fresh pass.
+        resumeFrom,
       });
 
       const plan = buildReplicationPlan({
@@ -224,13 +243,18 @@ class ReplicationRunner {
   }
 
   /**
-   * Open a pass, abandoning a stale one.
+   * Open a pass, abandoning a stale one, and answer where the sweep resumes.
    *
    * `beginPass` clears any cursor left behind, which is the load-bearing part: a
    * stale cursor would make the new pass skip every collection before its position
    * and then report the sweep complete.
+   *
+   * The returned cursor is the one the slice continues from — `null` for a fresh
+   * pass, and the parked position for a pass that is still open. It is what makes
+   * a sweep larger than one slice finish at all: without it every tick restarted
+   * at the root and the deep end of the tree was never reached.
    */
-  private async reconcilePassState(now: number): Promise<void> {
+  private async reconcilePassState(now: number): Promise<string | null> {
     const openedAt = this.row.pass_started_at;
     const staleSeconds = Math.floor(this.config.getReplicationPassMaxMs() / 1000);
     const stale = openedAt !== null && now - openedAt > staleSeconds;
@@ -238,10 +262,13 @@ class ReplicationRunner {
     // An already-open, fresh pass is left alone: re-opening it would clear the
     // cursor the previous tick parked and make the sweep restart from the root
     // every tick, never reaching the end of a large tree.
-    if (openedAt !== null && !stale) return;
+    if (openedAt !== null && !stale) return this.row.cursor_path;
     await this.replicationDAO.beginPass(this.row.replication_id, now);
     this.row.pass_started_at = now;
-    if (stale) this.row.cursor_path = null;
+    // `beginPass` cleared the stored cursor; the in-memory copy has to go with it,
+    // or this tick would resume from a position the new pass does not have.
+    this.row.cursor_path = null;
+    return null;
   }
 
   /**

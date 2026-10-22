@@ -163,6 +163,102 @@ describe('VolumeReplicationService reads', () => {
   });
 });
 
+describe('VolumeReplicationService — the target bucket', () => {
+  /**
+   * A service whose replication DAO can create, and whose volume registry
+   * answers for the named buckets only.
+   *
+   * The registry is the point of the fixture: a `dav-volume` target has to name
+   * a bucket that exists, because `DAV_VOLUME.getByName` *creates* the Durable
+   * Object it names. A target naming a bucket that does not exist therefore does
+   * not fail — it creates an orphan bucket with no `dav_volumes` row, which no
+   * dashboard and no WebDAV request can reach, and the owner's files go into it
+   * while every run reports `ok`.
+   */
+  function serviceForCreate(existingBuckets: string[]): VolumeReplicationService {
+    return new VolumeReplicationService(
+      { DB: {} as never, REPLICATION_ENCRYPTION_KEY: generateReplicationKey() },
+      {
+        replicationDAO: () =>
+          Promise.resolve({
+            countByVolume: async () => 0,
+            getByVolumeAndTarget: async () => null,
+            create: async () => {},
+            getById: async (id: string) => row({ replication_id: id }),
+          } as never),
+        conflictDAO: () => Promise.resolve({} as never),
+        volumeDAO: () =>
+          Promise.resolve({
+            getByOwnerName: async (owner: string, name: string) =>
+              existingBuckets.includes(`${owner}/${name}`) ? ({ id: 'vol_target' } as never) : null,
+          } as never),
+        config: AppConfiguration.fromEnv({}),
+      },
+    );
+  }
+
+  it('refuses a dav-volume target whose bucket does not exist', async () => {
+    const service = serviceForCreate(['alice/backup']);
+
+    await expect(
+      service.createReplication(
+        'vol_1',
+        'alice/demo',
+        { targetKind: 'dav-volume', remoteOwner: 'alice', remoteVolume: 'bakcup', mode: 'copy-only', intervalMinutes: 60 },
+        'owner@example.com',
+      ),
+    ).rejects.toThrow(/does not exist/);
+  });
+
+  it('names the field the owner has to fix', async () => {
+    const service = serviceForCreate(['alice/backup']);
+
+    await expect(
+      service.createReplication(
+        'vol_1',
+        'alice/demo',
+        { targetKind: 'dav-volume', remoteOwner: 'alice', remoteVolume: 'bakcup', mode: 'copy-only', intervalMinutes: 60 },
+        'owner@example.com',
+      ),
+    ).rejects.toThrow(/remoteOwner\/remoteVolume/);
+  });
+
+  it('accepts a dav-volume target whose bucket exists', async () => {
+    const service = serviceForCreate(['alice/backup']);
+
+    await expect(
+      service.createReplication(
+        'vol_1',
+        'alice/demo',
+        { targetKind: 'dav-volume', remoteOwner: 'alice', remoteVolume: 'backup', mode: 'copy-only', intervalMinutes: 60 },
+        'owner@example.com',
+      ),
+    ).resolves.toBeDefined();
+  });
+
+  it('does not consult the registry for an external server target', async () => {
+    // A `dav` target names a URL, not a bucket on this deployment. The registry
+    // has nothing to say about it, and asking it anyway would refuse every
+    // external target.
+    const service = serviceForCreate([]);
+
+    await expect(
+      service.createReplication(
+        'vol_1',
+        'alice/demo',
+        {
+          targetKind: 'dav',
+          remoteUrl: 'https://remote.example.com/dav',
+          authKind: 'none',
+          mode: 'keep-both',
+          intervalMinutes: 60,
+        },
+        'owner@example.com',
+      ),
+    ).resolves.toBeDefined();
+  });
+});
+
 describe('VolumeReplicationService writes', () => {
   it('applies a patch and reads the row back', async () => {
     const fakes = serviceWith({ replications: [row()] });

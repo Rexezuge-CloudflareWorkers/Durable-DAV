@@ -177,6 +177,21 @@ function recordingDAO() {
 }
 
 /**
+ * The volume registry.
+ *
+ * The `dav-volume` target's existence check reads it *before* the target's
+ * Durable Object is named — naming it is what creates an orphan bucket that no
+ * row points at and no owner can reach. The fake answers "the bucket exists" by
+ * default; `targetExists: false` makes it answer the way a mistyped name does.
+ */
+function volumeDAO(exists: boolean): { getByOwnerName: (owner: string, name: string) => Promise<unknown> } {
+  return {
+    getByOwnerName: async (owner: string, name: string) =>
+      exists ? { id: 'vol_target', owner, name, owner_ci: owner.toLowerCase(), name_ci: name.toLowerCase() } : null,
+  };
+}
+
+/**
  * Build a runner over fakes.
  *
  * `remote` defaults to an empty sibling bucket reached through a fake
@@ -192,6 +207,7 @@ function build(options: {
   env?: Record<string, unknown>;
   fetchImpl?: (input: string, init?: RequestInit) => Promise<Response>;
   conflictDAO?: { record: (input: unknown) => Promise<void> };
+  targetExists?: boolean;
 }) {
   const row = replicationRow(options.row);
   const stub = options.stub ?? localStub();
@@ -206,6 +222,7 @@ function build(options: {
   const runner = new ReplicationRunner(env as never, row, 'alice', 'demo', stub, {
     replicationDAO: dao as never,
     conflictDAO: (options.conflictDAO ?? { record: async (input: unknown) => void conflicts.push(input) }) as never,
+    volumeDAO: volumeDAO(options.targetExists ?? true) as never,
     // A constructor dep, not an env value — the transport's egress is injected here.
     fetchImpl: options.fetchImpl,
   });
@@ -882,6 +899,45 @@ describe('ReplicationRunner — the ambiguity hash', () => {
   });
 });
 
+describe('ReplicationRunner — the target bucket', () => {
+  it('refuses a target bucket that does not exist, and names it', async () => {
+    // The root cause of "the sync says success but nothing is copied".
+    //
+    // `DAV_VOLUME.getByName` *creates* the Durable Object it names, so a target
+    // naming a bucket that does not exist did not fail — it created one. That
+    // bucket has no `dav_volumes` row, so no dashboard and no WebDAV request can
+    // reach it, and the owner's files went into it while every run reported `ok`.
+    const { runner, dao, target } = build({ targetExists: false });
+    const result = await runner.runSlice();
+    expect(result.status).toBe('failed');
+    // The message names the bucket, because that is the field the owner has to
+    // fix.
+    expect(result.error).toContain('alice/backup');
+    expect(dao.runs[0]?.status).toBe('failed');
+    // And nothing reached the target: the check runs before the object is named,
+    // because naming it is what creates the orphan.
+    expect(target.calls).toEqual([]);
+  });
+
+  it('reports a push that moved nothing as an error', async () => {
+    // A local file that cannot be read is not a transfer. It used to be counted
+    // as one — the run said `ok`, the mirror stayed empty, and nothing in the
+    // record said the bytes never left.
+    const localFile: RemoteEntry = { path: 'a.txt', isCollection: false, etag: '"a-v1"', mtime: 1000, size: 3, contentType: 'text/plain' };
+    const stub = localStub({
+      listReplicaChildren: async (path: string) => listing(path === '' ? [localFile] : []),
+      readReplicaStream: async () => null,
+    });
+    const { runner, target } = build({ stub });
+    const result = await runner.runSlice();
+    expect(result.status).not.toBe('ok');
+    expect(result.error).toContain('a.txt');
+    // Nothing was written to the mirror either, so there was nothing to report
+    // as transferred.
+    expect(target.calls.some((call) => call.op === 'write')).toBe(false);
+  });
+});
+
 describe('ReplicationRunner — configuration and credentials', () => {
   it('sends a bearer token', async () => {
     const key = generateReplicationKey();
@@ -910,6 +966,7 @@ describe('ReplicationRunner — configuration and credentials', () => {
     const runner = new ReplicationRunner({ DB: {} as never } as never, row, 'alice', 'demo', localStub(), {
       replicationDAO: dao as never,
       conflictDAO: { record: async () => {} } as never,
+      volumeDAO: volumeDAO(true) as never,
     });
     // A misconfigured deployment must degrade to a recorded failure, not a 500 from the
     // cron worker.

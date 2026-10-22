@@ -55,6 +55,7 @@ function buildReplicationPlan(input: BuildPlanInput): ReplicationPlan {
   const now = input.now ?? 0;
   const nowSeconds = Math.floor(now / 1000);
   const pullOnly = input.mode === 'pull-only';
+  const copyOnly = input.mode === 'copy-only';
   const mirrorDeletions = input.mirrorDeletions === true;
 
   const paths = new Set<string>([...local.keys(), ...remote.keys(), ...base.keys()]);
@@ -140,7 +141,12 @@ function buildReplicationPlan(input: BuildPlanInput): ReplicationPlan {
       // `null`), and the hash comparison is skipped rather than deferred: both sides
       // being "new" means neither has a base, so the remote's authority already
       // settles it and the local bytes are preserved either way.
-      if (!pullOnly && input.hashOnAmbiguous === true && couldBeIdentical(l, r)) {
+      //
+      // `copy-only` skips it for the same reason and the mirror image of it: there
+      // is nothing to *decide*. The local side is the authority, so the outcome is
+      // a push whatever the bytes turn out to be — and hashing only exists to
+      // choose between two candidates.
+      if (!pullOnly && !copyOnly && input.hashOnAmbiguous === true && couldBeIdentical(l, r)) {
         emit({ kind: 'compare-content', path, winner: 'local' }, l.isCollection);
         continue;
       }
@@ -202,6 +208,20 @@ function buildReplicationPlan(input: BuildPlanInput): ReplicationPlan {
       // applied to the side that still has it. Getting this backwards deletes the
       // only surviving copy: a local `DELETE` would remove the remote's file and
       // leave nothing anywhere.
+      //
+      // `copy-only` is the exception, and it is the whole point of the mode: the
+      // remote is a *mirror*, and a mirror is rebuilt from its source. A file the
+      // remote has lost is a gap in the mirror, so the local copy goes up and the
+      // gap is filled.
+      //
+      // The general rule below reads "absent from the remote" as "deleted on the
+      // remote" and propagates the deletion the other way — which in a one-way
+      // mode meant the *only* copy was destroyed and the mirror stayed empty. The
+      // run reported success while doing it.
+      if (copyOnly && l !== undefined && r === undefined) {
+        emit({ kind: 'push', path, contentType: l.contentType }, l.isCollection);
+        continue;
+      }
       const side = l === undefined ? 'delete-remote' : 'delete-local';
       // `winner` records which side *survives*, so the audit row reads correctly:
       // a propagated local deletion leaves the remote's version as the survivor
@@ -238,10 +258,20 @@ function buildReplicationPlan(input: BuildPlanInput): ReplicationPlan {
       continue;
     }
     if (!localChanged && remoteChanged) {
-      // `copy-only` ignores remote changes entirely: the remote is a mirror,
-      // and importing from it would let a corrupted copy overwrite the original.
-      if (input.mode === 'copy-only') {
-        emit({ kind: 'agree', path, isCollection: l.isCollection, contentType: l.contentType }, l.isCollection);
+      // The remote changed on its own. In a two-way mode that is a change to
+      // import; in `copy-only` it is a **divergence** — the mirror no longer
+      // matches its source — and the source is authoritative, so the local
+      // version is pushed back over it.
+      //
+      // The previous rule read this as agreement, which recorded the remote's
+      // diverged validators as the new base. That made the divergence permanent:
+      // the mirror stayed wrong for the life of the target while every run
+      // reported `ok`.
+      //
+      // A repair is not a conflict, so it is not audited as one. The local side
+      // simply wins, as it wins everywhere else in this mode.
+      if (copyOnly) {
+        emit({ kind: 'push', path, contentType: l.contentType }, l.isCollection);
         continue;
       }
       emit({ kind: 'pull', path, contentType: r.contentType }, r.isCollection);
@@ -272,7 +302,7 @@ function buildReplicationPlan(input: BuildPlanInput): ReplicationPlan {
       emit({ kind: 'pull-and-preserve', path, conflictPath, contentType: l.contentType }, l.isCollection);
       continue;
     }
-    if (input.hashOnAmbiguous === true && couldBeIdentical(l, r)) {
+    if (input.hashOnAmbiguous === true && couldBeIdentical(l, r) && !copyOnly) {
       emit({ kind: 'compare-content', path, winner }, l.isCollection);
       continue;
     }

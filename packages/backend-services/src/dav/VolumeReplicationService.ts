@@ -1,25 +1,21 @@
 import { BadRequestError, NotFoundError } from '@rexezuge/errors';
 import { TimestampUtil, UUIDUtil } from '@rexezuge/shared';
 import type { D1Queryable } from '@rexezuge/d1';
-import { DavReplicationConflictDAO, DavReplicationDAO } from '@durable-dav/backend-data/dao';
-import type { DavReplicationConflictRow, DavReplicationRow, ReplicationTarget } from '@durable-dav/backend-data/dao';
+import { DavReplicationConflictDAO, DavReplicationDAO, DavVolumeDAO } from '@durable-dav/backend-data/dao';
+import type { DavReplicationConflictRow, DavReplicationRow } from '@durable-dav/backend-data/dao';
 import { encryptSecret } from '@rexezuge/d1';
 import { resolveReplicationKey } from '@durable-dav/backend-data/crypto';
 import type { ReplicationKeyProvider, SecretsStoreKeyBinding } from '@durable-dav/backend-data/crypto';
 import type { ReplicationMode } from '../replication/types';
+import { resolveTarget } from './replicationTarget';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import {
   normalizeInterval,
-  normalizeRemotePath,
   oneOf,
   optionalBoolean,
-  optionalString,
-  requireRemoteUrl,
-  MAX_NAME_LENGTH,
   REPLICATION_AUTH_KINDS,
   REPLICATION_INTERVALS,
   REPLICATION_MODES,
-  REPLICATION_TARGET_KINDS,
   readMirrorDeletions,
 } from './replicationInput';
 import type { ReplicationAuthKind, ReplicationCreateInput, ReplicationPatchInput } from './replicationInput';
@@ -44,6 +40,10 @@ interface VolumeReplicationServiceEnv {
 interface VolumeReplicationServiceDeps {
   replicationDAO?: () => Promise<DavReplicationDAO>;
   conflictDAO?: () => Promise<DavReplicationConflictDAO>;
+  /**
+  The volume registry, for the `dav-volume` target's existence check.
+  */
+  volumeDAO?: () => Promise<DavVolumeDAO>;
   config?: AppConfiguration;
 }
 
@@ -74,6 +74,7 @@ class VolumeReplicationService {
     this.deps = {
       replicationDAO: deps.replicationDAO ?? (() => Promise.resolve(new DavReplicationDAO(env.DB))),
       conflictDAO: deps.conflictDAO ?? (() => Promise.resolve(new DavReplicationConflictDAO(env.DB))),
+      volumeDAO: deps.volumeDAO ?? (() => Promise.resolve(new DavVolumeDAO(env.DB))),
       config: deps.config ?? AppConfiguration.fromEnv(env),
     };
     this.replicationKey = resolveReplicationKey({
@@ -123,7 +124,6 @@ class VolumeReplicationService {
     creatorEmail: string,
   ): Promise<DavReplicationRow> {
     const dao = await this.deps.replicationDAO();
-    const targetKind = oneOf(input.targetKind, REPLICATION_TARGET_KINDS, 'targetKind');
     const mode = oneOf(input.mode, REPLICATION_MODES, 'mode', 'keep-both');
     // Resolved against the mode resolved above, so a create body carrying both can
     // never be validated against a mode it is not going to be stored with.
@@ -131,23 +131,13 @@ class VolumeReplicationService {
     const authKind = oneOf(input.authKind, REPLICATION_AUTH_KINDS, 'authKind', 'none');
     const intervalMinutes = normalizeInterval(input.intervalMinutes);
     const enabled = optionalBoolean(input.enabled, 'enabled', true);
-    const remotePath = normalizeRemotePath(input.remotePath);
 
-    const remoteUrl = targetKind === 'dav' ? requireRemoteUrl(input.remoteUrl, this.allowedHosts()) : '';
-    const remoteOwner = targetKind === 'dav-volume' ? optionalString(input.remoteOwner, 'remoteOwner', MAX_NAME_LENGTH) : '';
-    const remoteVolume = targetKind === 'dav-volume' ? optionalString(input.remoteVolume, 'remoteVolume', MAX_NAME_LENGTH) : '';
-
-    if (targetKind === 'dav-volume') {
-      if (remoteOwner === '' || remoteVolume === '') {
-        throw new BadRequestError('remoteOwner and remoteVolume are required when targetKind is dav-volume');
-      }
-      // Compared on the volume *path*, not the id: the Durable Object is keyed
-      // by path, so a bucket replicating to itself would deadlock — the runner
-      // would call the same object it is already executing inside.
-      if (`${remoteOwner}/${remoteVolume}`.toLowerCase() === localPath.toLowerCase()) {
-        throw new BadRequestError('A volume cannot replicate to itself');
-      }
-    }
+    const target = await resolveTarget({
+      input,
+      localPath,
+      allowedHosts: this.allowedHosts(),
+      volumeDAO: this.deps.volumeDAO,
+    });
 
     // Validated here rather than at the write below, so a body that is both over quota
     // and missing its username still reports the credential — the ordering callers
@@ -159,7 +149,6 @@ class VolumeReplicationService {
       throw new BadRequestError(`A volume may have at most ${this.deps.config.getMaxReplicationsPerVolume()} replications`);
     }
 
-    const target: ReplicationTarget = { targetKind, remoteUrl, remoteOwner, remoteVolume, remotePath };
     if (await dao.getByVolumeAndTarget(volumeId, target)) {
       // The unique index would turn this into a constraint 500. Reporting the
       // conflict it actually is keeps the API's error contract intact.

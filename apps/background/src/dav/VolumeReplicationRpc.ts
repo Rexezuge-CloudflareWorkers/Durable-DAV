@@ -251,11 +251,22 @@ class VolumeReplicationRpc {
   public readStream(path: string): ReadableStream<Uint8Array> | null {
     if (path === '' || !isValidInnerPath(path)) return null;
     const repo = new DavRepository(this.dofs, this.sql);
-    const stat = repo.statInner(path);
+    // `requireStatInner`, not `statInner`.
+    //
+    // The degrading form answers a failed read as "does not exist", which is
+    // indistinguishable from a deleted file — and a push that read nothing and
+    // reported success is the failure this whole feature exists to prevent: the
+    // run said `ok`, the mirror stayed empty, and the owner had no way to tell
+    // that the bytes never left. A storage blip has to arrive as an error, which
+    // the runner records and which closes the deletion gate for the pass.
+    const stat = repo.requireStatInner(path);
     if (!stat.exists || stat.isDirectory) return null;
     try {
       return this.dofs.readFile(fsPathOf(path), {});
     } catch {
+      // A read that fails after the stat succeeded is still a read failure, and
+      // the executor turns a null stream into an error rather than into a
+      // transfer that moved nothing.
       return null;
     }
   }

@@ -265,7 +265,11 @@ async function runReplicaSliceNow(scope: Container, env: Env, replicationId: str
   // the request scope — the exact inconsistency `serviceBindings` documents
   // having been fixed elsewhere.
   const conflictDAO = await scope.get(Tokens.DavReplicationConflictDAO)();
-  return new ReplicationRunner(env, replication, row.owner, row.name, stub, { replicationDAO, conflictDAO }).runSlice();
+  // The registry, for the target's existence check: a `dav-volume` target naming a
+  // bucket that does not exist would otherwise *create* one — invisible from the
+  // dashboard and from WebDAV, holding the owner's files, with every run reporting
+  // `ok`.
+  return new ReplicationRunner(env, replication, row.owner, row.name, stub, { replicationDAO, conflictDAO, volumeDAO }).runSlice();
 }
 
 async function forgetReplicaState(c: ApiContext, owner: string, volume: string, replicationId: string): Promise<void> {

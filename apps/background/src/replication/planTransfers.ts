@@ -1,12 +1,12 @@
 import { createLogger } from '@rexezuge/runtime';
-import type { LocalReplicaStub } from './collectSlice';
-import type { RemoteVolume } from '@durable-dav/backend-services/replication';
-import type { Slice } from './collectSlice';
+import type { LocalReplicaStub, Slice } from './replicaTypes';
+import type { PlanBase, RemoteVolume } from '@durable-dav/backend-services/replication';
+import { CryptoUtil } from '@rexezuge/shared';
 
 const logger = createLogger('Replication');
 
 /**
- * The two ways a plan moves bytes, and nothing else.
+ * The ways a plan moves bytes, and nothing else.
  *
  * Split out of `PlanExecutor` for one reason: `pull-and-preserve` is a whole
  * transfer strategy rather than one more branch of a switch, and folding it in
@@ -20,6 +20,10 @@ const logger = createLogger('Replication');
  * local version it would have overwritten is preserved beside the path rather than
  * discarded. That is what makes "the remote is the authority" a statement about
  * *precedence* rather than about destroying the owner's work.
+ *
+ * The plain transfers live here for the same reason: a transfer that moved
+ * nothing is a failure, and the rule for that belongs with the transfers rather
+ * than with the batch that counts them.
  */
 
 type TransferContext = {
@@ -27,6 +31,14 @@ type TransferContext = {
   remote: RemoteVolume;
   replicationId: string;
   slice: Slice;
+  /**
+   * The recorded base, by path.
+   *
+   * Indexed rather than searched: a transfer asks "what did the remote last
+   * hold here?" for every path it moves, and a linear search per path over a
+   * base of a few thousand rows is a few thousand comparisons per slice.
+   */
+  baseByPath: ReadonlyMap<string, PlanBase>;
   /**
    * Errors found applying a batch of local operations, or `null` when they all
    * landed. Thrown so the caller records one failed path rather than a silently
@@ -137,6 +149,93 @@ async function remoteToLocal(context: TransferContext, path: string, contentType
 }
 
 /**
+ * Local -> remote.
+ *
+ * Every way this can fail throws. A push that moved nothing and reported
+ * success is the failure this whole feature exists to prevent: the run said
+ * `ok`, the mirror stayed empty, and the owner had no way to tell that the
+ * bytes never left the bucket. A silent no-op is worse than an error, because
+ * an error closes the deletion gate and a silent no-op does not.
+ */
+async function pushTransfer(context: TransferContext, path: string): Promise<number | null> {
+  const { localStub, remote, slice } = context;
+  const localEntry = slice.localByPath.get(path);
+  if (localEntry === undefined) throw new Error(`the local side has no entry for ${path}`);
+  if (localEntry.isCollection) {
+    await remote.makeCollection(path);
+    return 0;
+  }
+  const stream = await localStub.readReplicaStream(path);
+  if (stream === null) throw new Error(`the local file ${path} could not be read`);
+  await remote.writeFile(path, stream, { contentType: localEntry.contentType, ifMatch: null });
+  noteMirrorRepair(context, path);
+  return localEntry.size ?? 0;
+}
+
+/**
+ * Remote -> local.
+ */
+async function pullTransfer(context: TransferContext, path: string, contentType: string | null): Promise<number | null> {
+  const { localStub, remote, replicationId, slice } = context;
+  // `ifMatch` carries the ETag we last saw, so a concurrent human write is
+  // rejected rather than silently overwritten. Absent on a first write, which is
+  // the only time omitting it is correct.
+  const remoteEntry = slice.remoteByPath.get(path) ?? (await remote.stat(path));
+  if (remoteEntry === null) throw new Error(`the remote has no entry for ${path}`);
+  if (remoteEntry.isCollection) {
+    context.applied(await localStub.applyReplicaOperations(replicationId, [{ op: 'mkdir', path }]), 'local mkdir');
+    return 0;
+  }
+  const stream = await remote.readFile(path);
+  if (stream === null) throw new Error(`the remote file ${path} could not be read`);
+  context.applied(await localStub.applyReplicaOperations(replicationId, [{ op: 'write', path, contentType, data: stream }]), 'local write');
+  return remoteEntry.size ?? 0;
+}
+
+/**
+ * Settle an ambiguous pair by hashing both sides.
+ *
+ * Opt-in, because it costs two full reads of every file whose validators
+ * disagree but whose sizes match. Equal hashes mean the two sides are recorded
+ * as agreeing; different hashes mean the winner takes the path.
+ */
+async function compareContent(context: TransferContext, path: string, winner: 'local' | 'remote'): Promise<number | null> {
+  const { localStub, remote, slice } = context;
+  const [localBytes, remoteStream] = await Promise.all([localStub.readReplicaBytes(path), remote.readFile(path)]);
+  if (localBytes === null) throw new Error(`the local file ${path} could not be read`);
+  if (remoteStream === null) throw new Error(`the remote file ${path} could not be read`);
+  const remoteBytes = new Uint8Array(await new Response(remoteStream).arrayBuffer());
+  const [localHash, remoteHash] = await Promise.all([CryptoUtil.sha256HexOfBytes(localBytes), CryptoUtil.sha256HexOfBytes(remoteBytes)]);
+  if (localHash === remoteHash) {
+    logger.info(`replication content hash matched for ${path}`);
+    return 0;
+  }
+  logger.info(`replication content hash differs for ${path}; applying the ${winner} side`);
+  return winner === 'local' ? pushTransfer(context, path) : pullTransfer(context, path, slice.remoteByPath.get(path)?.contentType ?? null);
+}
+
+/**
+ * Note that a push repaired a diverged mirror.
+ *
+ * A repair is a push over a version the remote had changed on its own: the
+ * mirror had drifted from its source, and the source is authoritative. It is
+ * not a conflict — one side is the authority, so there is nothing to reconcile
+ * and no conflict row is written — which leaves the log as the only place the
+ * repair is visible.
+ *
+ * A push over a remote that still holds the version the base recorded is an
+ * ordinary transfer, not a repair: the remote is stale, which is what a mirror
+ * is for.
+ */
+function noteMirrorRepair(context: TransferContext, path: string): void {
+  const remoteEntry = context.slice.remoteByPath.get(path);
+  if (remoteEntry === undefined) return;
+  const base = context.baseByPath.get(path);
+  if (base === undefined || base.remoteEtag === null || base.remoteEtag === remoteEntry.etag) return;
+  logger.info(`replication repaired a diverged mirror at ${path}`);
+}
+
+/**
  * The collection-vs-something cases of `keepBoth`.
  *
  * Returns whether it handled the path, so the caller can open with the exception
@@ -160,5 +259,5 @@ async function preserveConflictingCollection(context: TransferContext, path: str
   return true;
 }
 
-export { keepBoth, pullAndPreserve };
+export { keepBoth, pullAndPreserve, pushTransfer, pullTransfer, compareContent };
 export type { TransferContext };

@@ -60,6 +60,21 @@ export function VolumeReplicationRow({
       <div className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <p className="text-sm font-medium text-[var(--color-text-primary)] break-all">{targetLabel(replication)}</p>
+          {/*
+            Where the copied files actually land.
+            
+            The target line above names the *container*; it does not say what
+            happens to a file. Without this line the answer has to be worked out
+            from the target's own subdirectory plus the path the file has here —
+            two levels deep when a subdirectory is set — which is the single most
+            common reason a replication looks like it did nothing: the file went
+            somewhere the owner did not look.
+          */}
+          <p className="text-xs text-[var(--color-text-muted)] break-all">
+            {t('replication.landingPath', 'Copied Files Land At {{target}}/<Path Inside This Bucket>', {
+              target: targetLabel(replication),
+            })}
+          </p>
           <p className="text-xs text-[var(--color-text-muted)]">
             {t('replication.every', 'Every {{interval}}', { interval: intervalLabel(replication.intervalMinutes) })} ·{' '}
             {t(`replication.mode.${replication.mode}`, replication.mode)}

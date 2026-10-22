@@ -175,6 +175,16 @@ export function VolumeReplicationForm({
           onChange={(e) => setRemotePath(e.target.value)}
           placeholder="backups/bucket"
         />
+        {/*
+          What the subdirectory is *for*. Without it the answer is not obvious:
+          the copied files do not replace the target's contents, they land inside
+          the subdirectory at the same path they have here — so a target with a
+          subdirectory set holds the copies one level deeper than its own listing
+          suggests, which is a common reason to conclude that nothing was copied.
+        */}
+        <p className="text-xs text-[var(--color-text-muted)]">
+          {t('replication.remotePathHelp', 'A Subdirectory Inside The Target. Copied Files Land In It, At The Same Path They Have Here.')}
+        </p>
       </div>
 
       {targetKind === 'dav' && (

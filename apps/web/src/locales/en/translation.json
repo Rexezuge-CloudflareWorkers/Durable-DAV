@@ -217,6 +217,8 @@
     "remoteOwner": "Bucket Owner",
     "remoteVolume": "Bucket Name",
     "remotePath": "Subdirectory (Optional)",
+    "remotePathHelp": "A Subdirectory Inside The Target. Copied Files Land In It, At The Same Path They Have Here.",
+    "landingPath": "Copied Files Land At {{target}}/<Path Inside This Bucket>",
     "httpsOnly": "Https Only. Loopback And Private Network Addresses Are Blocked Unless The Operator Has Allowed Them.",
     "authKind": "Authentication",
     "authNone": "None",

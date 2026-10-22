@@ -253,7 +253,14 @@ describe('buildReplicationPlan — three-way comparison', () => {
     expect(kinds(plan.decisions)).toEqual(['pull a.txt']);
   });
 
-  it('ignores a remote-only change in copy-only mode', () => {
+  it('repairs a diverged mirror in copy-only mode', () => {
+    // The remote changed on its own. `copy-only` makes this bucket the authority,
+    // so the remote is not a source to import from — it is a mirror that has
+    // drifted, and the drift is corrected by pushing the local version back.
+    //
+    // It used to be recorded as `agree`, which cemented the divergence: the
+    // remote's validators became the new base, so the mirror stayed wrong for the
+    // life of the target while every run reported `ok`.
     const plan = buildReplicationPlan({
       mode: 'copy-only',
       local: [side('a.txt')],
@@ -261,7 +268,10 @@ describe('buildReplicationPlan — three-way comparison', () => {
       base: [base('a.txt')],
       trustAbsences: true,
     });
-    expect(kinds(plan.decisions)).toEqual(['agree a.txt']);
+    expect(kinds(plan.decisions)).toEqual(['push a.txt']);
+    // A repair is not a conflict: one side is the authority, so there is nothing
+    // to reconcile and nothing to record.
+    expect(plan.conflicts).toEqual([]);
   });
 
   it('keeps both sides when a path became a collection on one and a file on the other', () => {
