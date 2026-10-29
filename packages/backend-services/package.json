@@ -30,7 +30,7 @@
     "@durable-dav/backend-runtime": "workspace:*",
     "@durable-dav/shared": "workspace:*",
     "@rexezuge/d1": "^1.9.0",
-    "@rexezuge/errors": "^1.9.0",
+    "@rexezuge/errors": "^1.9.2",
     "@rexezuge/http": "^1.9.0",
     "@rexezuge/identity": "^1.9.0",
     "@rexezuge/runtime": "^1.9.0",
