@@ -19,8 +19,8 @@ importers:
         specifier: 0.23.0
         version: 0.23.0(@cloudflare/workers-types@5.20261019.1)(@vitest/runner@4.1.11)(@vitest/snapshot@4.1.11)(vitest@4.1.11)
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.2
+        version: 1.9.2
       '@rexezuge/errors':
         specifier: ^1.9.0
         version: 1.9.0
@@ -154,8 +154,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/webdav
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.2
+        version: 1.9.2
       '@rexezuge/errors':
         specifier: ^1.9.0
         version: 1.9.0
@@ -280,8 +280,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.2
+        version: 1.9.2
       '@rexezuge/identity':
         specifier: ^1.9.0
         version: 1.9.0
@@ -324,8 +324,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.2
+        version: 1.9.2
       '@rexezuge/errors':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1448,8 +1448,14 @@ packages:
   '@rexezuge/d1@1.9.0':
     resolution: {integrity: sha512-XONq3ibNEEZcJR2Rl0SYl/fWe6EQt4T89MNWPkNr8QqWxRUGk5PER0GwMn8fCsQuRfFr8JxshHWU9a1zbXOd/w==}
 
+  '@rexezuge/d1@1.9.2':
+    resolution: {integrity: sha512-/9YPjn2WEKs53iY3upw7Yix6w4ANw6+CqhebuMVWqCOcoMSVd510JnQgQhGa2LqXOKqXEbkmDxjZopfVrD9aiw==}
+
   '@rexezuge/errors@1.9.0':
     resolution: {integrity: sha512-5pALUuuI0h2ZLnLnNAmBb7f8SXvv87tr2rtszIbnkPhn2LPfYDGRLiAFNVqPZpG204FMuNcaiYydDwxkGhsXzw==}
+
+  '@rexezuge/errors@1.9.2':
+    resolution: {integrity: sha512-2LBY01Ly8ZJH8YF3pqTfYGFF56WslywFiC3HeeEXSBSD0nKXA6WsELUa/xPbMXIhKnVz8z+UtgshuHsHlSMOeg==}
 
   '@rexezuge/http@1.9.0':
     resolution: {integrity: sha512-k5W0U7jYbmAecIWH58RRvzCNPtdO3dKua0ZhqFJEy2LZB2qtu24cZJUyeoNafCUAyrWLx2e2FHM4oRcloiadTw==}
@@ -3894,7 +3900,14 @@ snapshots:
       '@rexezuge/errors': 1.9.0
       '@rexezuge/shared': 1.9.0
 
+  '@rexezuge/d1@1.9.2':
+    dependencies:
+      '@rexezuge/errors': 1.9.2
+      '@rexezuge/shared': 1.9.2
+
   '@rexezuge/errors@1.9.0': {}
+
+  '@rexezuge/errors@1.9.2': {}
 
   '@rexezuge/http@1.9.0':
     dependencies:
