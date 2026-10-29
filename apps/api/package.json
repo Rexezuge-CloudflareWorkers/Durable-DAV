@@ -13,7 +13,7 @@
     "@durable-dav/background": "workspace:*",
     "@durable-dav/shared": "workspace:*",
     "@durable-dav/webdav": "workspace:*",
-    "@rexezuge/d1": "^1.9.0",
+    "@rexezuge/d1": "^1.9.2",
     "@rexezuge/errors": "^1.9.0",
     "@rexezuge/http": "^1.9.0",
     "@rexezuge/i18n": "^1.9.0",
