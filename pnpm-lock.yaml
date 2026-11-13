@@ -22,8 +22,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/errors':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/http':
         specifier: ^1.9.0
         version: 1.9.0
@@ -157,8 +157,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/errors':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/http':
         specifier: ^1.9.0
         version: 1.9.0
@@ -327,8 +327,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/errors':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/http':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1459,6 +1459,9 @@ packages:
 
   '@rexezuge/errors@1.9.0':
     resolution: {integrity: sha512-5pALUuuI0h2ZLnLnNAmBb7f8SXvv87tr2rtszIbnkPhn2LPfYDGRLiAFNVqPZpG204FMuNcaiYydDwxkGhsXzw==}
+
+  '@rexezuge/errors@1.9.4':
+    resolution: {integrity: sha512-ndAbag3pJ/AvD8lWQVsav1XRqj9Z+c5b+eOV7LeDShVzhOg2qJj5fAXWlRqolt6xIZSY3x1qepKtSZZdS0eOXw==}
 
   '@rexezuge/http@1.9.0':
     resolution: {integrity: sha512-k5W0U7jYbmAecIWH58RRvzCNPtdO3dKua0ZhqFJEy2LZB2qtu24cZJUyeoNafCUAyrWLx2e2FHM4oRcloiadTw==}
@@ -3930,6 +3933,8 @@ snapshots:
       '@rexezuge/shared': 1.9.0
 
   '@rexezuge/errors@1.9.0': {}
+
+  '@rexezuge/errors@1.9.4': {}
 
   '@rexezuge/http@1.9.0':
     dependencies:
