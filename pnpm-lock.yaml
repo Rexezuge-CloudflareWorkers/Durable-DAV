@@ -31,8 +31,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.2
+        version: 1.9.2
       '@rexezuge/runtime':
         specifier: ^1.9.0
         version: 1.9.0
@@ -283,8 +283,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.2
+        version: 1.9.2
       '@rexezuge/shared':
         specifier: ^1.9.2
         version: 1.9.2
@@ -333,8 +333,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.2
+        version: 1.9.2
       '@rexezuge/runtime':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1457,8 +1457,14 @@ packages:
   '@rexezuge/d1@1.9.0':
     resolution: {integrity: sha512-XONq3ibNEEZcJR2Rl0SYl/fWe6EQt4T89MNWPkNr8QqWxRUGk5PER0GwMn8fCsQuRfFr8JxshHWU9a1zbXOd/w==}
 
+  '@rexezuge/d1@1.9.2':
+    resolution: {integrity: sha512-/9YPjn2WEKs53iY3upw7Yix6w4ANw6+CqhebuMVWqCOcoMSVd510JnQgQhGa2LqXOKqXEbkmDxjZopfVrD9aiw==}
+
   '@rexezuge/errors@1.9.0':
     resolution: {integrity: sha512-5pALUuuI0h2ZLnLnNAmBb7f8SXvv87tr2rtszIbnkPhn2LPfYDGRLiAFNVqPZpG204FMuNcaiYydDwxkGhsXzw==}
+
+  '@rexezuge/errors@1.9.2':
+    resolution: {integrity: sha512-2LBY01Ly8ZJH8YF3pqTfYGFF56WslywFiC3HeeEXSBSD0nKXA6WsELUa/xPbMXIhKnVz8z+UtgshuHsHlSMOeg==}
 
   '@rexezuge/http@1.9.0':
     resolution: {integrity: sha512-k5W0U7jYbmAecIWH58RRvzCNPtdO3dKua0ZhqFJEy2LZB2qtu24cZJUyeoNafCUAyrWLx2e2FHM4oRcloiadTw==}
@@ -1466,8 +1472,8 @@ packages:
   '@rexezuge/i18n@1.9.0':
     resolution: {integrity: sha512-mPVytf1nShzztdIbx25L2066g9eFb2TUicwD+rhhUiVov4MQO+L6KgN8drJAsWiuoH3LNAUZ7Keu4Al8ZV030A==}
 
-  '@rexezuge/identity@1.9.0':
-    resolution: {integrity: sha512-sOC7u67nn+z5VVO11pxhpNAymH2eLzUkZU/nhHbT8QqEZ/rfew7IgWlJ9wLKJ/xnUTdnvQDP4DFkLcEdipfLBg==}
+  '@rexezuge/identity@1.9.2':
+    resolution: {integrity: sha512-ZcGO6tGBcNZDbVHsjryKskTyzrnjtt6ev8xNSltP9QAFBAwh3NxDcsSfOu18pG/SPP6v9JI12tI+WiwzRm87rg==}
 
   '@rexezuge/runtime@1.9.0':
     resolution: {integrity: sha512-DNTkGgcBjtuzA1gI00Z6r6XWX2lhP0CkguMJFEM1/APRAByHekTZ0plTkwb7NkmQGl3boS+qUwhBI1QdwmlmMg==}
@@ -3929,7 +3935,14 @@ snapshots:
       '@rexezuge/errors': 1.9.0
       '@rexezuge/shared': 1.9.0
 
+  '@rexezuge/d1@1.9.2':
+    dependencies:
+      '@rexezuge/errors': 1.9.2
+      '@rexezuge/shared': 1.9.2
+
   '@rexezuge/errors@1.9.0': {}
+
+  '@rexezuge/errors@1.9.2': {}
 
   '@rexezuge/http@1.9.0':
     dependencies:
@@ -3941,11 +3954,11 @@ snapshots:
 
   '@rexezuge/i18n@1.9.0': {}
 
-  '@rexezuge/identity@1.9.0':
+  '@rexezuge/identity@1.9.2':
     dependencies:
-      '@rexezuge/d1': 1.9.0
-      '@rexezuge/errors': 1.9.0
-      '@rexezuge/shared': 1.9.0
+      '@rexezuge/d1': 1.9.2
+      '@rexezuge/errors': 1.9.2
+      '@rexezuge/shared': 1.9.2
 
   '@rexezuge/runtime@1.9.0': {}
 
