@@ -31,8 +31,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/runtime':
         specifier: ^1.9.0
         version: 1.9.0
@@ -283,8 +283,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/shared':
         specifier: ^1.9.2
         version: 1.9.2
@@ -333,8 +333,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/runtime':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1461,8 +1461,14 @@ packages:
   '@rexezuge/d1@1.9.0':
     resolution: {integrity: sha512-XONq3ibNEEZcJR2Rl0SYl/fWe6EQt4T89MNWPkNr8QqWxRUGk5PER0GwMn8fCsQuRfFr8JxshHWU9a1zbXOd/w==}
 
+  '@rexezuge/d1@1.9.4':
+    resolution: {integrity: sha512-8RFxFQtbS8AVxrvXOL1ecMU06HJZX2XaRM36Rer/qca+JI0LEG1KIhc3n2hQ/2tyZA7Ncy0FYc/Q6nMU9mrkSQ==}
+
   '@rexezuge/errors@1.9.0':
     resolution: {integrity: sha512-5pALUuuI0h2ZLnLnNAmBb7f8SXvv87tr2rtszIbnkPhn2LPfYDGRLiAFNVqPZpG204FMuNcaiYydDwxkGhsXzw==}
+
+  '@rexezuge/errors@1.9.4':
+    resolution: {integrity: sha512-ndAbag3pJ/AvD8lWQVsav1XRqj9Z+c5b+eOV7LeDShVzhOg2qJj5fAXWlRqolt6xIZSY3x1qepKtSZZdS0eOXw==}
 
   '@rexezuge/http@1.9.0':
     resolution: {integrity: sha512-k5W0U7jYbmAecIWH58RRvzCNPtdO3dKua0ZhqFJEy2LZB2qtu24cZJUyeoNafCUAyrWLx2e2FHM4oRcloiadTw==}
@@ -1470,8 +1476,8 @@ packages:
   '@rexezuge/i18n@1.9.0':
     resolution: {integrity: sha512-mPVytf1nShzztdIbx25L2066g9eFb2TUicwD+rhhUiVov4MQO+L6KgN8drJAsWiuoH3LNAUZ7Keu4Al8ZV030A==}
 
-  '@rexezuge/identity@1.9.0':
-    resolution: {integrity: sha512-sOC7u67nn+z5VVO11pxhpNAymH2eLzUkZU/nhHbT8QqEZ/rfew7IgWlJ9wLKJ/xnUTdnvQDP4DFkLcEdipfLBg==}
+  '@rexezuge/identity@1.9.4':
+    resolution: {integrity: sha512-BdQwGi9QI0f0CYNG/VKrx8OrzO6zfzuMPn69glJdZYi+1os+qkG6t8GDIGDGXTeXIru9rBuc4fV0e+38OGIX/g==}
 
   '@rexezuge/runtime@1.9.0':
     resolution: {integrity: sha512-DNTkGgcBjtuzA1gI00Z6r6XWX2lhP0CkguMJFEM1/APRAByHekTZ0plTkwb7NkmQGl3boS+qUwhBI1QdwmlmMg==}
@@ -1481,6 +1487,9 @@ packages:
 
   '@rexezuge/shared@1.9.2':
     resolution: {integrity: sha512-B9PsD8vbAOSNa5TRlH7eXMVTSDxq3KZ+v3eU9SyWyywbtSc21AZkjHjqBoEQkfx3IkfFnBFa6jg5x/PagBtMLA==}
+
+  '@rexezuge/shared@1.9.4':
+    resolution: {integrity: sha512-VphnyKOKvT2zsK2A3bgtBPd6sfhIREsY8fdx68QDn6ApxhduqNbrT1K4q6Wlf/d8bIMk6biycxXkjM1ICngSmA==}
 
   '@rexezuge/tooling@1.9.0':
     resolution: {integrity: sha512-6+mO4hXbhdyJR0XxEeXElIqk6d7QtJSluxlHyGPp525wKZfT3q626r5LxB4wX2Pp7jhQ0nEfxD1N28vNmZQzQA==}
@@ -3938,7 +3947,14 @@ snapshots:
       '@rexezuge/errors': 1.9.0
       '@rexezuge/shared': 1.9.0
 
+  '@rexezuge/d1@1.9.4':
+    dependencies:
+      '@rexezuge/errors': 1.9.4
+      '@rexezuge/shared': 1.9.4
+
   '@rexezuge/errors@1.9.0': {}
+
+  '@rexezuge/errors@1.9.4': {}
 
   '@rexezuge/http@1.9.0':
     dependencies:
@@ -3950,17 +3966,19 @@ snapshots:
 
   '@rexezuge/i18n@1.9.0': {}
 
-  '@rexezuge/identity@1.9.0':
+  '@rexezuge/identity@1.9.4':
     dependencies:
-      '@rexezuge/d1': 1.9.0
-      '@rexezuge/errors': 1.9.0
-      '@rexezuge/shared': 1.9.0
+      '@rexezuge/d1': 1.9.4
+      '@rexezuge/errors': 1.9.4
+      '@rexezuge/shared': 1.9.4
 
   '@rexezuge/runtime@1.9.0': {}
 
   '@rexezuge/shared@1.9.0': {}
 
   '@rexezuge/shared@1.9.2': {}
+
+  '@rexezuge/shared@1.9.4': {}
 
   '@rexezuge/tooling@1.9.0(eslint-config-prettier@10.1.8(eslint@10.13.0(jiti@2.7.0)))(eslint-plugin-prettier@5.5.7(eslint-config-prettier@10.1.8(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(prettier@3.9.10))(eslint-plugin-regexp@3.3.3(eslint@10.13.0(jiti@2.7.0)))(eslint-plugin-sonarjs@4.2.2(eslint@10.13.0(jiti@2.7.0)))(eslint-plugin-unicorn@76.0.0(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(globals@17.13.0)(jsonc-parser@3.3.1)(prettier@3.9.10)(typescript-eslint@8.72.0(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)':
     dependencies:
