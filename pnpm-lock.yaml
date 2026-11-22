@@ -19,8 +19,8 @@ importers:
         specifier: 0.23.0
         version: 0.23.0(@cloudflare/workers-types@5.20261019.1)(@vitest/runner@4.1.11)(@vitest/snapshot@4.1.11)(vitest@4.1.11)
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/errors':
         specifier: ^1.9.0
         version: 1.9.0
@@ -154,8 +154,8 @@ importers:
         specifier: workspace:*
         version: link:../../packages/webdav
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/errors':
         specifier: ^1.9.0
         version: 1.9.0
@@ -280,8 +280,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/identity':
         specifier: ^1.9.0
         version: 1.9.0
@@ -324,8 +324,8 @@ importers:
         specifier: workspace:*
         version: link:../shared
       '@rexezuge/d1':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/errors':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1403,6 +1403,9 @@ packages:
 
   '@rexezuge/d1@1.9.0':
     resolution: {integrity: sha512-XONq3ibNEEZcJR2Rl0SYl/fWe6EQt4T89MNWPkNr8QqWxRUGk5PER0GwMn8fCsQuRfFr8JxshHWU9a1zbXOd/w==}
+
+  '@rexezuge/d1@1.9.4':
+    resolution: {integrity: sha512-8RFxFQtbS8AVxrvXOL1ecMU06HJZX2XaRM36Rer/qca+JI0LEG1KIhc3n2hQ/2tyZA7Ncy0FYc/Q6nMU9mrkSQ==}
 
   '@rexezuge/errors@1.9.0':
     resolution: {integrity: sha512-5pALUuuI0h2ZLnLnNAmBb7f8SXvv87tr2rtszIbnkPhn2LPfYDGRLiAFNVqPZpG204FMuNcaiYydDwxkGhsXzw==}
@@ -3826,6 +3829,11 @@ snapshots:
     dependencies:
       '@rexezuge/errors': 1.9.0
       '@rexezuge/shared': 1.9.0
+
+  '@rexezuge/d1@1.9.4':
+    dependencies:
+      '@rexezuge/errors': 1.9.4
+      '@rexezuge/shared': 1.9.4
 
   '@rexezuge/errors@1.9.0': {}
 
