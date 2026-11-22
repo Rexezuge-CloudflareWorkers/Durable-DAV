@@ -25,7 +25,7 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 - Volumes: `GET|POST /user/volumes` · `GET|PATCH|DELETE /user/volumes/:owner/:volume`.
 - Credentials: `GET|POST /user/volumes/:owner/:volume/credentials` · `PATCH|DELETE /user/volumes/:owner/:volume/credentials/:id`. `POST` takes `readOnly` and `server`; `server: true` mints a long-lived credential (0008 `is_server`, `expires_at = NEVER_EXPIRES_AT`) with no expiry resolution — a non-boolean is a 400. The projection publishes `isServer` and maps the sentinel to `expiresAt: null`. `PATCH` takes `{ readOnly }` and flips it, returning the updated row.
 - Users: `GET /user/me` · `GET /users/:username`.
-- Public: `GET /` (minimal HTML volume browser) · `GET /health` · `/docs`.
+- Public: `GET /` (standalone web-UI deprecation notice, with `Deprecation`/`Link` headers pointing at the Router repo — `src/workers/deprecationNotice.ts`) · `GET /health` · `/docs`. The SPA document routes (`/new`, `/settings`, `/:username`) are gone: those paths 404, and `/:owner/:volume` always forwards to the DO, so a browser navigation to a collection gets the DO's own HTML listing. Durable-DAV-Router is the only supported web UI and consumes the unchanged `/user/*` JSON + `/user/volumes/:owner/:volume/files/*` planes.
 
 ## Composition
 

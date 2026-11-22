@@ -4,7 +4,7 @@ WebDAV server (RFC 4918 Class 1 + Class 2) over `dofs` (Durable Object filesyste
 
 - Multi-volume from day one: each volume lives at `/:owner/:volume/` backed by one `DavVolumeWorker` DO (`DAV_VOLUME.getByName(owner/volume)`), files in `dofs`, dead properties + locks in DO SQLite.
 - Auth: Cloudflare Access for `/user/*` + per-bucket Basic credentials for WebDAV (bound to volume id, expiry enforced, `MAX_CREDENTIALS_PER_VOLUME=10`). Each user gets up to `MAX_VOLUMES_PER_USER` (100) private-by-default buckets; public buckets allow anon reads.
-- Minimal browser UI: `GET /` and collection `GET` return simple HTML listings (no SPA build).
+- **Web UI: use [Durable-DAV-Router](https://github.com/Rexezuge-CloudflareWorkers/Durable-DAV-Router).** The browser UI that used to ship in `apps/web` is soft-deprecated and no longer served: `GET /` is a deprecation notice with the Router link, `/new`, `/settings` and profile paths 404, and collection `GET` returns the DO's small HTML listing. WebDAV and the `/user/*` APIs are unchanged.
 - Only needed bindings: D1 `DB`, DOs `DAV_VOLUME` + `CRON_TASKS`, cron `*/10 * * * *`.
 
 ## Quick Start
