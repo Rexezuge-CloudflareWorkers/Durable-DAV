@@ -85,6 +85,46 @@ describe('Durable Object RPC — byte transport', () => {
     expect(result.failed).toBe(0);
     expect(await (await dav('/buffered.txt')).text()).toBe('written as bytes');
   });
+
+  it('writes a stream delivered in many small chunks', async () => {
+    // The HTTP remote's `readFile` is a `fetch` body: its chunk boundaries are
+    // the network's, not dofs's 512 KiB device-chunk boundaries. The first chunk
+    // leaves a short stored chunk; every later chunk in that same device chunk
+    // used to hit `offset is out of bounds` in dofs's `loadChunk`. One 16 KiB
+    // chunk is not enough to catch it — the payload has to span several device
+    // chunks so a partial chunk is certain to be appended to.
+    const stub = (env as unknown as TestEnv).DAV_VOLUME.getByName(`${OWNER}/${VOLUME}`) as unknown as {
+      applyReplicaOperations: (id: string, ops: unknown[]) => Promise<{ applied: number; failed: number; error: string | null }>;
+    };
+    const total = 640 * 1024;
+    const pieceSize = 16 * 1024;
+    let sent = 0;
+    const stream = new ReadableStream<Uint8Array>({
+      pull(controller) {
+        if (sent >= total) {
+          controller.close();
+          return;
+        }
+        const length = Math.min(pieceSize, total - sent);
+        const piece = new Uint8Array(length);
+        for (let i = 0; i < length; i += 1) piece[i] = ((sent + i) * 31 + 7) & 0xff;
+        controller.enqueue(piece);
+        sent += length;
+      },
+    });
+    const result = await stub.applyReplicaOperations('probe', [
+      { op: 'write', path: 'streamed-many-chunks.bin', contentType: 'application/octet-stream', data: stream },
+    ]);
+    expect(result.failed, result.error ?? undefined).toBe(0);
+    expect(result.error).toBeNull();
+
+    const response = await dav('/streamed-many-chunks.bin');
+    expect(response.status).toBe(200);
+    const bytes = new Uint8Array(await response.arrayBuffer());
+    expect(bytes.byteLength).toBe(total);
+    for (let i = 0; i < total; i += 997) expect(bytes[i], `byte ${i}`).toBe((i * 31 + 7) & 0xff);
+    expect(bytes[total - 1]).toBe(((total - 1) * 31 + 7) & 0xff);
+  });
 });
 describe('DavVolumeRemote — reading through a configured subdirectory', () => {
   it('reads a file the way the sync engine asks for it', async () => {

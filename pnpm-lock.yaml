@@ -5,7 +5,7 @@ settings:
   excludeLinksFromLockfile: false
 
 patchedDependencies:
-  dofs@0.1.0: 21317a197333fa14d1e33c5c82818bc9f9fc846edb558c4a608bf8f83fbcaf64
+  dofs@0.1.0: d01833edab7cf0fb1c9a0bd2df1b941ef64b7a7d88615dbe66cb03e1f83a4e8b
 
 importers:
 
@@ -362,7 +362,7 @@ importers:
         version: 1.9.2
       dofs:
         specifier: ^0.1.0
-        version: 0.1.0(patch_hash=21317a197333fa14d1e33c5c82818bc9f9fc846edb558c4a608bf8f83fbcaf64)(hono@4.13.16)
+        version: 0.1.0(patch_hash=d01833edab7cf0fb1c9a0bd2df1b941ef64b7a7d88615dbe66cb03e1f83a4e8b)(hono@4.13.16)
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -4381,7 +4381,7 @@ snapshots:
 
   detect-libc@2.1.2: {}
 
-  dofs@0.1.0(patch_hash=21317a197333fa14d1e33c5c82818bc9f9fc846edb558c4a608bf8f83fbcaf64)(hono@4.13.16):
+  dofs@0.1.0(patch_hash=d01833edab7cf0fb1c9a0bd2df1b941ef64b7a7d88615dbe66cb03e1f83a4e8b)(hono@4.13.16):
     dependencies:
       commander: 14.0.3
       hono: 4.13.16

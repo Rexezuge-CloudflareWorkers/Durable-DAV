@@ -53,7 +53,7 @@ index f246a8642c6e9fc8115e3deabca814b2a5dcdedf..e13e8ed8f63db18f37bd73566d85dde4
  //# sourceMappingURL=index.d.ts.map
 \ No newline at end of file
 diff --git a/dist/index.js b/dist/index.js
-index 0d02c5b7cd25098da1708e27a7e2bb6e20c75cdc..9e1f821a981471cfce0f37aa9d1f5ad4e9ffb43d 100644
+index 0d02c5b7cd25098da1708e27a7e2bb6e20c75cdc..f74ab2144fd8bbc2bbd75fb004857ad31353e1c9 100644
 --- a/dist/index.js
 +++ b/dist/index.js
 @@ -47,14 +47,41 @@ var Fs = class extends RpcTarget {
@@ -186,7 +186,33 @@ index 0d02c5b7cd25098da1708e27a7e2bb6e20c75cdc..9e1f821a981471cfce0f37aa9d1f5ad4
  	stat(path) {
  		const ino = this.resolvePathToInode(path);
  		const cursor = this.ctx.storage.sql.exec("SELECT attr, is_dir FROM dofs_files WHERE ino = ?", ino);
-@@ -569,12 +605,6 @@ function Dofs(options = {}) {
+@@ -510,11 +546,22 @@ var Fs = class extends RpcTarget {
+ 	loadChunk(ino, chunkOffset, chunkSize) {
+ 		const chunkCursor = this.ctx.storage.sql.exec("SELECT data FROM dofs_chunks WHERE ino = ? AND offset = ?", ino, chunkOffset);
+ 		const chunkRow = chunkCursor.next().value;
++		// Stored chunks are truncated to the bytes actually written, so the last
++		// chunk of a file is shorter than chunkSize. Returning that short view made
++		// a later write into the same chunk (offset >= view.length) throw
++		// `offset is out of bounds`: a streamed `writeFile` hits it on its second
++		// chunk whenever network chunk boundaries don't line up with chunkSize.
++		// Always hand back a full-size buffer with the stored bytes copied in.
++		const full = new Uint8Array(chunkSize);
+ 		if (chunkRow && chunkRow.data) {
+-			if (chunkRow.data instanceof ArrayBuffer) return new Uint8Array(chunkRow.data);
+-			else if (ArrayBuffer.isView(chunkRow.data)) return new Uint8Array(chunkRow.data.buffer);
++			const existing = chunkRow.data instanceof ArrayBuffer
++				? new Uint8Array(chunkRow.data)
++				: ArrayBuffer.isView(chunkRow.data)
++					? new Uint8Array(chunkRow.data.buffer, chunkRow.data.byteOffset, chunkRow.data.byteLength)
++					: null;
++			if (existing !== null) full.set(existing, 0);
+ 		}
+-		return new Uint8Array(chunkSize);
++		return full;
+ 	}
+ 	getDeviceSize() {
+ 		const cursor = this.ctx.storage.sql.exec("SELECT value FROM dofs_meta WHERE key = ?", "device_size");
+@@ -569,12 +616,6 @@ function Dofs(options = {}) {
  		};
  	};
  }
@@ -199,4 +225,3 @@ index 0d02c5b7cd25098da1708e27a7e2bb6e20c75cdc..9e1f821a981471cfce0f37aa9d1f5ad4
  //#endregion
  export { Dofs, Fs, withDofs };
  //# sourceMappingURL=index.js.map
-\ No newline at end of file
