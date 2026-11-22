@@ -31,8 +31,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/runtime':
         specifier: ^1.9.0
         version: 1.9.0
@@ -283,8 +283,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/shared':
         specifier: ^1.9.2
         version: 1.9.2
@@ -333,8 +333,8 @@ importers:
         specifier: ^1.9.4
         version: 1.9.4
       '@rexezuge/identity':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/runtime':
         specifier: ^1.9.0
         version: 1.9.0
@@ -1404,6 +1404,9 @@ packages:
   '@rexezuge/d1@1.9.0':
     resolution: {integrity: sha512-XONq3ibNEEZcJR2Rl0SYl/fWe6EQt4T89MNWPkNr8QqWxRUGk5PER0GwMn8fCsQuRfFr8JxshHWU9a1zbXOd/w==}
 
+  '@rexezuge/d1@1.9.4':
+    resolution: {integrity: sha512-8RFxFQtbS8AVxrvXOL1ecMU06HJZX2XaRM36Rer/qca+JI0LEG1KIhc3n2hQ/2tyZA7Ncy0FYc/Q6nMU9mrkSQ==}
+
   '@rexezuge/errors@1.9.0':
     resolution: {integrity: sha512-5pALUuuI0h2ZLnLnNAmBb7f8SXvv87tr2rtszIbnkPhn2LPfYDGRLiAFNVqPZpG204FMuNcaiYydDwxkGhsXzw==}
 
@@ -1416,8 +1419,8 @@ packages:
   '@rexezuge/i18n@1.9.0':
     resolution: {integrity: sha512-mPVytf1nShzztdIbx25L2066g9eFb2TUicwD+rhhUiVov4MQO+L6KgN8drJAsWiuoH3LNAUZ7Keu4Al8ZV030A==}
 
-  '@rexezuge/identity@1.9.0':
-    resolution: {integrity: sha512-sOC7u67nn+z5VVO11pxhpNAymH2eLzUkZU/nhHbT8QqEZ/rfew7IgWlJ9wLKJ/xnUTdnvQDP4DFkLcEdipfLBg==}
+  '@rexezuge/identity@1.9.4':
+    resolution: {integrity: sha512-BdQwGi9QI0f0CYNG/VKrx8OrzO6zfzuMPn69glJdZYi+1os+qkG6t8GDIGDGXTeXIru9rBuc4fV0e+38OGIX/g==}
 
   '@rexezuge/runtime@1.9.0':
     resolution: {integrity: sha512-DNTkGgcBjtuzA1gI00Z6r6XWX2lhP0CkguMJFEM1/APRAByHekTZ0plTkwb7NkmQGl3boS+qUwhBI1QdwmlmMg==}
@@ -3827,6 +3830,11 @@ snapshots:
       '@rexezuge/errors': 1.9.0
       '@rexezuge/shared': 1.9.0
 
+  '@rexezuge/d1@1.9.4':
+    dependencies:
+      '@rexezuge/errors': 1.9.4
+      '@rexezuge/shared': 1.9.4
+
   '@rexezuge/errors@1.9.0': {}
 
   '@rexezuge/errors@1.9.4': {}
@@ -3841,11 +3849,11 @@ snapshots:
 
   '@rexezuge/i18n@1.9.0': {}
 
-  '@rexezuge/identity@1.9.0':
+  '@rexezuge/identity@1.9.4':
     dependencies:
-      '@rexezuge/d1': 1.9.0
-      '@rexezuge/errors': 1.9.0
-      '@rexezuge/shared': 1.9.0
+      '@rexezuge/d1': 1.9.4
+      '@rexezuge/errors': 1.9.4
+      '@rexezuge/shared': 1.9.4
 
   '@rexezuge/runtime@1.9.0': {}
 
