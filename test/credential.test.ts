@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { VolumeCredentialService } from '@durable-dav/backend-services/dav';
-import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
+import { DavCredentialUtil, NEVER_EXPIRES_AT } from '@durable-dav/shared/utils/DavCredentialUtil';
+import { DavCredentialDAO } from '@durable-dav/backend-data/dao';
 import type { D1Queryable } from '@rexezuge/d1';
 
 function createCredentialFakeDb() {
@@ -17,6 +18,7 @@ function createCredentialFakeDb() {
       expires_at: number;
       last_used_at: number | null;
       read_only: number;
+      is_server: number;
     }>,
   };
   function statement(query: string, params: unknown[]) {
@@ -65,6 +67,7 @@ function createCredentialFakeDb() {
             created_at,
             expires_at,
             read_only,
+            is_server,
           ] = params as Array<string | number>;
           if (state.rows.some((r) => r.username === username)) {
             throw new Error('UNIQUE constraint failed: dav_credentials.username');
@@ -81,6 +84,7 @@ function createCredentialFakeDb() {
             expires_at: expires_at as number,
             last_used_at: null,
             read_only: (read_only as number | undefined) ?? 0,
+            is_server: (is_server as number | undefined) ?? 0,
           });
           return Promise.resolve({ success: true, meta: { changes: 1 } });
         }
@@ -102,6 +106,13 @@ function createCredentialFakeDb() {
           const row = state.rows.find((r) => r.credential_id === params[1]);
           if (row) row.password_hash = params[0] as string;
           return Promise.resolve({ success: true, meta: { changes: row ? 1 : 0 } });
+        }
+        if (q.startsWith('DELETE FROM dav_credentials')) {
+          // The credential-pruning cron deletes by `expires_at < now`. Kept
+          // here so a test can prove the far-future sentinel survives it.
+          const before = state.rows.length;
+          state.rows = state.rows.filter((r) => r.expires_at >= (params[0] as number));
+          return Promise.resolve({ success: true, meta: { changes: before - state.rows.length } });
         }
         return Promise.resolve({ success: true, meta: { changes: 0 } });
       },
@@ -231,5 +242,93 @@ describe('VolumeCredentialService read-only flag', () => {
     const svc = new VolumeCredentialService({ DB: db });
     const created = await svc.createCredential('vol-1', 'photos', 'backup');
     await expect(svc.setCredentialReadOnly('vol-1', created.metadata.credentialId, 'yes')).rejects.toThrow('readOnly must be a boolean');
+  });
+});
+
+describe('VolumeCredentialService server credentials', () => {
+  it('mints a never-expiring credential flagged as a server credential', async () => {
+    const { db, state } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db });
+    const created = await svc.createCredential('vol-1', 'photos', 'daemon', undefined, false, true);
+    expect(created.metadata.isServer).toBe(true);
+    expect(created.metadata.expiresAt).toBe(NEVER_EXPIRES_AT);
+    expect(state.rows[0]?.is_server).toBe(1);
+    expect(state.rows[0]?.expires_at).toBe(NEVER_EXPIRES_AT);
+  });
+
+  it('does not resolve an expiry for a server credential', async () => {
+    // An absent expiry would otherwise fall back to the 365-day default, and a
+    // supplied one would be capped at it — either way defeating the type.
+    const { db } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db });
+    for (const expiresInDays of [undefined, 'nope', 9999, 0]) {
+      const created = await svc.createCredential('vol-1', 'photos', 'daemon', expiresInDays, false, true);
+      expect(created.metadata.expiresAt).toBe(NEVER_EXPIRES_AT);
+    }
+  });
+
+  it('honors the read-only toggle on a server credential', async () => {
+    const { db, state } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db });
+    const created = await svc.createCredential('vol-1', 'photos', 'backup-daemon', undefined, true, true);
+    expect(created.metadata.readOnly).toBe(true);
+    expect(created.metadata.isServer).toBe(true);
+    expect(state.rows[0]?.read_only).toBe(1);
+    expect(state.rows[0]?.is_server).toBe(1);
+  });
+
+  it('rejects a non-boolean server flag rather than defaulting it', async () => {
+    const { db } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db });
+    for (const bad of ['true', 1, 0, 'yes', {}]) {
+      await expect(svc.createCredential('vol-1', 'photos', 'x', undefined, false, bad)).rejects.toThrow('server must be a boolean');
+    }
+  });
+
+  it('allows several server credentials and counts them toward the bucket cap', async () => {
+    const { db, state } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db, MAX_CREDENTIALS_PER_VOLUME: '2' });
+    await svc.createCredential('vol-1', 'photos', 'daemon-a', undefined, false, true);
+    await svc.createCredential('vol-1', 'photos', 'daemon-b', undefined, false, true);
+    expect(state.rows).toHaveLength(2);
+    await expect(svc.createCredential('vol-1', 'photos', 'daemon-c', undefined, false, true)).rejects.toThrow(/Maximum 2 credentials/);
+  });
+
+  it('keeps ordinary credentials time-boxed and unflagged', async () => {
+    const { db } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db });
+    const created = await svc.createCredential('vol-1', 'photos', 'laptop', 7);
+    expect(created.metadata.isServer).toBe(false);
+    const days = (created.metadata.expiresAt - Math.floor(Date.now() / 1000)) / 86_400;
+    expect(days).toBeGreaterThan(6);
+    expect(days).toBeLessThanOrEqual(7);
+  });
+
+  it('keeps a server credential active and unpruned past any normal expiry', async () => {
+    const { db, state } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db });
+    const created = await svc.createCredential('vol-1', 'photos', 'daemon', undefined, false, true);
+    const dao = new DavCredentialDAO(db);
+
+    const found = await dao.getActiveByUsername(created.metadata.username);
+    expect(found?.isServer).toBe(true);
+    expect(found?.passwordHash).toBeTruthy();
+    expect(found?.expiresAt).toBe(NEVER_EXPIRES_AT);
+
+    // The cron's prune pass must never touch it, even when asked to cut off at a
+    // time far beyond any ordinary credential's expiry.
+    await dao.pruneExpired(NEVER_EXPIRES_AT - 1, 500);
+    expect(state.rows.some((r) => r.credential_id === created.metadata.credentialId)).toBe(true);
+  });
+
+  it('still prunes an ordinary expired credential', async () => {
+    const { db, state } = createCredentialFakeDb();
+    const svc = new VolumeCredentialService({ DB: db });
+    const created = await svc.createCredential('vol-1', 'photos', 'short-lived', 1);
+    const dao = new DavCredentialDAO(db);
+
+    await dao.pruneExpired(created.metadata.expiresAt + 1, 500);
+    expect(state.rows).toHaveLength(0);
+    await expect(dao.getActiveByUsername(created.metadata.username)).resolves.toBeUndefined();
   });
 });

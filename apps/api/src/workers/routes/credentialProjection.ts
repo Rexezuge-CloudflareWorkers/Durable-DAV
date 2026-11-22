@@ -11,12 +11,17 @@
  * Two shapes, and the asymmetry between them is deliberate rather than an
  * inconsistency to tidy up:
  *
- * - {@link toCredentialJson} is the listing. Nine fields, no secret material.
+ * - {@link toCredentialJson} is the listing. Ten fields, no secret material.
  * - {@link toCreatedCredentialJson} adds `password`, because the plaintext is
  *   recoverable exactly once — at creation, to the caller who chose it — and
  *   never again. `lastUsedAt` and `createdAt` are omitted there because a
  *   just-created credential has a `lastUsedAt` of null and a `createdAt` the
  *   caller can already infer from the response it is holding.
+ *
+ * A server credential's `expiresAt` is published as `null` rather than the
+ * far-future sentinel stored in D1. The sentinel is an implementation detail of
+ * keeping the auth/prune SQL unchanged; a client only needs the fact that this
+ * credential never expires, and already renders a null expiry as "Never".
  */
 
 /**
@@ -34,6 +39,7 @@ interface CredentialRow {
   expiresAt: number | null;
   lastUsedAt: number | null;
   readOnly: boolean;
+  isServer: boolean;
 }
 
 type CredentialJson = Record<string, unknown>;
@@ -50,9 +56,10 @@ function toCredentialJson(row: CredentialRow): CredentialJson {
     passwordPrefix: row.passwordPrefix,
     passwordLastFour: row.passwordLastFour,
     createdAt: row.createdAt,
-    expiresAt: row.expiresAt,
+    expiresAt: row.isServer ? null : row.expiresAt,
     lastUsedAt: row.lastUsedAt,
     readOnly: row.readOnly,
+    isServer: row.isServer,
   };
 }
 
@@ -72,8 +79,9 @@ function toCreatedCredentialJson(row: CredentialRow, password: string): Credenti
     password,
     passwordPrefix: row.passwordPrefix,
     passwordLastFour: row.passwordLastFour,
-    expiresAt: row.expiresAt,
+    expiresAt: row.isServer ? null : row.expiresAt,
     readOnly: row.readOnly,
+    isServer: row.isServer,
   };
 }
 

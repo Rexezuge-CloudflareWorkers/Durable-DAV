@@ -103,6 +103,18 @@ const PBKDF2_PREFIX = 'pbkdf2-sha256';
 const PBKDF2_KEY_BYTES = 32;
 
 /**
+ * `expires_at` value stored for a server credential (migration 0008).
+ *
+ * 253402300799 is 9999-12-31T23:59:59Z, the last whole second SQLite can
+ * represent as a plausible timestamp. A far-future number rather than NULL is
+ * deliberate: the auth lookup (`expires_at > now`) and the pruning cron
+ * (`expires_at < now`) are both written against a non-null integer, and a NULL
+ * would make a server credential look expired on its very first request. The
+ * `is_server` flag (not this number) is what the UI reads to render "Never".
+ */
+const NEVER_EXPIRES_AT = 253_402_300_799;
+
+/**
  * Ceiling on the iteration count read back out of a stored hash.
  *
  * `isSafeInteger` is not a bound: `Number.MAX_SAFE_INTEGER` passes it, so a
@@ -278,4 +290,4 @@ class DavCredentialUtil {
 }
 /* eslint-enable unicorn/class-reference-in-static-methods */
 
-export { DavCredentialUtil, CREDENTIAL_ANIMALS, CREDENTIAL_ADJECTIVES, slugifyVolume };
+export { DavCredentialUtil, CREDENTIAL_ANIMALS, CREDENTIAL_ADJECTIVES, slugifyVolume, NEVER_EXPIRES_AT };

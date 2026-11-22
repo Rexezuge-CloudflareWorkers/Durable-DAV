@@ -23,7 +23,7 @@ Scope: `apps/api/**`. Parent index: `../../AGENTS.md`.
 - WebDAV CORS: `applyCors(response, request, SITE_URL)` — allow-list, not origin reflection, plus `Vary: Origin`. Unset `SITE_URL` degrades to same-origin only.
 - WebDAV: `OPTIONS` (`Allow` + `DAV: 1, 2`) · `PROPFIND` · `PROPPATCH` · `MKCOL` · `GET`/`HEAD` (Range, HTML browser for collections) · `PUT` · `DELETE` · `COPY`/`MOVE` (`Destination` same-origin, `Overwrite`) · `LOCK`/`UNLOCK` (all in `DavVolumeWorker`, front only auth + forward + CORS).
 - Volumes: `GET|POST /user/volumes` · `GET|PATCH|DELETE /user/volumes/:owner/:volume`.
-- Credentials: `GET|POST /user/volumes/:owner/:volume/credentials` · `PATCH|DELETE /user/volumes/:owner/:volume/credentials/:id`. `POST` takes `readOnly`; `PATCH` takes `{ readOnly }` and flips it, returning the updated row.
+- Credentials: `GET|POST /user/volumes/:owner/:volume/credentials` · `PATCH|DELETE /user/volumes/:owner/:volume/credentials/:id`. `POST` takes `readOnly` and `server`; `server: true` mints a long-lived credential (0008 `is_server`, `expires_at = NEVER_EXPIRES_AT`) with no expiry resolution — a non-boolean is a 400. The projection publishes `isServer` and maps the sentinel to `expiresAt: null`. `PATCH` takes `{ readOnly }` and flips it, returning the updated row.
 - Users: `GET /user/me` · `GET /users/:username`.
 - Public: `GET /` (minimal HTML volume browser) · `GET /health` · `/docs`.
 

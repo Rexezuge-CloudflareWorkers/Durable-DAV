@@ -17,6 +17,16 @@ export interface DavCredentialMetadata {
    * than to a locked-out user.
    */
   readOnly: boolean;
+  /**
+   * Migration 0008. `true` marks a long-lived server credential: `expiresAt`
+   * holds `NEVER_EXPIRES_AT`, so the credential is never pruned and never
+   * rejected by the expiry check in the auth lookup.
+   *
+   * A missing column reads as `false`, which is the safe direction — an
+   * un-migrated database keeps every credential time-boxed rather than
+   * silently making them all permanent.
+   */
+  isServer: boolean;
 }
 
 export interface DavCredentialInternal {
@@ -31,4 +41,5 @@ export interface DavCredentialInternal {
   expires_at: number;
   last_used_at: number | null;
   read_only: number;
+  is_server: number;
 }
