@@ -25,8 +25,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/http':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/i18n':
         specifier: ^1.9.0
         version: 1.9.0
@@ -160,8 +160,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/http':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/i18n':
         specifier: ^1.9.0
         version: 1.9.0
@@ -330,8 +330,8 @@ importers:
         specifier: ^1.9.0
         version: 1.9.0
       '@rexezuge/http':
-        specifier: ^1.9.0
-        version: 1.9.0
+        specifier: ^1.9.4
+        version: 1.9.4
       '@rexezuge/identity':
         specifier: ^1.9.0
         version: 1.9.0
@@ -459,11 +459,6 @@ packages:
 
   '@adobe/css-tools@4.5.0':
     resolution: {integrity: sha512-6OzddxPio9UiWTCemp4N8cYLV2ZN1ncRnV1cVGtve7dhPOtRkleRyx32GQCYSwDYgaHU3USMm84tNsvKzRCa1Q==}
-
-  '@asteasolutions/zod-to-openapi@8.5.0':
-    resolution: {integrity: sha512-SABbKiObg5dLRiTFnqiW1WWwGcg1BJfmHtT2asIBnBHg6Smy/Ms2KHc650+JI4Hw7lSkdiNebEGXpwoxfben8Q==}
-    peerDependencies:
-      zod: ^4.0.0
 
   '@asteasolutions/zod-to-openapi@9.1.0':
     resolution: {integrity: sha512-pLMeRgRYS7/vZIgAAkOe2P6+XGTifR1MT9pqDoxZ11EmcJJ+DPmdPqLN8ZZF4U8R9KHCCQCS9c2wtuE8wSrfkw==}
@@ -1412,8 +1407,11 @@ packages:
   '@rexezuge/errors@1.9.0':
     resolution: {integrity: sha512-5pALUuuI0h2ZLnLnNAmBb7f8SXvv87tr2rtszIbnkPhn2LPfYDGRLiAFNVqPZpG204FMuNcaiYydDwxkGhsXzw==}
 
-  '@rexezuge/http@1.9.0':
-    resolution: {integrity: sha512-k5W0U7jYbmAecIWH58RRvzCNPtdO3dKua0ZhqFJEy2LZB2qtu24cZJUyeoNafCUAyrWLx2e2FHM4oRcloiadTw==}
+  '@rexezuge/errors@1.9.4':
+    resolution: {integrity: sha512-ndAbag3pJ/AvD8lWQVsav1XRqj9Z+c5b+eOV7LeDShVzhOg2qJj5fAXWlRqolt6xIZSY3x1qepKtSZZdS0eOXw==}
+
+  '@rexezuge/http@1.9.4':
+    resolution: {integrity: sha512-rVWC422PxDm9GQSTqZSwo2NlgHQWXhhkNtE1lTC7KYYjoDfTZJ7c+mncFoKGRlPLgr1pLWUI/3w4JbW8f3lqpA==}
 
   '@rexezuge/i18n@1.9.0':
     resolution: {integrity: sha512-mPVytf1nShzztdIbx25L2066g9eFb2TUicwD+rhhUiVov4MQO+L6KgN8drJAsWiuoH3LNAUZ7Keu4Al8ZV030A==}
@@ -1429,6 +1427,9 @@ packages:
 
   '@rexezuge/shared@1.9.2':
     resolution: {integrity: sha512-B9PsD8vbAOSNa5TRlH7eXMVTSDxq3KZ+v3eU9SyWyywbtSc21AZkjHjqBoEQkfx3IkfFnBFa6jg5x/PagBtMLA==}
+
+  '@rexezuge/shared@1.9.4':
+    resolution: {integrity: sha512-VphnyKOKvT2zsK2A3bgtBPd6sfhIREsY8fdx68QDn6ApxhduqNbrT1K4q6Wlf/d8bIMk6biycxXkjM1ICngSmA==}
 
   '@rexezuge/tooling@1.9.0':
     resolution: {integrity: sha512-6+mO4hXbhdyJR0XxEeXElIqk6d7QtJSluxlHyGPp525wKZfT3q626r5LxB4wX2Pp7jhQ0nEfxD1N28vNmZQzQA==}
@@ -1858,9 +1859,6 @@ packages:
     resolution: {integrity: sha512-Cxwpt2SfTzTtXcfOlzGEee8O+c+MmUgGrNiBcXnuWxuFJHe6a5Hz7qwhwe5OgaSYI0IJvkLqWX1ASG+cJOkEiA==}
     engines: {node: '>=10'}
 
-  argparse@2.0.1:
-    resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
-
   argparse@3.0.4:
     resolution: {integrity: sha512-fwWK3Zq22l4XJJjx5mcBHGikIk+hJqO+32dPm0Jur7+rtG5x1scOjSfdT9ZKeWHPpsya/l0HHK4tDImBkTrtvA==}
 
@@ -1926,11 +1924,6 @@ packages:
   chai@6.2.2:
     resolution: {integrity: sha512-NUPRluOfOiTKBKvWPtSD4PhFvWCqOi0BGStNWs57X9js7XGTprSmFoz5F0tWhR4WPjNeR9jXqdC7/UpSJTnlRg==}
     engines: {node: '>=18'}
-
-  chanfana@3.4.0:
-    resolution: {integrity: sha512-zNXyjQWnuhxd2m5QOQjAT7dCi8jg/SXckhD3y/Z6PKJfsf/XfSlvxyxFJpJh8O19lrvrsM4SUgEz2628imtWJQ==}
-    engines: {node: '>=18'}
-    hasBin: true
 
   chanfana@3.4.2:
     resolution: {integrity: sha512-IqBIWetzVyfO/8OROKOk3F61PhDwrHtL7sGbtoBGNRamwEf2OZyMr7JLzT0crrSoc7n23QXGaeHGeAAfE32VGw==}
@@ -2327,18 +2320,14 @@ packages:
     resolution: {integrity: sha512-AC/7JofJvZGrrneWNaEnJeOLUx+JlGt7tNa0wZiRPT4MY1wmfKjt2+6O2p2uz2+skll8OZZmJMNqeke7kKbNgQ==}
     hasBin: true
 
-  jose@6.2.12:
-    resolution: {integrity: sha512-9NiFmJEex0sy2Dk58j2UGBSHgUs2ypF9eZSu4L6vjOX3Dp96Sw1F3uL+H+D1sx02jZZdzUT0HgvCy59CuvXcWw==}
+  jose@6.2.18:
+    resolution: {integrity: sha512-doV4thUwgkrycJH4yLeqwTGIIZphHl+pk7CPReuMIhYhncmgzdko85MaCG4YQFTxqMFr1/oEH32tZuKKovcDEg==}
 
   js-tokens@10.0.0:
     resolution: {integrity: sha512-lM/UBzQmfJRo9ABXbPWemivdCW8V2G8FHaHdypQaIy523snUjog0W71ayWXTjiR+ixeMyVHN2XcpnTd/liPg/Q==}
 
   js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
-
-  js-yaml@4.3.2:
-    resolution: {integrity: sha512-SFNOvSJ+Dgf/9An904Yx+CgSlIPCkIpao4qo51lpee25TIRejdH3rhR4EZMGoNx3/TP3O+wzWuiTFl4sqbltzA==}
-    hasBin: true
 
   js-yaml@5.5.0:
     resolution: {integrity: sha512-paNr4LFIFPjeeSmwNYdrb8FafLLG/Cr2Af3GjbsHJ5CxIjH4r0c2emlmRdAtpPAieP1gRVzk6buBbVP5gBMGAg==}
@@ -2623,9 +2612,6 @@ packages:
   obug@2.2.1:
     resolution: {integrity: sha512-XrsrhT5sybtKI6wakr2SPOlGZWWYbUXZ7a0jT8/QOeAPau+1X/bSegNe5YR75oJmEZQbKningirmGOEJCIk61Q==}
     engines: {node: '>=12.20.0'}
-
-  openapi3-ts@4.6.1:
-    resolution: {integrity: sha512-XW9MOldkhoICNeXVzzmXzmOW5G73ppOEGmh7fLCqHjgfdEYCGGN+00MlVCeUZgovjjfC56j9tvtDt1zGabNjjA==}
 
   openapi3-ts@4.6.2:
     resolution: {integrity: sha512-gyyil3DweqhXiEhTqtAs9wwRLfWHmetwhI4kmM5Rn0d6gtmK863Ki7qqbQnp9+Wwlqoe3B1LFWj7kMp5ctE4rQ==}
@@ -3161,20 +3147,12 @@ packages:
   zod@4.5.4:
     resolution: {integrity: sha512-sC95tT5iHHH9gtpj6A81kh+NEaRAUFN+qlUPDUbRfOMvNf5QCBqsb3WgvnpVtK5Y+4UfA6KqufotuTvMGiTlsA==}
 
-  zod@4.6.5:
-    resolution: {integrity: sha512-v5l/aFXZQeai4awLbOpSoHecE9UiMrnfx75tEXLjNonXVARxQ5mOeipTjROUchszUNCqnE+hqAMujRsRHsut2Q==}
-
   zod@4.6.7:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
 snapshots:
 
   '@adobe/css-tools@4.5.0': {}
-
-  '@asteasolutions/zod-to-openapi@8.5.0(zod@4.6.5)':
-    dependencies:
-      openapi3-ts: 4.6.2
-      zod: 4.6.5
 
   '@asteasolutions/zod-to-openapi@9.1.0(zod@4.6.7)':
     dependencies:
@@ -3851,13 +3829,15 @@ snapshots:
 
   '@rexezuge/errors@1.9.0': {}
 
-  '@rexezuge/http@1.9.0':
+  '@rexezuge/errors@1.9.4': {}
+
+  '@rexezuge/http@1.9.4':
     dependencies:
-      '@rexezuge/errors': 1.9.0
-      '@rexezuge/shared': 1.9.0
-      chanfana: 3.4.0
+      '@rexezuge/errors': 1.9.4
+      '@rexezuge/shared': 1.9.4
+      chanfana: 3.4.2
       hono: 4.13.16
-      jose: 6.2.12
+      jose: 6.2.18
 
   '@rexezuge/i18n@1.9.0': {}
 
@@ -3872,6 +3852,8 @@ snapshots:
   '@rexezuge/shared@1.9.0': {}
 
   '@rexezuge/shared@1.9.2': {}
+
+  '@rexezuge/shared@1.9.4': {}
 
   '@rexezuge/tooling@1.9.0(eslint-config-prettier@10.1.8(eslint@10.13.0(jiti@2.7.0)))(eslint-plugin-prettier@5.5.7(eslint-config-prettier@10.1.8(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(prettier@3.9.10))(eslint-plugin-regexp@3.3.3(eslint@10.13.0(jiti@2.7.0)))(eslint-plugin-sonarjs@4.2.2(eslint@10.13.0(jiti@2.7.0)))(eslint-plugin-unicorn@76.0.0(eslint@10.13.0(jiti@2.7.0)))(eslint@10.13.0(jiti@2.7.0))(globals@17.13.0)(jsonc-parser@3.3.1)(prettier@3.9.10)(typescript-eslint@8.72.0(eslint@10.13.0(jiti@2.7.0))(typescript@6.0.3))(typescript@6.0.3)(vitest@4.1.11)':
     dependencies:
@@ -4252,8 +4234,6 @@ snapshots:
 
   ansi-styles@5.2.0: {}
 
-  argparse@2.0.1: {}
-
   argparse@3.0.4: {}
 
   aria-query@5.3.0:
@@ -4313,14 +4293,6 @@ snapshots:
   caniuse-lite@1.0.30001815: {}
 
   chai@6.2.2: {}
-
-  chanfana@3.4.0:
-    dependencies:
-      '@asteasolutions/zod-to-openapi': 8.5.0(zod@4.6.5)
-      js-yaml: 4.3.2
-      openapi3-ts: 4.6.1
-      yargs-parser: 22.0.0
-      zod: 4.6.5
 
   chanfana@3.4.2:
     dependencies:
@@ -4749,15 +4721,11 @@ snapshots:
 
   jiti@2.7.0: {}
 
-  jose@6.2.12: {}
+  jose@6.2.18: {}
 
   js-tokens@10.0.0: {}
 
   js-tokens@4.0.0: {}
-
-  js-yaml@4.3.2:
-    dependencies:
-      argparse: 2.0.1
 
   js-yaml@5.5.0:
     dependencies:
@@ -4998,10 +4966,6 @@ snapshots:
   node-releases@2.0.58: {}
 
   obug@2.2.1: {}
-
-  openapi3-ts@4.6.1:
-    dependencies:
-      yaml: 2.9.1
 
   openapi3-ts@4.6.2:
     dependencies:
@@ -5510,7 +5474,5 @@ snapshots:
   zod@4.4.3: {}
 
   zod@4.5.4: {}
-
-  zod@4.6.5: {}
 
   zod@4.6.7: {}
