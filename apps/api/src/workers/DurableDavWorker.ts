@@ -4,33 +4,19 @@ import type { HonoOpenAPIRouterType } from 'chanfana';
 import { Hono } from 'hono';
 import { AppConfiguration } from '@durable-dav/backend-runtime/config';
 import { ErrorSanitizationUtil } from '@rexezuge/shared';
-import type { Next } from 'hono';
 import { MiddlewareHandlers, registerRateLimits } from '@/middleware';
 import { securityHeaders, sensitivePaths } from '@rexezuge/http';
-import type { ApiContext, ApiEnv } from '@/types/ApiContext';
+import type { ApiEnv } from '@/types/ApiContext';
 import { scopeMiddleware } from '@/middleware/scopeMiddleware';
-import { RESERVED_NAMESPACE_NAMES_LIST } from '@durable-dav/shared/constants';
 import { registerDavRoutes } from './routes/DavRoutes';
 import { registerVolumeRoutes } from './routes/VolumeRoutes';
 import { registerVolumeBrowserRoutes } from './routes/VolumeBrowserRoutes';
 import { registerCredentialRoutes } from './routes/CredentialRoutes';
 import { registerReplicationRoutes } from './routes/ReplicationRoutes';
 import { registerUserProfileRoutes } from './routes/UserRoutes';
-import { SPA_HTML } from '@/generated/spa-shell';
-import { acceptsHtml } from './acceptsHtml';
+import { DEPRECATION_HEADERS, DEPRECATION_HTML } from './deprecationNotice';
 
 type AppRouter = HonoOpenAPIRouterType<ApiEnv>;
-
-/**
- * Serve the SPA shell to browser document navigations, else fall through.
- * Registered for both `/:owner/:volume` and `/:owner/:volume/` because Hono's
- * bare pattern does not match a trailing slash, which used to send a bookmarked
- * `https://host/alice/demo/` to the DO's raw HTML listing instead.
- */
-async function serveSpaForBrowser(c: ApiContext, next: Next): Promise<Response | void> {
-  if (c.req.method === 'GET' && acceptsHtml(c.req.raw)) return c.html(SPA_HTML);
-  await next();
-}
 
 class DurableDavWorker extends AbstractEntrypointWorker {
   protected readonly app: AppRouter;
@@ -49,29 +35,13 @@ class DurableDavWorker extends AbstractEntrypointWorker {
 
     app.get('/health', (c) => c.json({ ok: true, service: 'durable-dav' }));
 
-    // Web SPA shell (Vite build embeds `apps/web/dist/index.html` into
-    // `apps/api/src/generated/spa-shell.ts`; no per-request scope needed).
-    app.get('/', (c) => c.html(SPA_HTML));
-    app.get('/new', (c) => c.html(SPA_HTML));
-    app.get('/settings', (c) => c.html(SPA_HTML));
-    // Single-segment profile shell — never shadow reserved API/UI roots
-    // (`/health`, `/docs`, `/user`, …). Reserved names fall through so the
-    // exact routes win.
-    //
-    // The deny-list must be owned here, not borrowed from
-    // `RESERVED_NAMESPACE_NAMES`: that set is a *username* concern and only
-    // contained `docs`, so `fromHono`'s `/openapi.json`, `/openapi.yaml` and
-    // `/redocs` — registered after this handler, and therefore losing Hono's
-    // same-shape resolution order — were all shadowed by the SPA shell. The
-    // Swagger page at `/docs` fetched `/openapi.json` and rendered empty.
-    const NON_PROFILE_SEGMENTS: ReadonlySet<string> = new Set([...RESERVED_NAMESPACE_NAMES_LIST, 'openapi.json', 'openapi.yaml', 'redocs']);
-    app.get('/:username', async (c, next) => {
-      const segment = (c.req.param('username') ?? '').toLowerCase();
-      if (NON_PROFILE_SEGMENTS.has(segment)) {
-        await next();
-        return;
-      }
-      return c.html(SPA_HTML);
+    // The built-in web UI is soft-deprecated. The home page points at the
+    // supported UI (Durable-DAV-Router); `/new`, `/settings` and the single
+    // profile segment have no route at all and fall through to Hono's 404.
+    // No per-request scope or SPA build artifact is needed for the notice.
+    app.get('/', (c) => {
+      for (const [name, value] of Object.entries(DEPRECATION_HEADERS)) c.header(name, value);
+      return c.html(DEPRECATION_HTML);
     });
 
     app.use('*', scopeMiddleware);
@@ -89,17 +59,9 @@ class DurableDavWorker extends AbstractEntrypointWorker {
     registerReplicationRoutes(app);
     registerUserProfileRoutes(app);
 
-    // Volume-root content negotiation: browser document navigations
-    // (`Accept: text/html`) get the SPA shell, whose VolumeView drives
-    // subpaths client-side via `?path=`; WebDAV and file clients
-    // (`Accept: */*`, `Depth`, …) fall through to the DO forward below.
-    // Registered after `/user/*` so API JSON responses always win.
-    //
-    // Both the bare and trailing-slash forms are registered: Hono's
-    // `/:owner/:volume` does not match `/alice/demo/`, so a browser with a
-    // bookmark ending in `/` got the DO's raw HTML listing instead of the SPA.
-    app.use('/:owner/:volume', serveSpaForBrowser);
-    app.use('/:owner/:volume/', serveSpaForBrowser);
+    // Volume paths always go to the DO. The SPA's HTML content negotiation is
+    // gone, so a browser navigation to a collection gets the DO's own small
+    // HTML listing while WebDAV clients keep the multistatus/file bodies.
     registerDavRoutes(app);
 
     const openapi: AppRouter = fromHono(app, { docs_url: '/docs' });
