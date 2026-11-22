@@ -16,8 +16,16 @@ export async function createBucketCredential(
   name: string,
   expiresInDays?: number,
   readOnly?: boolean,
+  server?: boolean,
 ): Promise<CreatedBucketCredential> {
-  return apiPost<CreatedBucketCredential>(credentialBase(owner, volume), { name, expiresInDays, readOnly });
+  // `server` is only sent when true, so an existing client's body shape is
+  // unchanged and a plain credential keeps its ordinary expiry.
+  return apiPost<CreatedBucketCredential>(credentialBase(owner, volume), {
+    name,
+    expiresInDays,
+    readOnly,
+    ...(server && { server: true }),
+  });
 }
 
 export async function setBucketCredentialReadOnly(owner: string, volume: string, credentialId: string, readOnly: boolean): Promise<void> {

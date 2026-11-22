@@ -21,14 +21,14 @@ class CreateCredential extends VolumeScopedRoute {
     // Routed through `BaseRoute.readJson` so malformed JSON and an oversize
     // body are distinguished, and so the body is size-capped like every other
     // JSON endpoint.
-    const read = await BaseRoute.readJson<{ name?: string; expiresInDays?: unknown; readOnly?: unknown }>(c);
+    const read = await BaseRoute.readJson<{ name?: string; expiresInDays?: unknown; readOnly?: unknown; server?: unknown }>(c);
     const unreadable = BaseRoute.rejectUnreadableBody(c, read);
     if (unreadable) return unreadable;
     const { body } = read;
     if (!body.name) return BaseRoute.jsonError(c, 'name is required', 400);
     const created = await scope
       .get(Tokens.VolumeCredentialService)
-      .createCredential(row.id, row.name, body.name, body.expiresInDays, body.readOnly);
+      .createCredential(row.id, row.name, body.name, body.expiresInDays, body.readOnly, body.server);
     // The one place a plaintext password is ever emitted, and only because this
     // is the response that hands it to the caller who just chose it.
     return c.json(toCreatedCredentialJson(created.metadata, created.password), 201);

@@ -17,14 +17,27 @@ class DavCredentialDAO extends BaseDAO {
     passwordLastFour: string,
     expiresAt: number,
     readOnly = false,
+    isServer = false,
   ): Promise<DavCredentialMetadata> {
     const now = TimestampUtil.getCurrentUnixTimestampInSeconds();
     const credentialId = UUIDUtil.getRandomUUID();
     await this.run(
       `INSERT INTO dav_credentials
-              (credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, read_only)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [credentialId, volumeId, username, passwordHash, name, passwordPrefix, passwordLastFour, now, expiresAt, readOnly ? 1 : 0],
+              (credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, read_only, is_server)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+      [
+        credentialId,
+        volumeId,
+        username,
+        passwordHash,
+        name,
+        passwordPrefix,
+        passwordLastFour,
+        now,
+        expiresAt,
+        readOnly ? 1 : 0,
+        isServer ? 1 : 0,
+      ],
     );
     const credential = await this.getById(credentialId);
     if (!credential) throw new Error('Failed to load DAV credential after create.');
@@ -44,9 +57,10 @@ class DavCredentialDAO extends BaseDAO {
    * verification, and returning a metadata projection without it would force a
    * second query on the auth hot path.
    *
-   * `read_only` is named here for the same reason: the auth decision that reads
-   * it is made on this one query, and a projection that omitted the column would
-   * coerce to `false` and quietly hand out write access.
+   * `read_only` and `is_server` are named here for the same reason: the auth
+   * decision that reads them is made on this one query, and a projection that
+   * omitted either column would coerce to `false` — quietly handing out write
+   * access, or reporting a never-expiring server credential as ordinary.
    */
   public async getActiveByUsername(
     username: string,
@@ -57,7 +71,7 @@ class DavCredentialDAO extends BaseDAO {
     // depends on — `DavAuth` maps a `DatabaseError` to a 503 "Authentication
     // unavailable", and a raw `D1_ERROR` is not one.
     const row = await this.first<DavCredentialInternal>(
-      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only, is_server
              FROM dav_credentials
              WHERE username = ? AND expires_at > ?
              LIMIT 1`,
@@ -74,7 +88,7 @@ class DavCredentialDAO extends BaseDAO {
     // written for. Three lines below `getActiveByUsername`, which documents the
     // rule in full.
     const row = await this.first<DavCredentialInternal>(
-      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only, is_server
              FROM dav_credentials WHERE credential_id = ? LIMIT 1`,
       [credentialId],
     );
@@ -83,7 +97,7 @@ class DavCredentialDAO extends BaseDAO {
 
   public async listByVolume(volumeId: string): Promise<DavCredentialMetadata[]> {
     const rows = await this.all<DavCredentialInternal>(
-      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only
+      `SELECT credential_id, volume_id, username, password_hash, name, password_prefix, password_last_four, created_at, expires_at, last_used_at, read_only, is_server
              FROM dav_credentials WHERE volume_id = ? ORDER BY created_at DESC`,
       [volumeId],
     );
@@ -176,6 +190,9 @@ class DavCredentialDAO extends BaseDAO {
       // hands the field back as `undefined`; both that and a 0 coerce to
       // `false`, which is the direction that preserves existing behaviour.
       readOnly: Number(row.read_only) === 1,
+      // Same backward-safe coercion as `read_only`: a pre-0008 row has no
+      // column at all, and D1 hands it back as `undefined`.
+      isServer: Number(row.is_server) === 1,
     };
   }
 }

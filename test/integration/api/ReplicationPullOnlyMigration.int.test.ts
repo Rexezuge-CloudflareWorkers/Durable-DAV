@@ -87,8 +87,14 @@ describe('migration 0007 — pull-only replication', () => {
     await DB.batch(DROP_EVERYTHING.map((sql) => DB.prepare(sql)));
   });
 
-  it('is applied last', () => {
-    expect(migrationFileNames().at(-1)).toBe(PULL_ONLY);
+  it('is the last replication migration', () => {
+    // 0008 (server credentials) now follows it, so "last file overall" would
+    // fail for a reason that has nothing to do with this rebuild. What matters
+    // is that no later migration touches replications again.
+    const names = migrationFileNames();
+    const index = names.indexOf(PULL_ONLY);
+    expect(index).toBeGreaterThan(names.indexOf(REPLICATION));
+    expect(names.slice(index + 1).every((name) => !name.includes('replication'))).toBe(true);
   });
 
   describe('upgrade', () => {

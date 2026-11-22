@@ -113,6 +113,15 @@ describe('the volume and credential calls', () => {
     expect(calls[1]?.body).toEqual({ name: 'laptop', expiresInDays: 30, readOnly: true });
     expect(calls[2]?.body).toEqual({ readOnly: true });
   });
+
+  it('sends the server flag and no expiry when minting a server credential', async () => {
+    const calls = stubFetch(() => json({}));
+
+    await createBucketCredential('alice', 'demo', 'daemon', undefined, true, true);
+
+    expect(calls[0]?.method).toBe('POST');
+    expect(calls[0]?.body).toEqual({ name: 'daemon', expiresInDays: undefined, readOnly: true, server: true });
+  });
 });
 
 describe('the replication calls', () => {

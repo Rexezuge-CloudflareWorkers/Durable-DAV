@@ -4,7 +4,7 @@ import type { D1Queryable } from '@rexezuge/d1';
 import { BadRequestError, InternalServerError, NotFoundError } from '@rexezuge/errors';
 import type { DavCredentialMetadata } from '@durable-dav/shared/model';
 import { TimestampUtil } from '@rexezuge/shared';
-import { DavCredentialUtil } from '@durable-dav/shared/utils/DavCredentialUtil';
+import { DavCredentialUtil, NEVER_EXPIRES_AT } from '@durable-dav/shared/utils/DavCredentialUtil';
 
 interface VolumeCredentialServiceEnv {
   DB: D1Queryable;
@@ -87,6 +87,7 @@ class VolumeCredentialService {
     name: string,
     expiresInDays?: unknown,
     readOnly?: unknown,
+    server?: unknown,
   ): Promise<{ password: string; metadata: DavCredentialMetadata }> {
     const dao = await this.deps.credentialDAO();
     const maxCredentials = this.deps.config.getMaxCredentialsPerVolume();
@@ -94,11 +95,19 @@ class VolumeCredentialService {
       throw new BadRequestError(`Maximum ${maxCredentials} credentials allowed per bucket.`);
     }
     const trimmedName = VolumeCredentialService.resolveName(name);
-    const readOnlyFlag = VolumeCredentialService.readFlag(readOnly);
-    const effectiveDays = this.resolveExpiryDays(expiresInDays, this.deps.config.getMaxCredentialExpiryDays());
+    const readOnlyFlag = VolumeCredentialService.readBooleanFlag('readOnly', readOnly);
+    const isServer = VolumeCredentialService.readBooleanFlag('server', server);
+    // A server credential deliberately has no expiry, so `expiresInDays` is not
+    // resolved at all: an absent value would otherwise fall back to the 365-day
+    // default and quietly defeat the whole point of this credential type.
+    const expiresAt = isServer
+      ? NEVER_EXPIRES_AT
+      : TimestampUtil.addDays(
+          TimestampUtil.getCurrentUnixTimestampInSeconds(),
+          this.resolveExpiryDays(expiresInDays, this.deps.config.getMaxCredentialExpiryDays()),
+        );
     const password = DavCredentialUtil.generatePassword();
     const passwordHash = await DavCredentialUtil.hashPassword(password);
-    const expiresAt = TimestampUtil.addDays(TimestampUtil.getCurrentUnixTimestampInSeconds(), effectiveDays);
     // The generated username has a random component, so a collision is unlikely
     // — but "unlikely" is not "impossible" and usernames are globally unique, so
     // a collision must be retried rather than surfaced to the user. A unique
@@ -117,6 +126,7 @@ class VolumeCredentialService {
           DavCredentialUtil.getLastFour(password),
           expiresAt,
           readOnlyFlag,
+          isServer,
         );
         return { password, metadata };
       } catch (error) {
@@ -147,7 +157,7 @@ class VolumeCredentialService {
    * is what a 401 would do and is why writes are refused with 403.
    */
   public async setCredentialReadOnly(volumeId: string, credentialId: string, readOnly: unknown): Promise<DavCredentialMetadata> {
-    const flag = VolumeCredentialService.readFlag(readOnly);
+    const flag = VolumeCredentialService.readBooleanFlag('readOnly', readOnly);
     const dao = await this.deps.credentialDAO();
     await dao.updateReadOnly(credentialId, volumeId, flag);
     const updated = await dao.getById(credentialId);
@@ -159,18 +169,20 @@ class VolumeCredentialService {
   }
 
   /**
-   * Coerce the `readOnly` request field to a flag.
+   * Coerce a boolean request field (`readOnly`, `server`) to a flag.
    *
    * Absent means `false` — the credential's historical behaviour, so an
    * existing client posting the old body shape is unaffected. Present but not a
    * boolean is a 400 rather than a silent default: a form that sent `"true"` or
-   * `1` meant to restrict writes, and quietly granting them instead is the one
-   * outcome that must not happen by accident.
+   * `1` meant to restrict writes (or to mint a permanent credential), and
+   * quietly granting something else is the one outcome that must not happen by
+   * accident. The field name is carried in the error so a client sending two
+   * flags can tell which one it got wrong.
    */
-  private static readFlag(readOnly: unknown): boolean {
-    if (readOnly === undefined || readOnly === null) return false;
-    if (typeof readOnly !== 'boolean') throw new BadRequestError('readOnly must be a boolean');
-    return readOnly;
+  private static readBooleanFlag(field: string, value: unknown): boolean {
+    if (value === undefined || value === null) return false;
+    if (typeof value !== 'boolean') throw new BadRequestError(`${field} must be a boolean`);
+    return value;
   }
 
   private static isUniqueConstraintError(error: unknown): boolean {

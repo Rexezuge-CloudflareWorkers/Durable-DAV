@@ -19,6 +19,7 @@ const row = {
   expiresAt: 1_731_536_000,
   lastUsedAt: 1_700_000_100,
   readOnly: false,
+  isServer: false,
 };
 
 describe('credential projection', () => {
@@ -33,6 +34,7 @@ describe('credential projection', () => {
       expiresAt: 1_731_536_000,
       lastUsedAt: 1_700_000_100,
       readOnly: false,
+      isServer: false,
     });
   });
 
@@ -41,5 +43,28 @@ describe('credential projection', () => {
     expect(body['password']).toBe('ddav_secret-value');
     expect(body).not.toHaveProperty('lastUsedAt');
     expect(body).not.toHaveProperty('createdAt');
+  });
+
+  it('publishes the server flag and a null expiry, never the stored sentinel', () => {
+    const serverRow = { ...row, isServer: true, expiresAt: 253_402_300_799 };
+    expect(toCredentialJson(serverRow)).toMatchObject({ isServer: true, expiresAt: null });
+    expect(toCreatedCredentialJson(serverRow, 'ddav_secret-value')).toMatchObject({ isServer: true, expiresAt: null });
+    expect(toCredentialJson(serverRow)).not.toContain(253_402_300_799);
+  });
+
+  it('does not add any field beyond the allowlist for a server credential', () => {
+    const serverRow = { ...row, isServer: true };
+    expect(Object.keys(toCredentialJson(serverRow)).sort()).toEqual([
+      'createdAt',
+      'credentialId',
+      'expiresAt',
+      'isServer',
+      'lastUsedAt',
+      'name',
+      'passwordLastFour',
+      'passwordPrefix',
+      'readOnly',
+      'username',
+    ]);
   });
 });

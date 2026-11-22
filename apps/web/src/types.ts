@@ -47,9 +47,16 @@ export interface BucketCredential {
   passwordPrefix: string;
   passwordLastFour: string;
   createdAt: number;
-  expiresAt: number;
+  /**
+  `null` for a server credential, which never expires.
+  */
+  expiresAt: number | null;
   lastUsedAt: number | null;
   readOnly: boolean;
+  /**
+  A long-lived credential for a server or other unattended client.
+  */
+  isServer: boolean;
 }
 
 export interface CreatedBucketCredential {
@@ -57,10 +64,14 @@ export interface CreatedBucketCredential {
   username: string;
   password: string;
   name: string;
-  expiresAt: number;
+  /**
+  `null` for a server credential, which never expires.
+  */
+  expiresAt: number | null;
   passwordPrefix: string;
   passwordLastFour: string;
   readOnly: boolean;
+  isServer: boolean;
 }
 
 export interface UserProfile {
