@@ -16,4 +16,7 @@ export default defineRepoVitestConfig({
   // here would compare every individual module against it. Never lower to make CI
   // pass.
   thresholds: { statements: 60, branches: 57, functions: 61, lines: 61 },
+  // Node 24's experimental global `localStorage` shadows jsdom's in the web
+  // project; restore the jsdom store before each web test file runs.
+  web: { setupFiles: ['./test/setup-web-storage.ts'] },
 });
