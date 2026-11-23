@@ -241,7 +241,9 @@ class DavReplicationDAO extends BaseDAO {
    * Record the outcome of one tick, and open or close the deletion gate.
    *
    * See `replicationPassSql`: the gate closes when the pass failed or finished with
-   * nothing left to visit, and stays open otherwise.
+   * nothing left to visit, and stays open otherwise. `countAsFailure` lets a
+   * budget-limited `partial` keep the pass open without incrementing the
+   * auto-disable counter.
    */
   public async recordRun(
     replicationId: string,
@@ -251,8 +253,9 @@ class DavReplicationDAO extends BaseDAO {
     maxFailures: number,
     cursorPath: string | null = null,
     remaining = 0,
+    countAsFailure = status !== 'ok',
   ): Promise<void> {
-    const recorded = recordRunStatement(replicationId, status, error, now, maxFailures, cursorPath, remaining);
+    const recorded = recordRunStatement(replicationId, status, error, now, maxFailures, cursorPath, remaining, countAsFailure);
     await this.run(recorded.sql, recorded.bindings);
   }
 }

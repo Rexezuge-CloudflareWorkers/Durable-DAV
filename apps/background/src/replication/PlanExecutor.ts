@@ -29,6 +29,18 @@ type ApplyOutcome = {
   Bytes actually moved, so the caller can decide whether to continue.
   */
   movedBytes: number;
+  /**
+   * Decisions left unattempted because a slice budget ran out.
+   *
+   * Reported rather than silently dropped: a stopped batch that records `ok`
+   * tells the owner "Up To Date" while files are still missing, and closes the
+   * deletion gate as though the whole tree had been verified.
+   */
+  skipped: number;
+  /**
+   * Which budget stopped the batch, if either did.
+   */
+  budgetReason: 'bytes' | 'time' | null;
 };
 
 /**
@@ -61,8 +73,20 @@ class PlanExecutor {
   }
 
   public async run(decisions: readonly ReplicationDecision[]): Promise<ApplyOutcome> {
-    for (const decision of decisions) {
-      if (Date.now() >= this.options.deadlineMs || this.movedBytes >= this.options.maxBytes) break;
+    let skipped = 0;
+    let budgetReason: ApplyOutcome['budgetReason'] = null;
+    for (let index = 0; index < decisions.length; index += 1) {
+      const exhausted = this.exhaustedBy();
+      if (exhausted !== null) {
+        // Everything from here on was in the plan but was never attempted. The
+        // runner has to know: otherwise a byte- or time-limited batch is recorded
+        // as a clean, complete pass.
+        skipped = decisions.length - index;
+        budgetReason = exhausted;
+        break;
+      }
+      const decision = decisions[index];
+      if (decision === undefined) continue;
       try {
         const size = await this.applyDecision(decision);
         if (size !== null) this.movedBytes += size;
@@ -80,7 +104,27 @@ class PlanExecutor {
     const recording = await this.recordBase(this.touched);
     this.errors += recording.errors;
     if (this.firstError === null) this.firstError = recording.firstError;
-    return { applied: this.applied, errors: this.errors, firstError: this.firstError, movedBytes: this.movedBytes };
+    return {
+      applied: this.applied,
+      errors: this.errors,
+      firstError: this.firstError,
+      movedBytes: this.movedBytes,
+      skipped,
+      budgetReason,
+    };
+  }
+
+  /**
+   * Which slice budget, if any, has already been spent.
+   *
+   * Checked before each decision rather than once at the top: the budget is a
+   * limit on work done, and a plan can start well under it and cross it halfway
+   * through.
+   */
+  private exhaustedBy(): 'bytes' | 'time' | null {
+    if (Date.now() >= this.options.deadlineMs) return 'time';
+    if (this.movedBytes >= this.options.maxBytes) return 'bytes';
+    return null;
   }
 
   /**

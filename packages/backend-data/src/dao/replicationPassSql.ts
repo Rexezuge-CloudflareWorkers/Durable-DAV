@@ -65,15 +65,17 @@ function recordRunStatement(
   maxFailures: number,
   cursorPath: string | null,
   remaining: number,
+  countAsFailure = status !== 'ok',
 ): Statement {
-  const failed = status !== 'ok';
-  // A pass is closed when it failed, or when it finished with nothing left to visit. A
-  // clean pass that still has queued collections leaves the gate shut — that is the
-  // entire mechanism. (`!failed || remaining === 0` was the previous spelling, and
+  const failed = countAsFailure;
+  // A pass is closed when it failed, when it errored part-way through, or when it
+  // finished with nothing left to visit. Two cases stay open: a clean pass with
+  // queued collections, and a partial pass stopped by a byte/time budget — both
+  // have work left, and closing either would clear the cursor and make the next
+  // tick start over. (`!failed || remaining === 0` was the original spelling, and
   // it inverted both halves: a failed pass with work left stayed open, while a
-  // clean partial pass closed the gate and the next tick's `beginPass` cleared the
-  // cursor, restarting the sweep from the root on every tick.)
-  const closePass = failed || remaining === 0;
+  // clean partial pass closed the gate.)
+  const closePass = status === 'failed' || remaining === 0 || (status === 'partial' && failed);
   const trimmedError = error === null ? null : error.slice(0, MAX_STORED_ERROR_LENGTH);
   return {
     sql: `UPDATE dav_replications SET

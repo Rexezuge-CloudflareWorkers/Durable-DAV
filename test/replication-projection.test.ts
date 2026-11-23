@@ -28,6 +28,7 @@ const row = {
   last_error: null,
   consecutive_failures: 0,
   pass_started_at: null,
+  cursor_remaining: 0,
   created_at: 1_699_000_000,
   updated_at: 1_700_000_000,
 };
@@ -49,6 +50,7 @@ describe('toReplicationJson', () => {
         'authKind',
         'consecutiveFailures',
         'createdAt',
+        'cursorRemaining',
         'enabled',
         'intervalMinutes',
         'lastError',
@@ -81,6 +83,13 @@ describe('toReplicationJson', () => {
   it('reports an open pass as a boolean, which is also the deletion gate', () => {
     expect(toReplicationJson(row).passInFlight).toBe(false);
     expect(toReplicationJson({ ...row, pass_started_at: 1_700_000_000 }).passInFlight).toBe(true);
+  });
+
+  it('publishes the remaining work so a clean slice is not mistaken for a finished pass', () => {
+    // `lastStatus: 'ok'` only describes the slice that just ran. A byte-limited
+    // slice leaves files behind, and the client has no other way to say so.
+    expect(toReplicationJson(row).cursorRemaining).toBe(0);
+    expect(toReplicationJson({ ...row, cursor_remaining: 18 }).cursorRemaining).toBe(18);
   });
 
   it('carries the target fields the UI renders', () => {

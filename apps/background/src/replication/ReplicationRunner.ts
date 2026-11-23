@@ -184,29 +184,44 @@ class ReplicationRunner {
       // had its absence-based decisions deferred, so it must also record itself
       // dirty — otherwise `recordRun` is handed `ok`, the owner sees a clean tick,
       // and `pass_started_at` is cleared as though the tree had been verified.
-      const dirty = outcome.errors > 0 || slice.errors > 0 || !slice.complete;
-      const status: RunResult['status'] = dirty ? (outcome.applied > 0 ? 'partial' : 'failed') : 'ok';
-      // The fallback names the only dirty state that carries no error: both error
+      const failed = outcome.errors > 0 || slice.errors > 0 || !slice.complete;
+      const budgetLimited = outcome.budgetReason !== null;
+      const status: RunResult['status'] = failed ? (outcome.applied > 0 ? 'partial' : 'failed') : budgetLimited ? 'partial' : 'ok';
+      // The fallback names the only failed state that carries no error: both error
       // counters always set their `firstError` alongside, so reaching it means a
       // listing reported itself incomplete without anything failing. The previous
       // text ("one or more paths could not be synchronised") read as a transfer
       // failure and sent owners after the wrong cause.
       const fallbackError = 'a listing was incomplete, so absence-based decisions were held back for this pass';
+      // A budget stop used to be indistinguishable from a finished plan. The
+      // executor silently broke out of its loop, this recorded `ok`, the UI showed
+      // "Up To Date", and the pass closed while a third of the files were still
+      // missing. Say how many paths were left and keep the pass open for them.
+      const budgetError = budgetLimited
+        ? `replication slice ran out of ${outcome.budgetReason} budget; ${outcome.skipped} path(s) remain for the next pass`
+        : null;
+      const error = failed
+        ? [outcome.firstError ?? slice.firstError ?? fallbackError, budgetError].filter((part) => part !== null).join('; ')
+        : budgetError;
+      const remaining = Math.max(slice.remaining, outcome.skipped);
       await this.replicationDAO.recordRun(
         this.row.replication_id,
         status,
-        dirty ? truncate(outcome.firstError ?? slice.firstError ?? fallbackError) : null,
+        error === null ? null : truncate(error),
         now,
         this.config.getMaxReplicationFailures(),
         slice.cursor,
-        slice.remaining,
+        remaining,
+        // A budget-limited partial is expected back-pressure, not a failed run:
+        // it must not feed the auto-disable counter.
+        failed,
       );
 
       await this.invalidateReadCaches();
       return {
         status,
-        error: dirty ? (outcome.firstError ?? slice.firstError ?? fallbackError) : null,
-        remaining: slice.remaining,
+        error,
+        remaining,
         deferredPaths: plan.deferredPaths.length,
       };
     } catch (error) {

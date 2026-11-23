@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ReplicationRunner } from '../apps/background/src/replication/ReplicationRunner';
+import { PlanExecutor } from '../apps/background/src/replication/PlanExecutor';
 import type { LocalReplicaStub } from '../apps/background/src/replication/ReplicationRunner';
 import type { RemoteEntry } from '@durable-dav/backend-services/replication';
 import type { ReplicaStateRow } from '@durable-dav/dav-store';
@@ -157,7 +158,7 @@ function replicationRow(overrides: Partial<DavReplicationRow> = {}): DavReplicat
 Records what `recordRun` was told, which is where the deletion gate is stored.
 */
 function recordingDAO() {
-  const runs: Array<{ status: string; error: string | null; remaining: number }> = [];
+  const runs: Array<{ status: string; error: string | null; remaining: number; countAsFailure?: boolean }> = [];
   return {
     runs,
     async beginPass() {},
@@ -169,8 +170,9 @@ function recordingDAO() {
       _max: number,
       _cursor: string | null,
       remaining: number,
+      countAsFailure?: boolean,
     ) {
-      runs.push({ status, error, remaining });
+      runs.push({ status, error, remaining, ...(countAsFailure !== undefined && { countAsFailure }) });
     },
     async deleteById() {},
   };
@@ -229,12 +231,74 @@ function build(options: {
   return { runner, row, stub, target, dao, conflicts, env };
 }
 
+describe('ReplicationRunner — slice budgets', () => {
+  function remoteFiles(count: number): Record<string, string> {
+    return Object.fromEntries(
+      Array.from({ length: count }, (_unused, index) => [`f${String(index).padStart(2, '0')}.txt`, `contents-${index}`] as const),
+    );
+  }
+
+  it('reports a byte-limited batch as partial, with the paths still to do', async () => {
+    // The reported failure: 30 files in an Exact Mirror bucket, 12 pulled, then
+    // the 32 MiB slice budget stopped the loop. The executor's silent `break`
+    // used to be recorded as `ok`, so the client rendered "Up To Date".
+    const { runner, dao, stub } = build({
+      row: { mode: 'pull-only', mirror_deletions: 1 },
+      remoteFiles: remoteFiles(30),
+      env: { REPLICATION_SLICE_BYTES: '1' },
+    });
+    const result = await runner.runSlice();
+    expect(result.status).toBe('partial');
+    expect(result.error).toMatch(/bytes budget/);
+    expect(result.error).toMatch(/29 path/);
+    expect(result.remaining).toBe(29);
+    expect(dao.runs[0]).toMatchObject({ status: 'partial', remaining: 29 });
+    expect(stub.applied.filter((op) => op.op === 'write')).toHaveLength(1);
+  });
+
+  it('names the time budget when the deadline is already past', async () => {
+    // A wall-clock deadline of 1 ms is timing-dependent at the runner level, so
+    // pin the executor's deadline here: the reason and the skip count are the
+    // contract the runner relies on.
+    const executor = new PlanExecutor({
+      localStub: localStub(),
+      remote: {} as never,
+      replicationId: 'rep_1',
+      slice: {
+        localByPath: new Map(),
+        remoteByPath: new Map(),
+        base: [],
+        complete: true,
+        errors: 0,
+        firstError: null,
+        remaining: 0,
+        cursor: null,
+      },
+      deadlineMs: 0,
+      maxBytes: Number.MAX_SAFE_INTEGER,
+    });
+    const outcome = await executor.run([{ kind: 'push', path: 'a.txt', contentType: null }]);
+    expect(outcome).toMatchObject({ applied: 0, skipped: 1, budgetReason: 'time' });
+  });
+
+  it('does not count a budget-limited partial as a failed run', async () => {
+    const { runner, dao } = build({
+      remoteFiles: remoteFiles(30),
+      env: { REPLICATION_SLICE_BYTES: '1' },
+    });
+    await runner.runSlice();
+    // The 8th argument is `countAsFailure`; a partial from back-pressure must not
+    // increment `consecutive_failures` and auto-disable the target.
+    expect(dao.runs[0]?.countAsFailure).toBe(false);
+  });
+});
+
 describe('ReplicationRunner — pass bookkeeping', () => {
   it('opens a pass and records a clean run', async () => {
     const { runner, dao } = build({});
     const result = await runner.runSlice();
     expect(result.status).toBe('ok');
-    expect(dao.runs).toEqual([{ status: 'ok', error: null, remaining: 0 }]);
+    expect(dao.runs).toEqual([{ status: 'ok', error: null, remaining: 0, countAsFailure: false }]);
   });
 
   it('never throws, and records the failure on the row instead', async () => {
@@ -1056,7 +1120,7 @@ describe('ReplicationRunner — trailing-slash collection hrefs', () => {
     const result = await runner.runSlice();
     expect(result.status).toBe('ok');
     expect(result.error).toBeNull();
-    expect(dao.runs).toEqual([{ status: 'ok', error: null, remaining: 0 }]);
+    expect(dao.runs).toEqual([{ status: 'ok', error: null, remaining: 0, countAsFailure: false }]);
     // The new local file went up and the new remote tree came down, under the
     // slash-free paths both sides agree on.
     expect(puts).toEqual([`${BASE}/a.txt`]);

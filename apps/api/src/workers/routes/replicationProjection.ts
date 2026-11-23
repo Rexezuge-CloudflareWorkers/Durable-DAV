@@ -28,6 +28,7 @@ function toReplicationJson(row: {
   last_error: string | null;
   consecutive_failures: number;
   pass_started_at: number | null;
+  cursor_remaining: number;
   created_at: number;
   updated_at: number;
 }): Record<string, unknown> {
@@ -55,6 +56,12 @@ function toReplicationJson(row: {
     Non-null means a pass is open, which is also the deletion gate.
     */
     passInFlight: row.pass_started_at !== null,
+    /**
+     * Work the open pass has not visited yet. A `ok` status with a non-zero
+     * value here means "this slice finished cleanly, the pass has not" — without
+     * it the client can only show "Up To Date" while files are still missing.
+     */
+    cursorRemaining: row.cursor_remaining,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
