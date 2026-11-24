@@ -39,11 +39,12 @@ describe('D1 predicates do not wrap an indexed column in lower()', () => {
     // resolved, since login goes through the key.
     const { db, queries, bindings } = recordingDatabase();
     await new UserDAO(db).createUser({ anchor: 'a@x.co', loginEmail: 'a@x.co', now: 1 });
-    expect(queries[0]).toMatch(/INSERT INTO users \(email, created_at, id, current_email\)/u);
+    expect(queries[0]).toMatch(/INSERT INTO users \(email, created_at, id, current_email, updated_at\)/u);
     expect(bindings[0]).toBe('a@x.co');
     expect(bindings[1]).toBe(1);
     expect(bindings[2]).toMatch(/^usr_[0-9a-f]{32}$/u);
     expect(bindings[3]).toBe('a@x.co');
+    expect(bindings[4]).toBe(1);
   });
 
   it('UserDAO lowercases the create parameters, so the anchor stays index-usable', async () => {
