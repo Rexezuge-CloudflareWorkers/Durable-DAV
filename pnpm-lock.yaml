@@ -172,8 +172,8 @@ importers:
         specifier: ^1.9.4
         version: 1.9.4
       chanfana:
-        specifier: 3.4.2
-        version: 3.4.2
+        specifier: 3.7.0
+        version: 3.7.0
       hono:
         specifier: 4.13.21
         version: 4.13.21
@@ -2010,6 +2010,11 @@ packages:
     engines: {node: '>=18'}
     hasBin: true
 
+  chanfana@3.7.0:
+    resolution: {integrity: sha512-nWiZIgCWhlbGPiPN+0dBQ/Mt4zBjROqVA9bR30XteBGZFO5aCSCT47S5iP+42teYi67opfxOs1Man8jCBLezEg==}
+    engines: {node: '>=18'}
+    hasBin: true
+
   change-case@5.4.4:
     resolution: {integrity: sha512-HRQyTk2/YPEkt9TnUPbOpr64Uw3KOicFWPVBb+xiHvd6eBx/qPr9xqfBFDT8P2vWsvvz4jbEkfDe71W3VyNu2w==}
 
@@ -3500,7 +3505,7 @@ snapshots:
       dotenv: 16.3.1
       undici: 7.30.2
     optionalDependencies:
-      vitest: 4.1.11(@types/node@26.6.4)(@vitest/coverage-v8@4.1.11)(jsdom@31.0.1)(vite@8.3.5(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
+      vitest: 4.1.11(@types/node@26.6.4)(@vitest/coverage-v8@4.1.11)(jsdom@31.0.1)(vite@8.3.8(@types/node@26.6.4)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
@@ -4527,6 +4532,14 @@ snapshots:
   chalk@5.3.0: {}
 
   chanfana@3.4.2:
+    dependencies:
+      '@asteasolutions/zod-to-openapi': 9.1.0(zod@4.6.7)
+      js-yaml: 5.5.0
+      openapi3-ts: 4.6.2
+      yargs-parser: 22.0.0
+      zod: 4.6.7
+
+  chanfana@3.7.0:
     dependencies:
       '@asteasolutions/zod-to-openapi': 9.1.0(zod@4.6.7)
       js-yaml: 5.5.0
