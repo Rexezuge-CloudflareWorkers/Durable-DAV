@@ -88,8 +88,8 @@ importers:
         specifier: 17.13.0
         version: 17.13.0
       hono:
-        specifier: 4.13.16
-        version: 4.13.16
+        specifier: 4.13.21
+        version: 4.13.21
       i18next:
         specifier: ^26.5.11
         version: 26.5.11(typescript@6.0.3)
@@ -175,8 +175,8 @@ importers:
         specifier: 3.4.2
         version: 3.4.2
       hono:
-        specifier: 4.13.16
-        version: 4.13.16
+        specifier: 4.13.21
+        version: 4.13.21
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -362,7 +362,7 @@ importers:
         version: 1.9.4
       dofs:
         specifier: ^0.1.0
-        version: 0.1.0(patch_hash=d01833edab7cf0fb1c9a0bd2df1b941ef64b7a7d88615dbe66cb03e1f83a4e8b)(hono@4.13.16)
+        version: 0.1.0(patch_hash=d01833edab7cf0fb1c9a0bd2df1b941ef64b7a7d88615dbe66cb03e1f83a4e8b)(hono@4.13.21)
     devDependencies:
       '@types/node':
         specifier: 26.6.4
@@ -421,8 +421,8 @@ importers:
         specifier: workspace:*
         version: link:../packages/webdav
       hono:
-        specifier: 4.13.16
-        version: 4.13.16
+        specifier: 4.13.21
+        version: 4.13.21
       react:
         specifier: 19.3.1
         version: 19.3.1
@@ -2237,8 +2237,8 @@ packages:
   hermes-parser@0.25.1:
     resolution: {integrity: sha512-6pEjquH3rqaI6cYAXYPcz9MS4rY6R4ngRgrgfDshRptUZIc3lw0MCIJIGDj9++mfySOuPTHB4nrSW99BCvOPIA==}
 
-  hono@4.13.16:
-    resolution: {integrity: sha512-AOLOEhvrV+iH92xXCnFr/5+3KjPKcI3xP63XJtX5spAnkznPdHijlIsUTpi7/9EhWqrTCekw5c5zh1K+YsVw7A==}
+  hono@4.13.21:
+    resolution: {integrity: sha512-h9UsguqfVk4kjUwLvQpHOmOaJpW10jz9lp8bvKUUa04wJG/fabKFBqXZ06D6LFaeKQZtUZRVeg0gfkTTEsX7Mw==}
     engines: {node: '>=16.9.0'}
 
   hookified@1.15.1:
@@ -3790,7 +3790,7 @@ snapshots:
       '@rexezuge/errors': 1.9.4
       '@rexezuge/shared': 1.9.4
       chanfana: 3.4.2
-      hono: 4.13.16
+      hono: 4.13.21
       jose: 6.2.18
 
   '@rexezuge/i18n@1.9.4': {}
@@ -4314,10 +4314,10 @@ snapshots:
 
   detect-libc@2.1.2: {}
 
-  dofs@0.1.0(patch_hash=d01833edab7cf0fb1c9a0bd2df1b941ef64b7a7d88615dbe66cb03e1f83a4e8b)(hono@4.13.16):
+  dofs@0.1.0(patch_hash=d01833edab7cf0fb1c9a0bd2df1b941ef64b7a7d88615dbe66cb03e1f83a4e8b)(hono@4.13.21):
     dependencies:
       commander: 14.0.3
-      hono: 4.13.16
+      hono: 4.13.21
       neofuse: 0.0.1-rc.3
 
   dom-accessibility-api@0.5.16: {}
@@ -4608,7 +4608,7 @@ snapshots:
     dependencies:
       hermes-estree: 0.25.1
 
-  hono@4.13.16: {}
+  hono@4.13.21: {}
 
   hookified@1.15.1: {}
 

@@ -43,7 +43,7 @@
     "eslint-plugin-sonarjs": "4.2.2",
     "eslint-plugin-unicorn": "76.0.0",
     "globals": "17.13.0",
-    "hono": "4.13.16",
+    "hono": "4.13.21",
     "i18next": "^26.5.11",
     "jsdom": "31.0.1",
     "jsonc-parser": "3.3.1",
