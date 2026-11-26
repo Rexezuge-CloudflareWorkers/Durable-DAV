@@ -41,7 +41,7 @@
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-regexp": "3.3.3",
     "eslint-plugin-sonarjs": "4.2.2",
-    "eslint-plugin-unicorn": "76.0.0",
+    "eslint-plugin-unicorn": "78.0.0",
     "globals": "17.13.0",
     "hono": "4.13.21",
     "i18next": "^26.5.11",
